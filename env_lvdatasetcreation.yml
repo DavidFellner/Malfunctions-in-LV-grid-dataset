@@ -1,0 +1,20 @@
+name: lvdatasetcreation
+channels:
+  - pvlib
+  - defaults
+dependencies:
+  - python=3.6
+  - matplotlib
+  - numpy
+  - pandas
+  - pvlib
+  - pytz
+  - scipy
+  - sqlalchemy
+  - sqlite
+  - xlrd
+  - pip
+  - pip:
+    - git+https://gitlab-intern.ait.ac.at/powerfactory/pflib.git@development
+#	- git+https://gitlab-intern.ait.ac.at/ReihsD/heatpump-profile-generation.git@master
+
