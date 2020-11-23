@@ -92,7 +92,9 @@ def create_malfunctioning_PVs(active_PVs, o_ElmNet, curves):
         o_Elm.pgini = i.pgini          # scale PV  output to the same
         o_Elm.sgn = i.sgn               # set apparent power as above
 
-        o_Elm.outserv = 0               # initially in service, deactivated right at start of simulation > otherwise not considered by simulation at all
+        o_Elm.outserv = 0               # initially in service,
+                                        # if needed: deactivated right at start of simulation by event > otherwise not considered by simulation at all
+
 
     return malfunctioning_devices, terms_with_malfunction
 
@@ -125,20 +127,28 @@ def create_malfunction_events(app, malfunctioning_devices, file):
     evtFold = app.GetFromStudyCase('IntEvtqds')
 
     for i in malfunctioning_devices:
-        oEvent = evtFold.CreateObject('EvtOutage', i.loc_name + ' PVout')
-        oEvent.tDateTime = int(event_time)
-        oEvent.p_target = i
-        oEvent.i_what = 0
+        if config.whole_year == True:
+            event_time = start_time
+            oEvent = evtFold.CreateObject('EvtOutage', i.loc_name + ' PVout')
+            oEvent.tDateTime = int(event_time)
+            oEvent.p_target = i
+            oEvent.i_what = 0
 
-        oEvent = evtFold.CreateObject('EvtOutage',  i.loc_name + ' PVbrokenout')  # at first PV has to be active and taken out of service;
-        oEvent.tDateTime = int(start_time)                                         # otherwise it is not considered by simulation at all
-        oEvent.p_target = app.GetCalcRelevantObjects(i.loc_name + ' broken.ElmGenstat')[0]
-        oEvent.i_what = 0
+        else:
+            oEvent = evtFold.CreateObject('EvtOutage', i.loc_name + ' PVout')
+            oEvent.tDateTime = int(event_time)
+            oEvent.p_target = i
+            oEvent.i_what = 0
 
-        oEvent = evtFold.CreateObject('EvtOutage', i.loc_name + ' PVbrokenin')
-        oEvent.tDateTime = int(event_time)
-        oEvent.p_target = app.GetCalcRelevantObjects(i.loc_name + ' broken.ElmGenstat')[0]
-        oEvent.i_what = 1
+            oEvent = evtFold.CreateObject('EvtOutage',  i.loc_name + ' PVbrokenout')  # at first PV has to be active and taken out of service;
+            oEvent.tDateTime = int(start_time)                                         # otherwise it is not considered by simulation at all
+            oEvent.p_target = app.GetCalcRelevantObjects(i.loc_name + ' broken.ElmGenstat')[0]
+            oEvent.i_what = 0
+
+            oEvent = evtFold.CreateObject('EvtOutage', i.loc_name + ' PVbrokenin')
+            oEvent.tDateTime = int(event_time)
+            oEvent.p_target = app.GetCalcRelevantObjects(i.loc_name + ' broken.ElmGenstat')[0]
+            oEvent.i_what = 1
 
     return time_of_malfunction, t_start, t_end
 
@@ -189,14 +199,6 @@ def save_results(count, malfunctioning_devices, time_of_malfunction, results, te
         os.mkdir(results_folder)
 
     results.to_csv(results_folder + 'result_run#%d.csv' % count, header=True, sep=';', decimal='.', float_format='%.3f')
-    csv.register_dialect('myDialect',
-                         delimiter=';',
-                         quoting=csv.QUOTE_NONE,
-                         skipinitialspace=True)
-    with open(results_folder + 'result_run#%d.csv' % count, 'a') as csvFile:       #add meta info
-        writer = csv.writer(csvFile, dialect='myDialect')
-        writer.writerow(metainfo)
-    csvFile.close()
 
     return
 
@@ -237,7 +239,7 @@ def create_data(app, o_ElmNet, curves, study_case_obj, file):
 
         active_PVs = random.sample(l_objects, sample)         # pick active PVs randomly
         for o in active_PVs: o.outserv = 0                    # PVs not outofservice and therefore active = installed PV
-        terminals_with_PVs = [i.bus1.cterm.loc_name for i in active_PVs]
+        terminals_with_PVs = list(set([i.bus1.cterm.loc_name for i in active_PVs]))    #set bc there can be 2 load on one terminal and therefore 2 PVs on one terminal
 
         malfunctioning_devices, terms_with_malfunction = create_malfunctioning_PVs(active_PVs, o_ElmNet, curves)
         time_of_malfunction, t_start, t_end = create_malfunction_events(app, malfunctioning_devices, file)
