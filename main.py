@@ -18,6 +18,8 @@ from RNN import RNN
 
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_validate
+from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import accuracy_score
 import skorch
 
 import pandas as pd
@@ -87,26 +89,27 @@ if __name__ == '__main__':  #see config file for settings
 
     dataset, X, y = load_dataset()
     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
-    clf = train(dataset, X_train, y_train)
+    #clf = train(dataset, X_train, y_train)
 
     #or
     if learning_config['classifier'] == 'RNN':
-        model = RNN(learning_config['RNN model settings'][0], learning_config,
+        model = RNN(learning_config['RNN model settings'][0],  learning_config['RNN model settings'][1],
                     learning_config['RNN model settings'][2], learning_config['RNN model settings'][3])
 
-    clf = model.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-    metrics = precision_recall_fscore_support(y_test, y_pred, average='macro')
-    accuracy = accuracy_score(y_test, y_pred)
-    print("########## Metrics ##########")
-    print(
-        "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}".format(accuracy, metrics[0], metrics[1],
-                                                                         metrics[2]))
+    if not learning_config["cross_validation"]:
+        clf = model.fit(X_train, y_train)
+        y_pred = clf.predict(X_test)
+        metrics = precision_recall_fscore_support(y_test, y_pred, average='macro')
+        accuracy = accuracy_score(y_test, y_pred)
+        print("########## Metrics ##########")
+        print(
+            "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}".format(accuracy, metrics[0], metrics[1],
+                                                                             metrics[2]))
 
-    if config["cross_validation"]:
-        scores = cross_validate(clf, X, y, scoring=config["metrics"], cv=10)
+    if learning_config["cross_validation"]:
+        scores = cross_validate(model, X, y, scoring=learning_config["metrics"], cv=10)
         print("########## 10-fold Cross-validation ##########")
-        for metric in config["cross_val_metrics"]:
+        for metric in learning_config["cross_val_metrics"]:
             print("%s: %0.2f (+/- %0.2f)" % (metric, scores[metric].mean(), scores[metric].std() * 2))
 
 
