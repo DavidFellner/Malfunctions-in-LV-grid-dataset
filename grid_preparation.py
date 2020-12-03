@@ -187,6 +187,14 @@ def prepare_grid(app, file, o_ElmNet):
         init_f_name_ending = char.f_name.split('\\')[-1]
         char.f_name = config.data_folder  + file + '\\' + init_f_name_ending
 
+    for o_ElmLod in app.GetCalcRelevantObjects('.ElmLod'):                      #gas to be done like this to active profiles
+        o_ChaTime = pf.get_referenced_characteristics(o_ElmLod, 'plini')[
+            0]                                                                  # get P characteristic (profile) from load
+        pf.set_referenced_characteristics(o_ElmLod, 'plini', o_ChaTime)         # set characteristic for inserted PV
+        o_ChaTime = pf.get_referenced_characteristics(o_ElmLod, 'qlini')[       #same for Q (reactive Power)
+            0]
+        pf.set_referenced_characteristics(o_ElmLod, 'qlini', o_ChaTime)
+
     #deactivate storages in grid and count PVs for later use
     for o_ElmGenstat in app.GetCalcRelevantObjects('.ElmGenstat'):
         if o_ElmGenstat.cCategory == 'Storage':
