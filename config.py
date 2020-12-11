@@ -9,10 +9,10 @@ local_machine_tz = 'Europe/Berlin'                          #timezone; it's impo
 
 #Deep learning settings
 learning_config = {
-    "dataset": "PV_noPV_1day",
-    "RNN model settings": [1, 2, 3, 3],   # number of input features, number of output features, number of features in hidden state, number of of layers
-    "number of epochs": 30,
-    "learning rate": 1*10**-5,
+    "dataset": "PV_noPV_7day",
+    "RNN model settings": [1, 2, 6, 3],   # number of input features, number of output features, number of features in hidden state, number of of layers
+    "number of epochs": 70,
+    "learning rate": 0.01*10**-5,
     "activation function": 'tanh', # relu, tanh
     #"batch_size" : 3,
     "optimizer": 'Adam',           # Adam, SGD
@@ -29,16 +29,16 @@ learning_config = {
 }
 
 # Dataset settings
-data_set_name = 'PV_noPV_1day'                       #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
-dataset_available = True                       #set to False to recreate instances from raw data
-raw_data_available = True                       #set to False to generate raw data using the simulation
+raw_data_set_name = 'malfunctions_in_LV_grid_dataset'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
+dataset_available = False                       #set to False to recreate instances from raw data
+raw_data_available = False                      #set to False to generate raw data using the simulation
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False
 accuracy = 0.01                                 #accuracy according to the Genauigkeitsklasse of SmartMeter (1 = 1% i.e.)
-sample_length = 1 * 96                         # 96 datapoints per day
+sample_length = 7 * 96                          #96 datapoints per day
 smartmeter_ratedvoltage_range = [400, 415]
 smartmeter_voltage_range = [363, 457]
-number_of_samples = 10000
+number_of_samples = 15000
 share_of_positive_samples = 0.5        #should be 0.5! only chose values that yield real numbers as invers i.e. 0.2, 0.25, 0.5 > otherwise number of samples corrupted
 number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(data_folder + i)])
 float_decimal = 5                       #decimals in dataset
@@ -52,15 +52,18 @@ reduce_result_file_size = True          #save results as integers to save memory
 just_voltages = True                    #if False also P and Q results given
 
 # Simulation settings
-start = 0                               #start = 5 yields result_run#5
-if data_set_name == 'PV_noPV':
-    positive_samples_per_simrun = 1     #data from how many terminals are there in the grid minimally > determines how many yearly simulations have to be run and used for dataset creation
-    simruns = math.ceil((number_of_samples * share_of_positive_samples) / (positive_samples_per_simrun * number_of_grids) / (365 * 96/sample_length))
-elif data_set_name == 'malfunctions_in_LV_grid_dataset':
-    simruns = math.ceil((number_of_samples * share_of_positive_samples) / (number_of_grids))
-elif data_set_name == 'dummy':
+#start = 0                               #start = 5 yields result_run#5
+sim_length = 8                         #simulation length in days (has to be equal or bigger than sample length
+if sim_length < sample_length/96: print('Choose different simulation length or sample length (sim_length >= sample_length')
+
+if raw_data_set_name == 'PV_noPV':
+    positive_samples_per_simrun = 5     #data from how many terminals are there in the grid minimally > determines how many yearly simulations have to be run and used for dataset creation
+    simruns = math.ceil((number_of_samples * share_of_positive_samples) / (positive_samples_per_simrun * number_of_grids) / (sim_length * 96/sample_length))
+elif raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
+    simruns = math.ceil((number_of_samples * share_of_positive_samples) / (number_of_grids) / int((sim_length * 96/sample_length)))
+elif raw_data_set_name == 'dummy':
     terms_per_simrun = 5                #data from how many terminals are there in the grid minimally > determines how many yearly simulations have to be run and used for dataset creation
-    simruns = math.ceil((number_of_samples * share_of_positive_samples) / (terms_per_simrun * number_of_grids) / (365 * 96/sample_length))
+    simruns = math.ceil((number_of_samples * share_of_positive_samples) / (terms_per_simrun * number_of_grids) / (sim_length * 96/sample_length))
 else:
     simruns = 10                        #number of datasets produced and also used per grid (location of malfunction/PVs... is varied)
 step_size = 15                          #simulation step size in minutes

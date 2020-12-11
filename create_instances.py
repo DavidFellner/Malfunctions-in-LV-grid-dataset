@@ -2,7 +2,6 @@ import config
 import pandas as pd
 import numpy as np
 import random
-import math
 
 def add_noise(df):
 
@@ -60,11 +59,11 @@ def add_samples(df, num_features, sample_dict, samples_per_term, samples_before,
 
     return df
 
-def extract_malfunction_data(df, terminals_already_in_dataset, number_of_samples_before):
+def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samples_before):
     '''
 
     :param df:
-    :param terminals_already_in_dataset:
+    :param combinations_already_in_dataset:
     :return:
 
     extracts data of interest (no duplicates) and labels it with 1 for malfunction present, and 0 with no malfunction present
@@ -72,93 +71,79 @@ def extract_malfunction_data(df, terminals_already_in_dataset, number_of_samples
     '''
 
     metainfo = df[('metainfo', 'in the first', 'few indices')]
-    #check if still correct
-    #terminals_with_malfunctions = [i for i in metainfo.iloc[3].split("'") if 'Bus' in i]
-    #terminals_with_devices = [i for i in metainfo.iloc[6].split("'") if 'Bus' in i]
+    terminals_with_malfunctions = [i for i in metainfo.iloc[5].split("'") if 'Bus' in i]
+    terminals_with_devices = [i for i in metainfo.iloc[6].split("'") if 'Bus' in i]
+    t_start = metainfo.iloc[3]
+    t_end = metainfo.iloc[4]
 
-    df_reduced = pd.DataFrame(index= df.index.append(pd.Index(['label'])))
-    if len(terminals_already_in_dataset) > 0:
-        for combination in terminals_already_in_dataset:
-            if set(terminals_with_malfunctions) == set(combination):
-                return df_reduced, terminals_already_in_dataset
+    sample_length = config.sample_length
+    samples_to_go = config.number_of_samples - number_of_samples_before
+    share_from_df = 1 / config.simruns                                          # share of samples taken from current df
+    if samples_to_go < int(config.number_of_samples * share_from_df):
+        samples_from_df = samples_to_go
     else:
-        terminals_already_in_dataset.append(terminals_with_malfunctions)
+        samples_from_df = int(config.number_of_samples * share_from_df)
 
-    random.shuffle(terminals_with_devices)
+    num_positive_samples = samples_from_df * config.share_of_positive_samples
+    num_neg_samples = samples_from_df * (1 - config.share_of_positive_samples)
+    pos_samples_per_term = num_positive_samples / len(terminals_with_malfunctions)
+    neg_samples_per_term = num_neg_samples / (len(terminals_with_devices) - len(terminals_with_malfunctions))
+
+    difference_by_flooring = int(pos_samples_per_term) * len(terminals_with_malfunctions) - int(neg_samples_per_term) * (
+            len(terminals_with_devices) - len(terminals_with_malfunctions))
+
+    df_reduced = pd.DataFrame(index=df.index[:sample_length].append(pd.Index(['label'])))
+    features_per_sample = len(df[terminals_with_devices[0]].columns)
+
+    if len(combinations_already_in_dataset) > 0:
+        for combination in combinations_already_in_dataset:
+            if set(terminals_with_devices) == set(combination[0]) \
+                    and (terminals_with_malfunctions, t_start, t_end) == combination[1:]:
+                return df_reduced, combinations_already_in_dataset
+    else:
+        combinations_already_in_dataset.append((terminals_with_devices, terminals_with_malfunctions, t_start, t_end))
+
     for term in terminals_with_devices:
-        sample_number = int(len(df_reduced.columns) / len(df[term].columns))
+        sample_dict = {name: group for name, group in df[term].groupby(np.arange(len(df[term])) // sample_length) if
+                       len(group) == sample_length}
+
         if term in terminals_with_malfunctions:
-            label = 1       #means timeseries is of a terminal that experiences a malfunction
-            noised_data = add_noise(df[term])
-            if len(noised_data.columns) > 1:
-                for i in noised_data.columns:
-                    df_reduced[
-                        (str(sample_number + number_of_samples_before), i[1])] = noised_data[
-                                                                                               i].values.tolist() + [
-                                                                                               label]
+
+            if difference_by_flooring < 0:
+                difference_by_flooring = difference_by_flooring + 1
+                pos_samples = int(pos_samples_per_term) + 1
             else:
-                df_reduced[str(sample_number + number_of_samples_before)] = noised_data.values.tolist() + [
-                    label]
+                pos_samples = int(pos_samples_per_term)
+
+            df_reduced = add_samples(df_reduced, features_per_sample, sample_dict, pos_samples,
+                                     number_of_samples_before, 1)
+
         else:
-            try:
-                if int((df_reduced.iloc[-1] == 0).value_counts()[True] / len(noised_data.columns)) < int(1/config.share_of_positive_samples) - len(terminals_with_malfunctions):
-                    label = 0
-                    noised_data = add_noise(df[term])
-                    if len(noised_data.columns) > 1:
-                        for i in noised_data.columns:
-                            df_reduced[
-                                (str(sample_number + number_of_samples_before), i[1])] = noised_data[
-                                                                                                       i].values.tolist() + [
-                                                                                                       label]
-                    else:
-                        df_reduced[
-                            str(sample_number + number_of_samples_before)] = noised_data.values.tolist() + [
-                            label]
-                elif int((df_reduced.iloc[-1] == 1).value_counts()[True] / len(noised_data.columns)) == len(terminals_with_malfunctions):
-                    return df_reduced, terminals_already_in_dataset
-            except KeyError:
-                if len(df_reduced.columns) < int(1/config.share_of_positive_samples) - len(terminals_with_malfunctions):
-                    label = 0
-                    noised_data = add_noise(df[term])
-                    if len(noised_data.columns) > 1:
-                        for i in noised_data.columns:
-                            df_reduced[
-                                (str(sample_number + number_of_samples_before), i[1])] = noised_data[
-                                                                                                       i].values.tolist() + [
-                                                                                                       label]
-                    else:
-                        df_reduced[
-                            str(sample_number + number_of_samples_before)] = noised_data.values.tolist() + [
-                            label]
-                else:
-                    continue
-            except IndexError:
-                label = 0
-                noised_data = add_noise(df[term])
-                if len(noised_data.columns) > 1:
-                    for i in noised_data.columns:
-                        df_reduced[
-                            (str(sample_number + number_of_samples_before), i[1])] = noised_data[i].values.tolist() + [
-                            label]
-                else:
-                    df_reduced[str(sample_number + number_of_samples_before)] = noised_data.values.tolist() + [
-                        label]
 
-    return df_reduced, terminals_already_in_dataset
+            if difference_by_flooring > 0:
+                difference_by_flooring = difference_by_flooring - 1
+                neg_samples = int(neg_samples_per_term) + 1
+            else:
+                neg_samples = int(neg_samples_per_term)
 
-def extract_PV_noPV_data(df, terminals_already_in_dataset, number_of_samples_before):
+            df_reduced = add_samples(df_reduced, features_per_sample, sample_dict, neg_samples,
+                                     number_of_samples_before, 0)
+
+    return df_reduced, combinations_already_in_dataset
+
+def extract_PV_noPV_data(df, combinations_already_in_dataset, number_of_samples_before):
     '''
 
     :param df:
-    :param terminals_already_in_dataset:
+    :param combinations_already_in_dataset:
     :return:
 
     extracts data of interest (no duplicates) and labels it with 1 for a terminal with a PV, and 0 for a terminal without PV; optionally adds noise to data (see config)
     '''
 
     metainfo = df[('metainfo', 'in the first', 'few indices')]
-    terminals_with_loads = [i for i in metainfo.iloc[4].split("'") if 'Bus' in i]
-    terminals_with_PV = [i for i in metainfo.iloc[3].split("'") if 'Bus' in i]
+    terminals_with_loads = [i for i in metainfo.iloc[6].split("'") if 'Bus' in i]
+    terminals_with_PV = [i for i in metainfo.iloc[5].split("'") if 'Bus' in i]
 
     sample_length = config.sample_length
     samples_to_go = config.number_of_samples - number_of_samples_before
@@ -179,12 +164,12 @@ def extract_PV_noPV_data(df, terminals_already_in_dataset, number_of_samples_bef
     df_reduced = pd.DataFrame(index=df.index[:sample_length].append(pd.Index(['label'])))
     features_per_sample = len(df[terminals_with_loads[0]].columns)
 
-    if len(terminals_already_in_dataset) > 0:
-        for combination in terminals_already_in_dataset:
+    if len(combinations_already_in_dataset) > 0:
+        for combination in combinations_already_in_dataset:
             if set(terminals_with_PV) == set(combination):
-                return df_reduced, terminals_already_in_dataset
+                return df_reduced, combinations_already_in_dataset
     else:
-        terminals_already_in_dataset.append(terminals_with_PV)
+        combinations_already_in_dataset.append(terminals_with_PV)
 
     for term in terminals_with_loads:
         sample_dict = {name: group for name, group in df[term].groupby(np.arange(len(df[term])) // sample_length) if
@@ -212,22 +197,22 @@ def extract_PV_noPV_data(df, terminals_already_in_dataset, number_of_samples_bef
             df_reduced = add_samples(df_reduced, features_per_sample, sample_dict, neg_samples,
                                      number_of_samples_before, 0)
 
-    return df_reduced, terminals_already_in_dataset
+    return df_reduced, combinations_already_in_dataset
 
 
-def extract_dummy_data(df, terminals_already_in_dataset, number_of_samples_before):
+def extract_dummy_data(df, combinations_already_in_dataset, number_of_samples_before):
     '''
 
     :param df:
-    :param terminals_already_in_dataset:
+    :param combinations_already_in_dataset:
     :return:
 
     extracts data of interest (no duplicates) and labels it with 1 for actual data, and 0 for dummy data of constant value
     '''
 
     metainfo = df[('metainfo', 'in the first', 'few indices')]
-    terminals_with_loads = [i for i in metainfo.iloc[4].split("'") if 'Bus' in i]
-    terminals_with_PV = [i for i in metainfo.iloc[3].split("'") if 'Bus' in i]
+    terminals_with_loads = [i for i in metainfo.iloc[6].split("'") if 'Bus' in i]
+    terminals_with_PV = [i for i in metainfo.iloc[5].split("'") if 'Bus' in i]
 
     sample_length = config.sample_length
     samples_to_go = config.number_of_samples - number_of_samples_before
@@ -247,12 +232,12 @@ def extract_dummy_data(df, terminals_already_in_dataset, number_of_samples_befor
     df_reduced = pd.DataFrame(index= df.index[:sample_length].append(pd.Index(['label'])))
     features_per_sample = len(df[terminals_with_loads[0]].columns)
 
-    if len(terminals_already_in_dataset) > 0:
-        for combination in terminals_already_in_dataset:
+    if len(combinations_already_in_dataset) > 0:
+        for combination in combinations_already_in_dataset:
             if set(terminals_with_PV) == set(combination):
-                return df_reduced, terminals_already_in_dataset
+                return df_reduced, combinations_already_in_dataset
     else:
-        terminals_already_in_dataset.append(terminals_with_PV)
+        combinations_already_in_dataset.append(terminals_with_PV)
 
     for term in terminals_with_loads:
         sample_dict = {name: group for name, group in df[term].groupby(np.arange(len(df[term])) // sample_length) if len(group) == sample_length}
@@ -278,18 +263,18 @@ def extract_dummy_data(df, terminals_already_in_dataset, number_of_samples_befor
 
             df_reduced = add_samples(df_reduced, features_per_sample, sample_dict, neg_samples, number_of_samples_before, 0, dummy=True)
 
-    return df_reduced, terminals_already_in_dataset
+    return df_reduced, combinations_already_in_dataset
 
-def create_samples(dir, file, terminals_already_in_dataset, number_of_samples_before):
+def create_samples(dir, file, combinations_already_in_dataset, number_of_samples_before):
 
     df = pd.read_csv(dir + '\\' + file, header = [0,1,2],sep=';', low_memory=False)
-    if config.data_set_name == 'PV_noPV':
-        df_treated, terminals_already_in_dataset = extract_PV_noPV_data(df, terminals_already_in_dataset,
+    if config.raw_data_set_name == 'PV_noPV':
+        df_treated, terminals_already_in_dataset = extract_PV_noPV_data(df, combinations_already_in_dataset,
                                                                 number_of_samples_before)
-    elif config.data_set_name == 'malfunctions_in_LV_grid_dataset':
-        df_treated, terminals_already_in_dataset = extract_malfunction_data(df, terminals_already_in_dataset, number_of_samples_before)
+    elif config.raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
+        df_treated, combinations_already_in_dataset = extract_malfunction_data(df, combinations_already_in_dataset, number_of_samples_before)
     else:
-        df_treated, terminals_already_in_dataset = extract_dummy_data(df, terminals_already_in_dataset,
+        df_treated, combinations_already_in_dataset = extract_dummy_data(df, combinations_already_in_dataset,
                                                                             number_of_samples_before)
 
-    return df_treated, terminals_already_in_dataset
+    return df_treated, combinations_already_in_dataset

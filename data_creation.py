@@ -99,9 +99,25 @@ def create_malfunctioning_PVs(active_PVs, o_ElmNet, curves):
     return malfunctioning_devices, terms_with_malfunction
 
 def set_times(file):
-    if not config.t_start and not config.t_end:      #  default > simulation time inferred from available load/generation profile data
+
+    if not config.t_start and not config.t_end:      # default > simulation time inferred from available load/generation profile data
         t_start = pd.Timestamp(pd.read_csv(config.data_folder + file + '\\LoadProfile.csv', sep=';', index_col='time').index[0], tz='utc')
         t_end = pd.Timestamp(pd.read_csv(config.data_folder + file + '\\LoadProfile.csv', sep=';', index_col='time').index[-1], tz='utc')
+
+        if config.sim_length < 365:                                         #randomly choose period of defined length during maximum simulation period to simulate
+            time_delta = int((t_end - t_start) / np.timedelta64(1, 's'))    # simulation duration converted to seconds
+            seconds = random.sample([*range(0, time_delta, 1)], 1)[0]       # pick random point of the maximum simulation period
+            t_off = pd.Timedelta(str(seconds) + 's')                        # set offset
+
+            sim_start = (t_start + t_off).replace(hour=0, minute=0, second=0)
+            t_sim_length = pd.Timedelta(str(config.sim_length) + 'd')
+            sim_end = sim_start + t_sim_length
+
+            if sim_end < t_end:
+                t_start = sim_start
+                t_end = sim_end
+                return t_start, t_end
+
     else:
         t_start = config.t_start
         t_end = config.t_end
@@ -109,19 +125,12 @@ def set_times(file):
     return t_start, t_end
 
 
-def create_malfunction_events(app, malfunctioning_devices, file):
+def create_malfunction_events(app, malfunctioning_devices, t_start, t_end):
     '''
     :param malfunctioning_devices:
     :return:
     event to change control at random point of time (correctly controlled object turned off, malfunctioning object turned on)
     '''
-
-    if not config.t_start and not config.t_end:      #  default > simulation time inferred from available load/generation profile data
-        t_start = pd.Timestamp(pd.read_csv(config.data_folder + file + '\\LoadProfile.csv', sep=';', index_col='time').index[0], tz='utc')
-        t_end = pd.Timestamp(pd.read_csv(config.data_folder + file + '\\LoadProfile.csv', sep=';', index_col='time').index[-1], tz='utc')
-    else:
-        t_start = config.t_start
-        t_end = config.t_end
 
     time_delta = int((t_end - t_start) / np.timedelta64(1, 's'))            # simulation duration converted to seconds
     seconds = random.sample([*range(0, time_delta, 1)], 1)[0]               # pick random point of the simulation
@@ -161,7 +170,7 @@ def create_malfunction_events(app, malfunctioning_devices, file):
             oEvent.p_target = app.GetCalcRelevantObjects(i.loc_name + ' broken.ElmGenstat')[0]
             oEvent.i_what = 1
 
-    return time_of_malfunction, t_start, t_end
+    return time_of_malfunction
 
 def run_QDS(app, run, result):
     '''
@@ -190,40 +199,37 @@ def run_QDS(app, run, result):
 
     return results
 
-def save_results(count, results, file, malfunctioning_devices = None, time_of_malfunction = None, terminals_with_PVs = None, terminals = None):
+def save_results(count, results, file, t_start, t_end, malfunctioning_devices = None, time_of_malfunction = None, terminals_with_PVs = None, terminals = None):
 
     if malfunctioning_devices:
         malfunction_type = {0 : 'cos(phi)(P)', 1 : 'Q(P)', 2 : 'broken Q(P) (flat curve)', 3 : 'wrong Q(P) (inversed curve)'}
         terminals_with_malfunction = [i.bus1.cterm.loc_name for i in malfunctioning_devices]
 
     metainfo = ['simulation#%d' % count, 'comment data format: active and reactive powers in Watts',
-                'step time in minutes: %d' % config.step_size]
+                'step time in minutes: %d' % config.step_size,'start time of simulation: %s' % t_start, 'end time of simulation: %s' % t_end]
 
     if malfunctioning_devices:
         metainfo.append(['terminal(s) with malfunction: %s' % terminals_with_malfunction, 'type of malfunction: %s' % malfunction_type[config.broken_control_curve_choice]])
-    if time_of_malfunction:
-        metainfo.append('time of malfunction: %s' % time_of_malfunction)
     if terminals_with_PVs:
         metainfo.append('terminals with PVs: %s' % terminals_with_PVs)
     if terminals:
         metainfo.append('terminals with loads: %s' % terminals)
+    if time_of_malfunction:
+        metainfo.append('time of malfunction: %s' % time_of_malfunction)
+
 
     metainfo += [''] * (len(results) - len(metainfo))
     results[('metainfo', 'in the first', 'few indices')] = metainfo
 
-    results_folder = config.results_folder + config.data_set_name + '_raw_data' + '\\'
+    results_folder = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\'
     file_folder = results_folder + file + '\\'
     if not os.path.isdir(results_folder):
         os.mkdir(results_folder)
     if not os.path.isdir(file_folder):
         os.mkdir(file_folder)
 
-    if config.add_data == True:
-        count = len([name for name in os.listdir(file_folder) if os.path.isfile(file_folder + name)])
-        results.to_csv(file_folder + 'result_run#%d.csv' % count, header=True, sep=';', decimal='.',
-                       float_format='%.' + '%sf' % config.float_decimal)
-    else:
-        results.to_csv(file_folder + 'result_run#%d.csv' % count, header=True, sep=';', decimal='.', float_format='%.' + '%sf' % config.float_decimal)
+    results.to_csv(file_folder + 'result_run#%d.csv' % count, header=True, sep=';', decimal='.', float_format='%.' + '%sf' % config.float_decimal)
+
 
     return
 
@@ -257,7 +263,13 @@ def create_data(app, o_ElmNet, curves, study_case_obj, file):
 
     '''
 
-    count = 0
+    if config.add_data:
+        results_folder = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\'
+        file_folder = results_folder + file + '\\'
+        count = len([name for name in os.listdir(file_folder) if os.path.isfile(file_folder + name)])
+    else:
+        count = 0
+
     list_of_PVs = [i for i in app.GetCalcRelevantObjects('*.ElmGenstat') if i.loc_name.split(' ')[1] == 'SGen']   # get list of PVs
 
     sample = math.floor(len(list_of_PVs) * config.percentage / 100)                 # set % of terminals to have PV
@@ -268,21 +280,20 @@ def create_data(app, o_ElmNet, curves, study_case_obj, file):
         terminals_with_PVs = list(set([i.bus1.cterm.loc_name for i in active_PVs]))    #set bc there can be 2 load on one terminal and therefore 2 PVs on one terminal
         terminals = list(set([i.bus1.cterm.loc_name for i in list_of_PVs]))
 
-        if config.data_set_name == 'malfunctions_in_LV_grid_dataset':
+        t_start, t_end = set_times(file)
+        if config.raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
             malfunctioning_devices, terms_with_malfunction = create_malfunctioning_PVs(active_PVs, o_ElmNet, curves)
-            time_of_malfunction, t_start, t_end = create_malfunction_events(app, malfunctioning_devices, file)
-        else:
-            t_start, t_end = set_times(file)
+            time_of_malfunction = create_malfunction_events(app, malfunctioning_devices, t_start, t_end)
 
 
         result = set_QDS_settings(app, study_case_obj, file, t_start, t_end)
 
         results = run_QDS(app, count, result)
-        if config.data_set_name == 'malfunctions_in_LV_grid_dataset':
-            save_results(count, results,file, malfunctioning_devices=malfunctioning_devices, time_of_malfunction=time_of_malfunction, terminals_with_PVs=terminals_with_PVs)
+        if config.raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
+            save_results(count, results, file, t_start, t_end, malfunctioning_devices=malfunctioning_devices, terminals_with_PVs=terminals_with_PVs)
             clean_up(app, active_PVs, malfunctioning_devices=malfunctioning_devices)
-        elif config.data_set_name == 'PV_noPV':
-            save_results(count, results, file, terminals_with_PVs=terminals_with_PVs, terminals=terminals)
+        elif config.raw_data_set_name == 'PV_noPV':
+            save_results(count, results, file, t_start, t_end, terminals_with_PVs=terminals_with_PVs, terminals=terminals)
             clean_up(app, active_PVs)
 
         count += 1

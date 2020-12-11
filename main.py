@@ -15,15 +15,18 @@ from data_creation import create_data
 from create_instances import create_samples
 from malfunctions_in_LV_grid_dataset import MlfctinLVdataset
 from PV_noPV_dataset import PVnoPVdataset
+from dummy_dataset import Dummydataset
 from RNN import RNN
 from Transformer import Transformer
 
-import matplotlib.pyplot as plt
+import numpy as np
+import random
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_validate
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
-import skorch
+from sklearn.preprocessing import MaxAbsScaler
+from sklearn.linear_model import SGDClassifier
 
 import pandas as pd
 import os
@@ -52,13 +55,13 @@ def create_dataset():
             "Dataset %s is created from raw data" % learning_config['dataset'])
         if (1/config.share_of_positive_samples).is_integer():
             df = pd.DataFrame()
-            results_folder = config.results_folder + config.data_set_name + '_raw_data' + '\\'
+            results_folder = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\'
             for dir in os.listdir(results_folder):
                 if os.path.isdir(results_folder + dir):
-                    terminals_already_in_dataset = []  # avoid having duplicate samples (data of terminal with malfunction at same terminal and same terminals having a PV)
+                    combinations_already_in_dataset = []  # avoid having duplicate samples (i.e. data of terminal with malfunction at same terminal and same terminals having a PV)
                     files = os.listdir(results_folder + dir)[0:int(config.simruns)]
                     for file in files:
-                        samples, terminals_already_in_dataset = create_samples(results_folder + dir, file, terminals_already_in_dataset,
+                        samples, combinations_already_in_dataset = create_samples(results_folder + dir, file, combinations_already_in_dataset,
                                                                                len(df.columns))
                         df = pd.concat([df, samples], axis=1, sort=False)
             return df
@@ -68,7 +71,7 @@ def create_dataset():
 def save_dataset(df):
 
     if config.dataset_available == False:
-        df.to_csv(config.results_folder + config.data_set_name + '.csv', header=True, sep=';', decimal='.', float_format='%.' + '%sf' % config.float_decimal)
+        df.to_csv(config.results_folder + learning_config['dataset'] + '.csv', header=True, sep=';', decimal='.', float_format='%.' + '%sf' % config.float_decimal)
         print(
             "Dataset %s saved" % learning_config['dataset'])
 
@@ -77,16 +80,19 @@ def save_dataset(df):
 def load_dataset(dataset=None):
 
     if not dataset:
-        if learning_config['dataset'] == 'PV_noPV':
-            dataset = PVnoPVdataset(learning_config["PV_noPV"])
+        if learning_config['dataset'][:7] == 'PV_noPV':
+            dataset = PVnoPVdataset(config.results_folder + learning_config["dataset"] + '.csv')
+        elif learning_config['dataset'][:31] == 'malfunctions_in_LV_grid_dataset':
+            dataset = MlfctinLVdataset(config.results_folder + learning_config["dataset"] + '.csv')
         else:
-            dataset = MlfctinLVdataset(learning_config["malfunction_in_LV_grid_data"])
+            dataset = Dummydataset(config.results_folder + learning_config["dataset"] + '.csv')
+
 
     else:
-        if learning_config['dataset'] == 'PV_noPV':
-            dataset = PVnoPVdataset(learning_config["test_data_set2"])
+        if learning_config['dataset'][:7] == 'PV_noPV':
+            dataset = PVnoPVdataset(config.test_data_folder + 'PV_noPV.csv')
         else:
-            dataset = MlfctinLVdataset(learning_config["test_data_set1"])
+            dataset = MlfctinLVdataset(config.test_data_folder + 'malfunctions_in_LV_grid_dataset.csv')
 
     X = dataset.get_x()
     y = dataset.get_y()
@@ -101,18 +107,52 @@ if __name__ == '__main__':  #see config file for settings
     print("\n########## Configuration ##########")
     for key, value in learning_config.items():
         print(key, ' : ', value)
+    print("number of samples : %d" % config.number_of_samples)
 
     dataset, X, y = load_dataset()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+    X_zeromean = np.array([x-x.mean() for x in X])      # deduct it's own mean from every sample
+
+    X_train, X_test, y_train, y_test = train_test_split(X_zeromean, y, random_state=0, test_size=100)
+
+    maxabs_scaler = MaxAbsScaler().fit(X_train)         #fit scaler as to scale training data between -1 and 1
+    X_train = maxabs_scaler.transform(X_train)
+    X_test = maxabs_scaler.transform(X_test)            #apply same transformation on testing data as on trainig data
+
+
+    #samples = [y.index(0), y.index(1)]
+    samples = [random.sample([i for i, x in enumerate(y) if x == 0], 1)[0], random.sample([i for i, x in enumerate(y) if x == 1], 1)[0]]
+    print("Samples shown: #{0} of class 0; #{1} of class 1".format(samples[0], samples[1]))
+    X_maxabs = maxabs_scaler.transform(X_zeromean[samples])
+    plotting.plot_2D(X[samples], label=[y[i] for i in samples], title='Raw samples')
+    plotting.plot_2D(X_zeromean[samples], label=[y[i] for i in samples], title='Zeromean samples')
+    plotting.plot_2D(X_maxabs, label=[y[i] for i in samples], title='Samples scaled to -1 to 1')
+
+    print('X data with zero mean per sample and scaled between -1 and 1 based on training samples used')
+
+    if learning_config['baseline']:
+        clf_baseline = SGDClassifier().fit(X_train, y_train)
+        y_pred_baseline = clf_baseline.predict(X_test)
+        metrics = precision_recall_fscore_support(y_test, y_pred_baseline, average='macro')
+        accuracy = accuracy_score(y_test, y_pred_baseline)
+        print("########## Baseline Metrics ##########")
+        print(
+            "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}".format(accuracy, metrics[0], metrics[1],
+                                                                             metrics[2]))
+
+        scores = cross_validate(clf_baseline, X, y, scoring=learning_config["metrics"], cv=10, n_jobs=1)
+        print("########## 10-fold Cross-validation ##########")
+        for metric in learning_config["cross_val_metrics"]:
+            print("%s: %0.2f (+/- %0.2f)" % (metric, scores[metric].mean(), scores[metric].std() * 2))
 
     if learning_config['classifier'] == 'RNN':
         model = RNN(learning_config['RNN model settings'][0],  learning_config['RNN model settings'][1],
                     learning_config['RNN model settings'][2], learning_config['RNN model settings'][3])
 
     if not learning_config["cross_validation"]:
-        clf = model.fit(X_train, y_train)
-        scaler = model.get_scaler()
-        y_pred = clf.predict(scaler.transform(X_test))
+        print("########## Training ##########")
+        clf, losses = model.fit(X_train, y_train)
+        losses.plot()   #plot training loss after each epoch
+        y_pred = clf.predict(X_test)
         metrics = precision_recall_fscore_support(y_test, y_pred, average='macro')
         accuracy = accuracy_score(y_test, y_pred)
         print("########## Metrics ##########")
