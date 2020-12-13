@@ -9,9 +9,10 @@ Description:
 import config
 from config import learning_config
 import plotting
-from start_powerfactory import start_powerfactory
-from grid_preparation import prepare_grid
-from data_creation import create_data
+if not config.raw_data_available:
+    from start_powerfactory import start_powerfactory
+    from grid_preparation import prepare_grid
+    from data_creation import create_data
 from create_instances import create_samples
 from malfunctions_in_LV_grid_dataset import MlfctinLVdataset
 from PV_noPV_dataset import PVnoPVdataset

@@ -94,10 +94,12 @@ class RNN(nn.Module):
             optimizer.zero_grad()  # Clears existing gradients from previous epoch
 
             for sequences, labels in inout_seq:               #do minibatch with more than 1 sample
+                labels = labels.to(self._device)
+                sequences = sequences.to(self._device)
                 output, hidden = self(sequences)
 
-                output = output.to(self._device)
                 last_outputs = torch.stack([i[-1] for i in output])
+                last_output = last_output.to(self._device)
 
                 loss = criterion(last_outputs, labels)
 
@@ -124,6 +126,7 @@ class RNN(nn.Module):
         pred = []
 
         for seq in input_seq:
+            seq = seq.to(self._device)
             output, hidden = self(seq)
             output = output.to(self._device)
 
@@ -154,7 +157,8 @@ class RNN(nn.Module):
             lr = nominal_lr * epoch / int((warm_up_share * configuration["number of epochs"]))
             optimizer = self.choose_optimizer(alpha=lr)
         elif self.warm_up and epoch >= int(warm_up_share * configuration["number of epochs"]):
-            lr = nominal_lr * cos((epoch - int(warm_up_share * configuration["number of epochs"]))/(int((1-warm_up_share) * configuration["number of epochs"]))*(pi/2))     #choose inverse log or sth
+            #lr = nominal_lr * cos((epoch - int(warm_up_share * configuration["number of epochs"]))/(int((1-warm_up_share) * configuration["number of epochs"]))*(pi/2))     #choose inverse log or sth
+            lr = nominal_lr * (configuration["number of epochs"] - epoch) / int((1-warm_up_share) * configuration["number of epochs"])
             optimizer = self.choose_optimizer(alpha=lr)
         else:
             if losses[-1] > loss:

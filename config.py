@@ -9,7 +9,7 @@ local_machine_tz = 'Europe/Berlin'                          #timezone; it's impo
 
 #Deep learning settings
 learning_config = {
-    "dataset": "malfunctions_in_LV_grid_dataset_7day",
+    "dataset": "PV_noPV_7day",
     "RNN model settings": [1, 2, 6, 2],   # number of input features, number of output features, number of features in hidden state, number of of layers
     "number of epochs": 70,
     "learning rate": 0.0001*10**-5,
@@ -28,9 +28,9 @@ learning_config = {
 }
 
 # Dataset settings
-raw_data_set_name = 'malfunctions_in_LV_grid_dataset'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
-dataset_available = False                       #set to False to recreate instances from raw data
-raw_data_available = True                      #set to False to generate raw data using the simulation
+raw_data_set_name = 'PV_noPV_7day'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
+dataset_available = True                       #set to False to recreate instances from raw data
+raw_data_available = True                      #set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False
 accuracy = 0.01                                 #accuracy according to the Genauigkeitsklasse of SmartMeter (1 = 1% i.e.)
