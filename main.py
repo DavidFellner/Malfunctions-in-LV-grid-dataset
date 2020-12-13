@@ -123,9 +123,9 @@ if __name__ == '__main__':  #see config file for settings
     samples = [random.sample([i for i, x in enumerate(y) if x == 0], 1)[0], random.sample([i for i, x in enumerate(y) if x == 1], 1)[0]]
     print("Samples shown: #{0} of class 0; #{1} of class 1".format(samples[0], samples[1]))
     X_maxabs = maxabs_scaler.transform(X_zeromean[samples])
-    plotting.plot_2D(X[samples], label=[y[i] for i in samples], title='Raw samples')
-    plotting.plot_2D(X_zeromean[samples], label=[y[i] for i in samples], title='Zeromean samples')
-    plotting.plot_2D(X_maxabs, label=[y[i] for i in samples], title='Samples scaled to -1 to 1')
+    plotting.plot_sample(X[samples], label=[y[i] for i in samples], title='Raw samples')
+    plotting.plot_sample(X_zeromean[samples], label=[y[i] for i in samples], title='Zeromean samples')
+    plotting.plot_sample(X_maxabs, label=[y[i] for i in samples], title='Samples scaled to -1 to 1')
 
     print('X data with zero mean per sample and scaled between -1 and 1 based on training samples used')
 
@@ -150,8 +150,10 @@ if __name__ == '__main__':  #see config file for settings
 
     if not learning_config["cross_validation"]:
         print("########## Training ##########")
-        clf, losses = model.fit(X_train, y_train)
-        losses.plot()   #plot training loss after each epoch
+        clf, losses, lrs = model.fit(X_train, y_train, early_stopping=learning_config['early stopping'], warm_up=learning_config['warm up'])
+        plotting.plot_2D(losses, label='Training loss', title='Training loss after each epoch', x_label='Epoch', y_label='Loss')   #plot training loss for each epoch
+        plotting.plot_2D(lrs, label='learning rate', title='Learning rate for each epoch', x_label='Epoch',
+                         y_label='Learning rate')
         y_pred = clf.predict(X_test)
         metrics = precision_recall_fscore_support(y_test, y_pred, average='macro')
         accuracy = accuracy_score(y_test, y_pred)

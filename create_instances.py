@@ -73,8 +73,6 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
     metainfo = df[('metainfo', 'in the first', 'few indices')]
     terminals_with_malfunctions = [i for i in metainfo.iloc[5].split("'") if 'Bus' in i]
     terminals_with_devices = [i for i in metainfo.iloc[6].split("'") if 'Bus' in i]
-    t_start = metainfo.iloc[3]
-    t_end = metainfo.iloc[4]
 
     sample_length = config.sample_length
     samples_to_go = config.number_of_samples - number_of_samples_before
@@ -98,10 +96,10 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
     if len(combinations_already_in_dataset) > 0:
         for combination in combinations_already_in_dataset:
             if set(terminals_with_devices) == set(combination[0]) \
-                    and (terminals_with_malfunctions, t_start, t_end) == combination[1:]:
+                    and (terminals_with_malfunctions) == combination[1]:
                 return df_reduced, combinations_already_in_dataset
     else:
-        combinations_already_in_dataset.append((terminals_with_devices, terminals_with_malfunctions, t_start, t_end))
+        combinations_already_in_dataset.append((terminals_with_devices, terminals_with_malfunctions))
 
     for term in terminals_with_devices:
         sample_dict = {name: group for name, group in df[term].groupby(np.arange(len(df[term])) // sample_length) if

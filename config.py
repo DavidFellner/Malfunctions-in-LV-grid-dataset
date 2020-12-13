@@ -9,21 +9,20 @@ local_machine_tz = 'Europe/Berlin'                          #timezone; it's impo
 
 #Deep learning settings
 learning_config = {
-    "dataset": "PV_noPV_7day",
-    "RNN model settings": [1, 2, 6, 3],   # number of input features, number of output features, number of features in hidden state, number of of layers
+    "dataset": "malfunctions_in_LV_grid_dataset_7day",
+    "RNN model settings": [1, 2, 6, 2],   # number of input features, number of output features, number of features in hidden state, number of of layers
     "number of epochs": 70,
-    "learning rate": 0.01*10**-5,
+    "learning rate": 0.0001*10**-5,
     "activation function": 'tanh', # relu, tanh
-    #"batch_size" : 3,
+    "mini batch size": 4,
     "optimizer": 'Adam',           # Adam, SGD
+    "early stopping": False,
+    "warm up": True,
+    "percentage of epochs for warm up": 10,         #warm up not performed if percentage of epochs for warm up * epochs > epochs
     "baseline": True,
     "cross_validation": False,
     "metrics": ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro'],
     "cross_val_metrics": ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro'],
-    #"plot_confusion_matrix": False,
-    #"plot_learning_curve": False,
-    #"plot_validation_curve": False,
-    #"grid_search": False,
     "classifier": "RNN"  # RNN
 
 }
@@ -31,7 +30,7 @@ learning_config = {
 # Dataset settings
 raw_data_set_name = 'malfunctions_in_LV_grid_dataset'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
 dataset_available = False                       #set to False to recreate instances from raw data
-raw_data_available = False                      #set to False to generate raw data using the simulation
+raw_data_available = True                      #set to False to generate raw data using the simulation
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False
 accuracy = 0.01                                 #accuracy according to the Genauigkeitsklasse of SmartMeter (1 = 1% i.e.)
@@ -52,8 +51,7 @@ reduce_result_file_size = True          #save results as integers to save memory
 just_voltages = True                    #if False also P and Q results given
 
 # Simulation settings
-#start = 0                               #start = 5 yields result_run#5
-sim_length = 8                         #simulation length in days (has to be equal or bigger than sample length
+sim_length = 365                         #simulation length in days (has to be equal or bigger than sample length
 if sim_length < sample_length/96: print('Choose different simulation length or sample length (sim_length >= sample_length')
 
 if raw_data_set_name == 'PV_noPV':

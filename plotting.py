@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import config
 
 
-def plot_2D(Y, x=None, label = None, title=None):
+def plot_sample(Y, x=None, label = None, title=None):
 
     fig, ax = plt.subplots()
     marker = '.'
@@ -46,5 +46,33 @@ def plot_2D(Y, x=None, label = None, title=None):
         plt.legend(loc="best", markerscale=10)
     if title:
         plt.title(title)
+
+    return ax
+
+def plot_2D(y, x=None, label=None, title=None, x_label=None, y_label=None):
+
+    fig, ax = plt.subplots()
+
+    if not x:
+            x = np.linspace(0, len(y), len(y))
+            if label:
+                ax.plot(x, y, label=label)
+            else:
+                ax.plot(x, y)
+    else:
+        if label:
+            ax.plot(x, y, label=label)
+        else:
+            ax.plot(x, y)
+
+    fig.show()
+    if label:
+        plt.legend(loc="best", markerscale=10)
+    if title:
+        plt.title(title)
+    if x_label:
+        plt.xlabel(x_label)
+    if y_label:
+        plt.ylabel(y_label)
 
     return ax
