@@ -24,7 +24,6 @@ class RNN(nn.Module):
 
         self._rnn = nn.RNN(input_size, hidden_dim, n_layers, nonlinearity=configuration["activation function"]).to(self._device)
         self._fc = nn.Linear(hidden_dim, output_size).to(self._device)
-        self._softmax = nn.Softmax(dim=2).to(self._device)
         self._estimator_type = 'classifier'
 
 
@@ -62,6 +61,7 @@ class RNN(nn.Module):
 
     def fit(self, X_train, y_train, X_test, y_test, early_stopping=True, warm_up=True, control_lr=False):
 
+        torch.cuda.empty_cache()
         self.early_stopping = early_stopping
         self.warm_up = warm_up
         self.control_lr = control_lr
@@ -86,7 +86,12 @@ class RNN(nn.Module):
             X = np.array(X)
             y = list(y)
 
-            mini_batches = X.reshape((int(len(X)/mini_batch_size), mini_batch_size, len(X[0])))
+            if len(X) % mini_batch_size > 0:               #drop some samples if necessary to fit with batch size
+                samples_to_drop = len(X) % mini_batch_size
+                X = X[:-samples_to_drop]
+                y = y[:-samples_to_drop]
+
+            mini_batches = X.reshape((int(len(X) / mini_batch_size), mini_batch_size, len(X[0])))
             mini_batch_targets = np.array(y).reshape(int(len(y) / mini_batch_size), mini_batch_size)
 
             input_seq = [torch.Tensor(i).view(len(i), -1, 1) for i in mini_batches]
@@ -114,10 +119,12 @@ class RNN(nn.Module):
                 loss.backward()     # Does backpropagation and calculates gradients
                 optimizer.step()    # Updates the weights accordingly
 
+                self.detach([last_outputs, sequences, labels, hidden])      #detach tensors from GPU to free memory
+
             training_losses.append(loss)
             val_outputs = torch.stack([i[-1].view(-1) for i in self.predict(X_test)[1]]).to(self._device)
             val_loss = criterion(val_outputs, torch.Tensor([np.array(y_test)]).view(-1).long().to(self._device))
-            models_and_val_losses.append((copy.deepcopy(self.state_dict()), val_loss.item()))
+            models_and_val_losses.append((copy.deepcopy(self.state_dict), val_loss.item()))
 
             if self.early_stopping:
                 try:
@@ -135,29 +142,19 @@ class RNN(nn.Module):
 
     def predict(self, X):
 
-        input_seq = [torch.Tensor(i).view(len(i), -1, 1) for i in X]
-        pred = []
-        outputs = []
+        input_sequences = torch.stack([torch.Tensor(i).view(len(i), -1) for i in X])
 
-        for seq in input_seq:
-            seq = seq.to(self._device)
-            output, hidden = self(seq)
-            output = output.to(self._device)
-            outputs.append(output)
+        input_sequences = input_sequences.to(self._device)
+        outputs, hidden = self(input_sequences)
 
-            prob = self._softmax(output)[-1][-1]
+        last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
+        probs = nn.Softmax(dim=-1)(last_outputs)
 
-            # chose class that has highest probability
-            try:
-                if prob[0].item() > prob[1].item():
-                    pred.append(0)
-                else:
-                    pred.append(1)
-            except IndexError:
-                pred.append(0)
+        pred = torch.argmax(probs, dim=-1)  # chose class that has highest probability
 
+        self.detach([input_sequences, hidden, outputs])
 
-        return pred, outputs
+        return [i.item() for i in pred], outputs
 
     def choose_optimizer(self, alpha=configuration["learning rate"]):
         if configuration["optimizer"] == 'Adam':
@@ -208,3 +205,9 @@ class RNN(nn.Module):
         metrics = precision_recall_fscore_support(y_test, y_pred, average='macro')
         accuracy = accuracy_score(y_test, y_pred)
         return [accuracy, metrics]
+
+    def detach(self, inputs=[]):
+        for i in inputs:
+            torch.detach(i)
+        torch.cuda.empty_cache()
+        return

@@ -107,7 +107,7 @@ def cross_val(X, y, model):
 
     for train_index, test_index in kf.split(X):
         X_train, X_test = X[train_index], X[test_index]
-        y_train, y_test = y[train_index], y[test_index]
+        y_train, y_test = list(np.array(y)[train_index]), list(np.array(y)[test_index])
 
         X_train, X_test = model.preprocess(X_train, X_test)
 
@@ -121,8 +121,14 @@ def cross_val(X, y, model):
     model.state_dict = very_best_model[0]
     best_score = model.eval(X_test, y_test) + [very_best_model[1]]
 
+    scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores], 'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores], 'Lowest validation loss': [i[2] for i in scores]}
 
-    return model, scores, best_score
+    return model, scores_dict, best_score
+
+
+def choose_best(models_and_losses):
+    index_best = [i[1] for i in models_and_losses].index(min([i[1] for i in models_and_losses]))
+    return models_and_losses[index_best]
 
 def baseline(X_train, y_train, X_test, y_test):
     clf_baseline = SGDClassifier().fit(X_train, y_train)
@@ -140,10 +146,6 @@ def baseline(X_train, y_train, X_test, y_test):
         print("%s: %0.2f (+/- %0.2f)" % (metric, scores[metric].mean(), scores[metric].std() * 2))
 
     return
-
-def choose_best(models_and_losses):
-    index_best = [i[1] for i in models_and_losses].index(min([i[1] for i in models_and_losses]))
-    return models_and_losses[index_best]
 
 def plot_samples(X, y):
 
@@ -189,8 +191,8 @@ if __name__ == '__main__':  #see config file for settings
     if learning_config['baseline']:
         baseline(X_train, y_train, X_test, y_test)
 
-    #if not learning_config["cross_validation"]:
-    if 1==1:
+    if not learning_config["cross_validation"]:
+    #if 1==1:
         print("########## Training ##########")
         clfs, losses, lrs = model.fit(X_train, y_train, X_test, y_test, early_stopping=learning_config['early stopping'], warm_up=learning_config['warm up'])
         plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'], title='Losses after each epoch', x_label='Epoch', y_label='Loss')   #plot training loss for each epoch
@@ -207,8 +209,8 @@ if __name__ == '__main__':  #see config file for settings
         print("########## k-fold Cross-validation ##########")
         model, scores, best_score = cross_val(X, y, model)
         print("########## Metrics ##########")
-        for score, metric in scores, learning_config["metrics"]:
-            print("%s: %0.2f (+/- %0.2f)" % (metric, score.mean(), score.std() * 2))
+        for score in scores:
+            print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
         print("########## Best Model found ##########")
         print(
             "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nlowest validation loss: {4}".format(best_score[0],best_score[1][0], best_score[1][1],
