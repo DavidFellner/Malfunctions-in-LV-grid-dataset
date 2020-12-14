@@ -18,12 +18,13 @@ class RNN(nn.Module):
         self.n_layers = n_layers
         self.output_size = output_size
         self.input_size = input_size
-
-        self._rnn = nn.RNN(input_size, hidden_dim, n_layers, nonlinearity=configuration["activation function"])
-        self._fc = nn.Linear(hidden_dim, output_size)
-        self._softmax = nn.Softmax(dim=2)
-        self._estimator_type = 'classifier'
         self._device = self.choose_device()
+
+        self._rnn = nn.RNN(input_size, hidden_dim, n_layers, nonlinearity=configuration["activation function"]).to(self._device)
+        self._fc = nn.Linear(hidden_dim, output_size).to(self._device)
+        self._softmax = nn.Softmax(dim=2).to(self._device)
+        self._estimator_type = 'classifier'
+
 
     def get_params(self, deep=True):
         return {"hidden_dim": self.hidden_dim, "n_layers": self.n_layers, "output_size": self.output_size, "input_size" : self.input_size}
@@ -32,7 +33,7 @@ class RNN(nn.Module):
         seq_length = len(x[0])
 
         # Initializing hidden state for first input using method defined below
-        hidden = self.init_hidden(seq_length)
+        hidden = self.init_hidden(seq_length).to(self._device)
 
         # Passing in the input and hidden state into the model and obtaining outputs
         out, hidden = self._rnn(x, hidden)
@@ -99,7 +100,7 @@ class RNN(nn.Module):
                 output, hidden = self(sequences)
 
                 last_outputs = torch.stack([i[-1] for i in output])
-                last_output = last_output.to(self._device)
+                last_outputs = last_outputs.to(self._device)
 
                 loss = criterion(last_outputs, labels)
 
