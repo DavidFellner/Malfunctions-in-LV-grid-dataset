@@ -1,11 +1,13 @@
 import torch
 from torch import nn
 from sklearn.preprocessing import MaxAbsScaler
+from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import accuracy_score
 import random
 import numpy as np
-from math import cos, pi
 
 import config
+import copy
 
 
 configuration = config.learning_config
@@ -58,10 +60,14 @@ class RNN(nn.Module):
             device = torch.device("cpu")
         return device
 
-    def fit(self, X, y, early_stopping=True, warm_up=True):
+    def fit(self, X_train, y_train, X_test, y_test, early_stopping=True, warm_up=True, control_lr=False):
 
         self.early_stopping = early_stopping
         self.warm_up = warm_up
+        self.control_lr = control_lr
+
+        X = X_train
+        y = y_train
 
         mini_batch_size = configuration["mini batch size"]
         criterion = nn.CrossEntropyLoss()
@@ -69,7 +75,8 @@ class RNN(nn.Module):
         lr = nominal_lr
         loss = 10000000000                                             #set initial dummy loss
         lrs = []
-        losses = []
+        training_losses = []
+        models_and_val_losses = []
 
         for epoch in range(1, configuration["number of epochs"] + 1):
 
@@ -87,7 +94,7 @@ class RNN(nn.Module):
             inout_seq = list(zip(input_seq, target_seq))
 
             try:
-                optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=losses, nominal_lr=nominal_lr, epoch=epoch)
+                optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
             except IndexError:
                 optimizer = self.choose_optimizer(lr)
             lrs.append(lr)
@@ -107,29 +114,36 @@ class RNN(nn.Module):
                 loss.backward()     # Does backpropagation and calculates gradients
                 optimizer.step()    # Updates the weights accordingly
 
-            losses.append(loss)
+            training_losses.append(loss)
+            val_outputs = torch.stack([i[-1].view(-1) for i in self.predict(X_test)[1]]).to(self._device)
+            val_loss = criterion(val_outputs, torch.Tensor([np.array(y_test)]).view(-1).long().to(self._device))
+            models_and_val_losses.append((copy.deepcopy(self.state_dict()), val_loss.item()))
 
             if self.early_stopping:
-                a = 1
-                #self.predict()
-                #use prediction versus y_test for fscore and stop training when no improvement
+                try:
+                    if models_and_val_losses[-1][1] < models_and_val_losses[0][1]:
+                        print('Validation loss goes up! Early stopping of training!')
+                        return models_and_val_losses, training_losses, lrs
+                except IndexError:
+                    pass
 
-
-            if epoch % 10 == 0:
+            if not configuration["cross_validation"] and epoch % 10 == 0:
                 print('Epoch: {}/{}.............'.format(epoch, configuration["number of epochs"]), end=' ')
                 print("Loss: {:.4f}".format(loss.item()))
 
-        return self, losses, lrs
+        return models_and_val_losses, training_losses, lrs
 
     def predict(self, X):
 
         input_seq = [torch.Tensor(i).view(len(i), -1, 1) for i in X]
         pred = []
+        outputs = []
 
         for seq in input_seq:
             seq = seq.to(self._device)
             output, hidden = self(seq)
             output = output.to(self._device)
+            outputs.append(output)
 
             prob = self._softmax(output)[-1][-1]
 
@@ -143,7 +157,7 @@ class RNN(nn.Module):
                 pred.append(0)
 
 
-        return pred
+        return pred, outputs
 
     def choose_optimizer(self, alpha=configuration["learning rate"]):
         if configuration["optimizer"] == 'Adam':
@@ -158,26 +172,39 @@ class RNN(nn.Module):
             lr = nominal_lr * epoch / int((warm_up_share * configuration["number of epochs"]))
             optimizer = self.choose_optimizer(alpha=lr)
         elif self.warm_up and epoch >= int(warm_up_share * configuration["number of epochs"]):
-            #lr = nominal_lr * cos((epoch - int(warm_up_share * configuration["number of epochs"]))/(int((1-warm_up_share) * configuration["number of epochs"]))*(pi/2))     #choose inverse log or sth
             lr = nominal_lr * (configuration["number of epochs"] - epoch) / int((1-warm_up_share) * configuration["number of epochs"])
             optimizer = self.choose_optimizer(alpha=lr)
-        else:
+        elif self.control_lr:
             if losses[-1] > loss:
                 lr = lr * 1.1
                 optimizer = self.choose_optimizer(alpha=lr)
             elif losses[-1] <= loss:
-                print('Loss goes up! Learning rate is decreased')
+                #print('Loss goes up! Learning rate is decreased')
                 lr = lr * 0.90
                 optimizer = self.choose_optimizer(alpha=lr)
+        else:
+            lr = lr
+            optimizer = self.choose_optimizer(alpha=lr)
         return optimizer, lr
 
-
+    def preprocess(self, X_train, X_test):
+        scaler = self.fit_scaler(X_train)
+        X_train = self.preprocessing(X_train, scaler)
+        X_test = self.preprocessing(X_test, scaler)
+        return X_train, X_test
 
     def fit_scaler(self, X):
         X_zeromean = np.array([x - x.mean() for x in X])                        # deduct it's own mean from every sample
         maxabs_scaler = MaxAbsScaler().fit(X_zeromean)                          # fit scaler as to scale training data between -1 and 1
-
         return maxabs_scaler
 
     def preprocessing(self, X, scaler):
-        X = scaler.transform(X)
+        X_zeromean = np.array([x - x.mean() for x in X])
+        X = scaler.transform(X_zeromean)
+        return X
+
+    def eval(self, X_test, y_test):
+        y_pred, outputs = self.predict(X_test)
+        metrics = precision_recall_fscore_support(y_test, y_pred, average='macro')
+        accuracy = accuracy_score(y_test, y_pred)
+        return [accuracy, metrics]

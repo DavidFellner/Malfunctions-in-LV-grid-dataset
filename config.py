@@ -10,19 +10,22 @@ local_machine_tz = 'Europe/Berlin'                          #timezone; it's impo
 #Deep learning settings
 learning_config = {
     "dataset": "PV_noPV_7day",
-    "RNN model settings": [1, 2, 6, 2],   # number of input features, number of output features, number of features in hidden state, number of of layers
-    "number of epochs": 70,
-    "learning rate": 0.0001*10**-5,
+    "RNN model settings": [1, 2, 6, 3],   # number of input features, number of output features, number of features in hidden state, number of of layers
+    "number of epochs": 2,
+    "learning rate": 1*10**-6,
     "activation function": 'tanh', # relu, tanh
-    "mini batch size": 4,
+    "mini batch size": 12,
     "optimizer": 'Adam',           # Adam, SGD
+    "k folds": 5,              #choose 1 to not do crossval
     "early stopping": False,
-    "warm up": True,
+    "warm up": False,
     "percentage of epochs for warm up": 10,         #warm up not performed if percentage of epochs for warm up * epochs > epochs
-    "baseline": True,
-    "cross_validation": False,
+    "train test split": 100,                    #if int, used as number up testing examples; if float, used as share of data
+    "baseline": False,
+    "cross_validation": True,
     "metrics": ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro'],
     "cross_val_metrics": ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro'],
+    "plot samples": True,
     "classifier": "RNN"  # RNN
 
 }

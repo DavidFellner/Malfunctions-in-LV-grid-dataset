@@ -49,24 +49,31 @@ def plot_sample(Y, x=None, label = None, title=None):
 
     return ax
 
-def plot_2D(y, x=None, label=None, title=None, x_label=None, y_label=None):
+def plot_2D(y, x=None, labels=None, title=None, x_label=None, y_label=None):
 
     fig, ax = plt.subplots()
 
     if not x:
+        if type(y[0]) == list:
+            x = np.linspace(0, len(y[0]), len(y[0]))
+        else:
             x = np.linspace(0, len(y), len(y))
-            if label:
-                ax.plot(x, y, label=label)
-            else:
-                ax.plot(x, y)
+
+    if labels:
+        if type(y[0]) == list:
+            for i in list(range(len(y))):
+                ax.plot(x, y[i], label=labels[i])
+        else:
+            ax.plot(x, y, label=labels)
     else:
-        if label:
-            ax.plot(x, y, label=label)
+        if type(y[0]) == list:
+            for i in list(range(len(y))):
+                ax.plot(x, y[i])
         else:
             ax.plot(x, y)
 
     fig.show()
-    if label:
+    if labels:
         plt.legend(loc="best", markerscale=10)
     if title:
         plt.title(title)
