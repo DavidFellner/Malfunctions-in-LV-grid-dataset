@@ -3,10 +3,19 @@ Author:
     David Fellner
 Description:
     Set settings for QDS and elements and save results to file to create a dataset executing a QDS. At first the grid is
-    prepared and scenario settings are set.
-"""
+    prepared and scenario settings are set. Then samples are created from raw data. Finally a deep learning approach is
+    compared to a linear classifier to either determine if a sample is from a term with PV or no PV or from a term with
+    a regularly behaving PV or a PV with a malfunctioning reactive power control curve.
+    See framework diagrams for a better overview.
 
-import config
+    Metrics: Deep learning approach should perform better than linear classifier (which just guesses between 0 and 1 class)
+"""
+import importlib
+
+from experiment_config import experiment_path, chosen_experiment
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
 from config import learning_config
 import plotting
 if not config.raw_data_available:
@@ -26,8 +35,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_validate
 from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import KFold
-from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import MaxAbsScaler
 
 import pandas as pd
@@ -130,18 +137,10 @@ def choose_best(models_and_losses):
     index_best = [i[1] for i in models_and_losses].index(min([i[1] for i in models_and_losses]))
     return models_and_losses[index_best]
 
-def baseline(X_train, y_train, X_test, y_test):
-    clf_baseline = SGDClassifier().fit(X_train, y_train)
-    y_pred_baseline = clf_baseline.predict(X_test)
-    metrics = precision_recall_fscore_support(y_test, y_pred_baseline, average='macro')
-    accuracy = accuracy_score(y_test, y_pred_baseline)
-    print("########## Baseline Metrics ##########")
-    print(
-        "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}".format(accuracy, metrics[0], metrics[1],
-                                                                         metrics[2]))
-
+def baseline(X, y):
+    clf_baseline = SGDClassifier()
     scores = cross_validate(clf_baseline, X, y, scoring=learning_config["metrics"], cv=10, n_jobs=1)
-    print("########## 10-fold Cross-validation ##########")
+    print("########## Linear Baseline: 10-fold Cross-validation ##########")
     for metric in learning_config["cross_val_metrics"]:
         print("%s: %0.2f (+/- %0.2f)" % (metric, scores[metric].mean(), scores[metric].std() * 2))
 
@@ -179,39 +178,38 @@ if __name__ == '__main__':  #see config file for settings
     if learning_config["plot samples"]:
         plot_samples(X, y)
 
+    if learning_config['baseline']:
+        baseline(X, y)
+
     print('X data with zero mean per sample and scaled between -1 and 1 based on training samples used')
 
     if learning_config['classifier'] == 'RNN':
         model = RNN(learning_config['RNN model settings'][0],  learning_config['RNN model settings'][1],
                     learning_config['RNN model settings'][2], learning_config['RNN model settings'][3])
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, test_size=100)
-    X_train, X_test = model.preprocess(X_train, X_test)
-
-    if learning_config['baseline']:
-        baseline(X_train, y_train, X_test, y_test)
-
     if not learning_config["cross_validation"]:
-    #if 1==1:
-        print("########## Training ##########")
-        clfs, losses, lrs = model.fit(X_train, y_train, X_test, y_test, early_stopping=learning_config['early stopping'], warm_up=learning_config['warm up'])
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, test_size=learning_config['train test split'])
+        X_train, X_test = model.preprocess(X_train, X_test)
+        print("\n########## Training ##########")
+        clfs, losses, lrs = model.fit(X_train, y_train, X_test, y_test, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'])
         plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'], title='Losses after each epoch', x_label='Epoch', y_label='Loss')   #plot training loss for each epoch
         plotting.plot_2D(lrs, labels='learning rate', title='Learning rate for each epoch', x_label='Epoch',
                          y_label='Learning rate')
         clf = choose_best(clfs)
         model.state_dict = clf[0]                           #pick weights of best model found
         score = model.eval(X_test, y_test) + [clf[1]]
-        print("########## Metrics ##########")
+        print("\n########## Metrics ##########")
         print(
             "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nLowest validation loss: {4}".format(score[0], score[1][0], score[1][1], score[1][2], score[2]))
 
     if learning_config["cross_validation"]:
-        print("########## k-fold Cross-validation ##########")
+        print("\n########## k-fold Cross-validation ##########")
         model, scores, best_score = cross_val(X, y, model)
         print("########## Metrics ##########")
         for score in scores:
             print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
-        print("########## Best Model found ##########")
+        print("\n########## Best Model found ##########")
         print(
             "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nlowest validation loss: {4}".format(best_score[0],best_score[1][0], best_score[1][1],
                                                                                                    best_score[1][2], best_score[2]))

@@ -59,11 +59,10 @@ class RNN(nn.Module):
             device = torch.device("cpu")
         return device
 
-    def fit(self, X_train, y_train, X_test, y_test, early_stopping=True, warm_up=True, control_lr=False):
+    def fit(self, X_train, y_train, X_test, y_test, early_stopping=True, control_lr=None):
 
         torch.cuda.empty_cache()
         self.early_stopping = early_stopping
-        self.warm_up = warm_up
         self.control_lr = control_lr
 
         X = X_train
@@ -77,6 +76,7 @@ class RNN(nn.Module):
         lrs = []
         training_losses = []
         models_and_val_losses = []
+        pause = 0
 
         for epoch in range(1, configuration["number of epochs"] + 1):
 
@@ -128,9 +128,11 @@ class RNN(nn.Module):
 
             if self.early_stopping:
                 try:
-                    if models_and_val_losses[-1][1] < models_and_val_losses[0][1]:
-                        print('Validation loss goes up! Early stopping of training!')
-                        return models_and_val_losses, training_losses, lrs
+                    if abs(models_and_val_losses[-1][1] - models_and_val_losses[-2][1]) < 1*10**-6:
+                        pause += 1
+                        if pause == 5:
+                            print('Validation loss has not changed for {0} epochs! Early stopping of training after {1} epochs!'.format(pause, epoch))
+                            return models_and_val_losses, training_losses, lrs
                 except IndexError:
                     pass
 
@@ -165,18 +167,17 @@ class RNN(nn.Module):
 
     def control_learning_rate(self, lr=None, loss=None, losses=None, epoch=None, nominal_lr=None):
         warm_up_share = configuration["percentage of epochs for warm up"] / 100
-        if self.warm_up and epoch < int(warm_up_share * configuration["number of epochs"]):
+        if self.control_lr == 'warm up' and epoch < int(warm_up_share * configuration["number of epochs"]):
             lr = nominal_lr * epoch / int((warm_up_share * configuration["number of epochs"]))
             optimizer = self.choose_optimizer(alpha=lr)
-        elif self.warm_up and epoch >= int(warm_up_share * configuration["number of epochs"]):
+        elif self.control_lr == 'warm up' and epoch >= int(warm_up_share * configuration["number of epochs"]):
             lr = nominal_lr * (configuration["number of epochs"] - epoch) / int((1-warm_up_share) * configuration["number of epochs"])
             optimizer = self.choose_optimizer(alpha=lr)
-        elif self.control_lr:
+        elif self.control_lr == 'LR controlled':
             if losses[-1] > loss:
                 lr = lr * 1.1
                 optimizer = self.choose_optimizer(alpha=lr)
             elif losses[-1] <= loss:
-                #print('Loss goes up! Learning rate is decreased')
                 lr = lr * 0.90
                 optimizer = self.choose_optimizer(alpha=lr)
         else:
