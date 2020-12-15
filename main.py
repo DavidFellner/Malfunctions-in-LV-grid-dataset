@@ -3,14 +3,19 @@ Author:
     David Fellner
 Description:
     Set settings for QDS and elements and save results to file to create a dataset executing a QDS. At first the grid is
-    prepared and scenario settings are set. Then samples are created from raw data. Finally a deep learning approach is
-    compared to a linear classifier to either determine if a sample is from a term with PV or no PV or from a term with
-    a regularly behaving PV or a PV with a malfunctioning reactive power control curve.
+    prepared and scenario settings are set. Then samples are created from raw data. These samples are timeseries of voltages
+    at points of conenction of households and photovoltaics (PVs) of a low voltage distribution network.
+    Finally a deep learning approach is compared to a linear classifier to either determine if a sample is from a term
+    with PV (class 1) or no PV (class 0) or from a term with a regularly behaving PV (class 0) or a PV with a
+    malfunctioning reactive power control curve (class 1). Additionally a dummy dataset can be created that only
+    consists of samples that are constant over the entire timeseries (class 0) and samples that are not (class 1).
+    Randomly chosen samples of either classes are plotted along with execution at default.
     See framework diagrams for a better overview.
 
     Choose experiment (dataset and learning settings) in experiment_config.py
 
     Metrics: Deep learning approach should perform better than linear classifier (which just guesses between 0 and 1 class)
+             meaning that a higher Fscore should be achieved
              Experiment configs state if this goal can be fulfilled with the experiment settings
 """
 import importlib
@@ -121,7 +126,7 @@ def cross_val(X, y, model):
 
         X_train, X_test = model.preprocess(X_train, X_test)
 
-        clfs, losses, lrs = model.fit(X_train, y_train, X_test, y_test, early_stopping=learning_config['early stopping'], warm_up=learning_config['warm up'])
+        clfs, losses, lrs = model.fit(X_train, y_train, X_test, y_test, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'])
         best_model = choose_best(clfs)
         best_clfs.append(best_model)
         model.state_dict = best_model[0]
