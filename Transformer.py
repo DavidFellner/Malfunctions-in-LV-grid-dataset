@@ -1,8 +1,11 @@
 import torch
 from torch import nn
-from torch.autograd import Variable
+import importlib
 
-import config
+from experiment_config import experiment_path, chosen_experiment
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
 
 configuration = config.learning_config
 

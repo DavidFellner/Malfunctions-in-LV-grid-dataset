@@ -9,6 +9,7 @@ Description:
     See framework diagrams for a better overview.
 
     Metrics: Deep learning approach should perform better than linear classifier (which just guesses between 0 and 1 class)
+             Experiment configs state if this goal can be fulfilled with the experiment settings
 """
 import importlib
 
@@ -16,7 +17,7 @@ from experiment_config import experiment_path, chosen_experiment
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
-from config import learning_config
+learning_config = config.learning_config
 import plotting
 if not config.raw_data_available:
     from start_powerfactory import start_powerfactory

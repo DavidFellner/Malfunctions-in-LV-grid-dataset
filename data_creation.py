@@ -1,11 +1,14 @@
 import pflib.pf as pf
-import config
 import pandas as pd
 import numpy as np
 import random, math
 import datetime
-import csv
 import os
+import importlib
+from experiment_config import experiment_path, chosen_experiment
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
 
 def set_QDS_settings(app, study_case_obj, file, t_start, t_end):
 

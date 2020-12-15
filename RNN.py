@@ -5,9 +5,13 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
 import random
 import numpy as np
-
-import config
 import copy
+import importlib
+
+from experiment_config import experiment_path, chosen_experiment
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
 
 
 configuration = config.learning_config

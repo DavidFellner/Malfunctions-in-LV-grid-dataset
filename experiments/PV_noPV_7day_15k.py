@@ -1,6 +1,10 @@
 import os
 import math
 
+'''
+Metric goal is reached
+'''
+
 #Sytem settings
 data_folder = os.getcwd() + '\\input\\'
 results_folder = os.getcwd() + '\\output\\'

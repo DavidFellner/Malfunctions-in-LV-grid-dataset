@@ -1,6 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import config
+import importlib
+
+from experiment_config import experiment_path, chosen_experiment
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
 
 
 def plot_sample(Y, x=None, label = None, title=None):
