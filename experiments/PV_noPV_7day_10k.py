@@ -2,7 +2,7 @@ import os
 import math
 
 '''
-Metric goal is reached
+Metric goal ?
 '''
 
 #Sytem settings
@@ -48,7 +48,7 @@ accuracy = 0.01                                 #accuracy according to the Genau
 sample_length = 7 * 96                          #96 datapoints per day
 smartmeter_ratedvoltage_range = [400, 415]
 smartmeter_voltage_range = [363, 457]
-number_of_samples = 15000
+number_of_samples = 10000
 share_of_positive_samples = 0.5        #should be 0.5! only chose values that yield real numbers as invers i.e. 0.2, 0.25, 0.5 > otherwise number of samples corrupted
 number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(data_folder + i)])
 float_decimal = 5                       #decimals in dataset

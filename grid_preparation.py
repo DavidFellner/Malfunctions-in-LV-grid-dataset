@@ -1,7 +1,11 @@
 import pflib.pf as pf
-import config
 import pandas as pd
 import numpy as np
+import importlib
+from experiment_config import experiment_path, chosen_experiment
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
 
 def define_PV_controls(app):
     '''

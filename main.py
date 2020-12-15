@@ -8,6 +8,8 @@ Description:
     a regularly behaving PV or a PV with a malfunctioning reactive power control curve.
     See framework diagrams for a better overview.
 
+    Choose experiment (dataset and learning settings) in experiment_config.py
+
     Metrics: Deep learning approach should perform better than linear classifier (which just guesses between 0 and 1 class)
              Experiment configs state if this goal can be fulfilled with the experiment settings
 """

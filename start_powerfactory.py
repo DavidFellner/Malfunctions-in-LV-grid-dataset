@@ -1,5 +1,9 @@
 import pflib.pf as pf
-import config
+import importlib
+from experiment_config import experiment_path, chosen_experiment
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
 
 def set_load_flow_settings(ldf_com_obj, load_scaling, generation_scaling):
 
