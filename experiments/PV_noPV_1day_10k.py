@@ -2,7 +2,7 @@ import os
 import math
 
 '''
-Metric goal is reached
+Metric goal is NOT reached
 '''
 
 #Sytem settings

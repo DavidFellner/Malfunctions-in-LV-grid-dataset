@@ -80,7 +80,7 @@ class RNN(nn.Module):
         lrs = []
         training_losses = []
         models_and_val_losses = []
-        pause = 0
+        pause = 0                                                      # for early stopping
 
         for epoch in range(1, configuration["number of epochs"] + 1):
 
@@ -110,12 +110,12 @@ class RNN(nn.Module):
 
             optimizer.zero_grad()  # Clears existing gradients from previous epoch
 
-            for sequences, labels in inout_seq:               #do minibatch with more than 1 sample
+            for sequences, labels in inout_seq:
                 labels = labels.to(self._device)
                 sequences = sequences.to(self._device)
                 output, hidden = self(sequences)
 
-                last_outputs = torch.stack([i[-1] for i in output])
+                last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
                 last_outputs = last_outputs.to(self._device)
 
                 loss = criterion(last_outputs, labels)

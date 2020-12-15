@@ -13,10 +13,21 @@ Description:
     See framework diagrams for a better overview.
 
     Choose experiment (dataset and learning settings) in experiment_config.py
+    Predefined experiments vary the dataset type (dummy, PV vs no PV, regular PV vs malfunctioning PV) as well as the
+    timeseries length of samples (1 day vs 1 week) and the number of samples (too little, 'just enough', sufficient to
+    produce a meaningful output after training with the basic network design used, i.e. no Fscore ill defined because only
+    always one class predicted in any run of cross validation; note that 1 day vs 7 days also means increasing the amount
+    of data points, therefore redundant experiments (i.e. increasing the sample number even more for 1 day timeseries
+    experiments was neglected to allow for a better orientation between experiments)
 
     Metrics: Deep learning approach should perform better than linear classifier (which just guesses between 0 and 1 class)
              meaning that a higher Fscore should be achieved
              Experiment configs state if this goal can be fulfilled with the experiment settings
+
+                    Task      Dataset collection  ANN design  ANN tuning  Results     Report      Presentation
+      Time planned: (Hours)   15                  7.5         15          7.5         10          4
+      Time spent:   (Hours)   ~15                 25          ~15         5             to be seen
+      Conclusion:   It took much longer than planned to actually get the RNN running and producing meaningful outputs
 """
 import importlib
 

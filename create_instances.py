@@ -213,8 +213,8 @@ def extract_dummy_data(df, combinations_already_in_dataset, number_of_samples_be
     '''
 
     metainfo = df[('metainfo', 'in the first', 'few indices')]
-    terminals_with_loads = [i for i in metainfo.iloc[6].split("'") if 'Bus' in i]
-    terminals_with_PV = [i for i in metainfo.iloc[5].split("'") if 'Bus' in i]
+    terminals_with_loads = [i for i in metainfo.iloc[4].split("'") if 'Bus' in i]
+    terminals_with_PV = [i for i in metainfo.iloc[3].split("'") if 'Bus' in i]
 
     sample_length = config.sample_length
     samples_to_go = config.number_of_samples - number_of_samples_before

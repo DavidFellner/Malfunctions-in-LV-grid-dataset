@@ -2,7 +2,7 @@ import os
 import math
 
 '''
-Metric goal is 
+Metric goal is NOT reached
 '''
 
 #Sytem settings
@@ -40,7 +40,7 @@ learning_config = {
 
 # Dataset settings
 raw_data_set_name = 'PV_noPV'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
-dataset_available = False                       #set to False to recreate instances from raw data
+dataset_available = True                       #set to False to recreate instances from raw data
 raw_data_available = True                      #set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False

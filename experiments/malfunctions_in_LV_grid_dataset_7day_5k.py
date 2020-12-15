@@ -13,7 +13,7 @@ local_machine_tz = 'Europe/Berlin'                          #timezone; it's impo
 
 #Deep learning settings
 learning_config = {
-    "dataset": "malfunctions_in_LV_grid_dataset_7day_10k",
+    "dataset": "malfunctions_in_LV_grid_dataset_7day_5k",
     "RNN model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "number of epochs": 100,
     "learning rate": 1*10**-6,
@@ -21,7 +21,7 @@ learning_config = {
     "mini batch size": 60,
     "optimizer": 'Adam',                    # Adam, SGD
     "k folds": 5,                           #choose 1 to not do crossval
-    "cross_validation": False,
+    "cross_validation": True,
     "early stopping": True,
     "LR adjustment": 'LR controlled',                       #None, 'warm up' , 'LR controlled'
     "percentage of epochs for warm up": 10,         #warm up not performed if percentage of epochs for warm up * epochs > epochs
@@ -40,7 +40,7 @@ learning_config = {
 
 # Dataset settings
 raw_data_set_name = 'malfunctions_in_LV_grid_dataset'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
-dataset_available = True                       #set to False to recreate instances from raw data
+dataset_available = False                       #set to False to recreate instances from raw data
 raw_data_available = True                      #set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False
@@ -48,7 +48,7 @@ accuracy = 0.01                                 #accuracy according to the Genau
 sample_length = 7 * 96                          #96 datapoints per day
 smartmeter_ratedvoltage_range = [400, 415]
 smartmeter_voltage_range = [363, 457]
-number_of_samples = 10000
+number_of_samples = 5000
 share_of_positive_samples = 0.5        #should be 0.5! only chose values that yield real numbers as invers i.e. 0.2, 0.25, 0.5 > otherwise number of samples corrupted
 number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(data_folder + i)])
 float_decimal = 5                       #decimals in dataset

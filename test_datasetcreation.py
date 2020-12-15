@@ -1,10 +1,17 @@
 import os
 import pandas as pd
 
+import importlib
+
+from experiment_config import experiment_path, chosen_experiment
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+learning_config = config.learning_config
+
 from create_instances import create_samples
-from create_instances import extract_data
+from create_instances import extract_malfunction_data
 import main
-import config
 
 def test_create_dataset():
     '''
@@ -30,7 +37,7 @@ def test_create_samples():
     assert len(samples.columns) == 1 / config.percentage_of_malfunction_samples
     assert len(terminals_already_in_dataset) > 0
 
-def test_extract_data():
+def test_extract_malfunction_data():
     '''
     Tests if the correct number of samples of each label are extracted from a results file
     '''
@@ -39,7 +46,7 @@ def test_extract_data():
     metainfo = df[('metainfo', 'in the first', 'few indices')]
     number_of_positive_samples = len([i for i in metainfo.iloc[3].split("'") if 'Bus' in i])
 
-    df_treated, terminals_already_in_dataset = extract_data(df, [], 0)
+    df_treated, terminals_already_in_dataset = extract_malfunction_data(df, [], 0)
     number_of_positive_samples_extracted = (df_treated.iloc[-1] == 1).value_counts()[True]
     assert number_of_positive_samples_extracted == number_of_positive_samples
     assert len(df_treated.columns) == (1 / config.percentage_of_malfunction_samples)

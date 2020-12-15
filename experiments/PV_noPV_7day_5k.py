@@ -13,7 +13,7 @@ local_machine_tz = 'Europe/Berlin'                          #timezone; it's impo
 
 #Deep learning settings
 learning_config = {
-    "dataset": "PV_noPV_7day_10k",
+    "dataset": "PV_noPV_7day_5k",
     "RNN model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "number of epochs": 100,
     "learning rate": 1*10**-6,
@@ -48,7 +48,7 @@ accuracy = 0.01                                 #accuracy according to the Genau
 sample_length = 7 * 96                          #96 datapoints per day
 smartmeter_ratedvoltage_range = [400, 415]
 smartmeter_voltage_range = [363, 457]
-number_of_samples = 10000
+number_of_samples = 5000
 share_of_positive_samples = 0.5        #should be 0.5! only chose values that yield real numbers as invers i.e. 0.2, 0.25, 0.5 > otherwise number of samples corrupted
 number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(data_folder + i)])
 float_decimal = 5                       #decimals in dataset
