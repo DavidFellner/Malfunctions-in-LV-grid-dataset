@@ -1,6 +1,6 @@
 """
 Author:
-    David Fellner
+    David Fellner (no Software engineer by training, so please don't get enraged)
 Description:
     Set settings for QDS (quasi dynamic load flow simulation in a power grid) and elements and save results to file to
     create a data set executing a QDS.
@@ -13,6 +13,7 @@ Description:
     timeseries (class 0) and samples that are not (class 1). Randomly chosen samples of either classes are plotted
     along with execution at default.
     See framework diagrams for a better overview.
+    Test files are in the project folder.
 
     Choose experiment (dataset and learning settings) in experiment_config.py
     Predefined experiments vary the dataset type (dummy, PV vs no PV, regular PV vs malfunctioning PV) as well as the
