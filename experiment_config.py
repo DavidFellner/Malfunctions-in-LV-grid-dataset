@@ -23,16 +23,16 @@ chosen_experiment = 'dummy_1day_5k'
 
 experiments_folder = os.getcwd() + '\\experiments\\'
 
-if sys._called_from_test:
-    test_folder = os.getcwd() + '\\test\\'
-    f = open(test_folder + "experiment.txt", "r")
-    experiment = f.read()
-    f.close()
-    os.remove(test_folder + "experiment.txt")
-    chosen_experiment = experiment
-    experiments_folder = os.getcwd() + '\\test\\'
-
-#Sytem settings
-
+try:
+    if sys._called_from_test:
+        test_folder = os.getcwd() + '\\test\\'
+        f = open(test_folder + "experiment.txt", "r")
+        experiment = f.read()
+        f.close()
+        os.remove(test_folder + "experiment.txt")
+        chosen_experiment = experiment
+        experiments_folder = os.getcwd() + '\\test\\'
+except AttributeError:
+    pass
 
 experiment_path = experiments_folder + chosen_experiment + '.py'

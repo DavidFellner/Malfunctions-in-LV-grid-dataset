@@ -31,7 +31,7 @@ Description:
 
                     Task      Dataset collection  ANN design  ANN tuning  Results     Report      Presentation
       Time planned: (Hours)   15                  7.5         15          7.5         10          4
-      Time spent:   (Hours)   ~15                 25          ~15         5             to be seen
+      Time spent:   (Hours)   ~20                 25          ~15         5             to be seen
       Conclusion:   It took much longer than planned to actually get the RNN running and producing meaningful outputs
 """
 import importlib
@@ -235,7 +235,6 @@ if __name__ == '__main__':  #see config file for settings
         for score in scores:
             print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
 
-    a = 1
 
 
 
