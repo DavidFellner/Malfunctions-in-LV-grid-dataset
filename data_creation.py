@@ -10,7 +10,7 @@ spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 
-def set_QDS_settings(app, study_case_obj, file, t_start, t_end):
+def set_QDS_settings(app, study_case_obj, t_start, t_end):
 
     local_machine_tz = config.local_machine_tz
 
@@ -286,10 +286,10 @@ def create_data(app, o_ElmNet, curves, study_case_obj, file):
         t_start, t_end = set_times(file)
         if config.raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
             malfunctioning_devices, terms_with_malfunction = create_malfunctioning_PVs(active_PVs, o_ElmNet, curves)
-            time_of_malfunction = create_malfunction_events(app, malfunctioning_devices, t_start, t_end)
+            #time_of_malfunction = create_malfunction_events(app, malfunctioning_devices, t_start, t_end)
 
 
-        result = set_QDS_settings(app, study_case_obj, file, t_start, t_end)
+        result = set_QDS_settings(app, study_case_obj, t_start, t_end)
 
         results = run_QDS(app, count, result)
         if config.raw_data_set_name == 'malfunctions_in_LV_grid_dataset':

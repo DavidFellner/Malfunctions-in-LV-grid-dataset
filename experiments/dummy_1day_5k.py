@@ -40,7 +40,7 @@ learning_config = {
 
 # Dataset settings
 raw_data_set_name = 'dummy'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
-dataset_available = False                       #set to False to recreate instances from raw data
+dataset_available = True                       #set to False to recreate instances from raw data
 raw_data_available = True                      #set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False
@@ -69,7 +69,8 @@ if raw_data_set_name == 'PV_noPV':
     positive_samples_per_simrun = 5     #data from how many terminals are there in the grid minimally > determines how many yearly simulations have to be run and used for dataset creation
     simruns = math.ceil((number_of_samples * share_of_positive_samples) / (positive_samples_per_simrun * number_of_grids) / (sim_length * 96/sample_length))
 elif raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
-    simruns = math.ceil((number_of_samples * share_of_positive_samples) / (number_of_grids) / int((sim_length * 96/sample_length)))
+    simruns = math.ceil((number_of_samples * share_of_positive_samples) / (number_of_grids) / int(
+        (sim_length * 96 / sample_length) - 1))
 elif raw_data_set_name == 'dummy':
     terms_per_simrun = 5                #data from how many terminals are there in the grid minimally > determines how many yearly simulations have to be run and used for dataset creation
     simruns = math.ceil((number_of_samples * share_of_positive_samples) / (terms_per_simrun * number_of_grids) / (sim_length * 96/sample_length))

@@ -1,5 +1,22 @@
 from main import load_dataset
 from RNN import RNN
+import os
+import sys
+import importlib
+sys._called_from_test = True
+test_folder = os.getcwd() + '\\test\\'
+
+spec = importlib.util.spec_from_file_location('malfunctions_in_LV_grid_dataset_test', test_folder + 'malfunctions_in_LV_grid_dataset_test.py')
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+
+experiment = 'malfunctions_in_LV_grid_dataset_test'
+f = open(test_folder + "experiment.txt", "w")
+f.write(experiment)
+f.close()
+
+import sys
+sys._called_from_test = True
 
 def test_load_dataset():
     '''

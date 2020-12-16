@@ -1,0 +1,68 @@
+import os
+import pandas as pd
+import sys
+import importlib
+sys._called_from_test = True
+test_folder = os.getcwd() + '\\test\\'
+
+spec = importlib.util.spec_from_file_location('malfunctions_in_LV_grid_dataset_test', test_folder + 'malfunctions_in_LV_grid_dataset_test.py')
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+
+experiment = 'malfunctions_in_LV_grid_dataset_test'
+f = open(test_folder + "experiment.txt", "w")
+f.write(experiment)
+f.close()
+
+from create_instances import create_samples
+from create_instances import extract_malfunction_data
+import main
+
+def test_generate_mlfct_raw_data():
+    '''
+    Test if correct number of result files is created as raw data for mlfct dataset
+    '''
+
+    main.generate_raw_data()
+
+    results_folder = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\'
+    file_folder = results_folder + '1-LV-semiurb4--0-sw' + '\\'
+    count = len([name for name in os.listdir(file_folder) if os.path.isfile(file_folder + name)])
+
+    assert count == 3
+
+
+def test_create_mlfct_dataset():
+    '''
+    #Tests if a malfct dataset with the correct number of positive targets is created
+    '''
+
+    df = main.create_dataset()
+    num_of_positive_samples = (df.iloc[-1] == 1).value_counts()[True]
+
+    assert num_of_positive_samples == len(df.columns) / 2
+
+def test_create_samples():
+    '''
+    #Tests if the correct amount of samples is extracted per file and if duplicate sample listing works
+    '''
+
+    dir = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\' + '1-LV-semiurb4--0-sw' + '\\'
+    file = 'result_run#0.csv'
+    terminals_already_in_dataset = []
+    samples, terminals_already_in_dataset = create_samples(dir, file, terminals_already_in_dataset,
+                                                           0)
+    assert len(samples.columns) == 666
+    assert len(terminals_already_in_dataset) > 0
+
+def test_extract_malfunction_data():
+    '''
+    #Tests if the correct number of samples of each label are extracted from a results file
+    '''
+
+    df = pd.read_csv(config.results_folder + config.raw_data_set_name + '_raw_data' + '\\' + '1-LV-semiurb4--0-sw' + '\\' + 'result_run#0.csv', header=[0, 1, 2], sep=';')
+
+    df_treated, terminals_already_in_dataset = extract_malfunction_data(df, [], 0)
+    number_of_positive_samples_extracted = (df_treated.iloc[-1] == 1).value_counts()[True]
+    assert number_of_positive_samples_extracted == 333
+    assert len(df_treated.columns) == 666

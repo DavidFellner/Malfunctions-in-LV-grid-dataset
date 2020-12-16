@@ -146,15 +146,15 @@ def cross_val(X, y, model):
         best_model = choose_best(clfs)
         best_clfs.append(best_model)
         model.state_dict = best_model[0]
-        scores.append(model.eval(X_test, y_test) + [best_model[1]])
+        y_pred, outputs = model.predict(X_test)
+        scores.append(model.eval(y_test, y_pred) + [best_model[1]])
 
     very_best_model = choose_best(best_clfs)
     model.state_dict = very_best_model[0]
-    best_score = model.eval(X_test, y_test) + [very_best_model[1]]
 
     scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores], 'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores], 'Lowest validation loss': [i[2] for i in scores]}
 
-    return model, scores_dict, best_score
+    return model, scores_dict
 
 
 def choose_best(models_and_losses):
@@ -222,21 +222,18 @@ if __name__ == '__main__':  #see config file for settings
                          y_label='Learning rate')
         clf = choose_best(clfs)
         model.state_dict = clf[0]                           #pick weights of best model found
-        score = model.eval(X_test, y_test) + [clf[1]]
+        y_pred, outputs = model.predict(X_test)
+        score = model.eval(y_test, y_pred) + [clf[1]]
         print("\n########## Metrics ##########")
         print(
             "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nLowest validation loss: {4}".format(score[0], score[1][0], score[1][1], score[1][2], score[2]))
 
     if learning_config["cross_validation"]:
         print("\n########## k-fold Cross-validation ##########")
-        model, scores, best_score = cross_val(X, y, model)
+        model, scores = cross_val(X, y, model)
         print("########## Metrics ##########")
         for score in scores:
             print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
-        print("\n########## Best Model found ##########")
-        print(
-            "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nlowest validation loss: {4}".format(best_score[0],best_score[1][0], best_score[1][1],
-                                                                                                   best_score[1][2], best_score[2]))
 
     a = 1
 

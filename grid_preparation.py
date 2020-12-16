@@ -189,7 +189,7 @@ def prepare_grid(app, file, o_ElmNet):
     for char_name in chars:
         char = char_folder.SearchObject(char_name + '.ChaTime')
         init_f_name_ending = char.f_name.split('\\')[-1]
-        char.f_name = config.data_folder  + file + '\\' + init_f_name_ending
+        char.f_name = config.data_folder + file + '\\' + init_f_name_ending
 
     for o_ElmLod in app.GetCalcRelevantObjects('.ElmLod'):                      #gas to be done like this to active profiles
         o_ChaTime = pf.get_referenced_characteristics(o_ElmLod, 'plini')[

@@ -199,8 +199,7 @@ class RNN(nn.Module):
         X = scaler.transform(X_zeromean)
         return X
 
-    def eval(self, X_test, y_test):
-        y_pred, outputs = self.predict(X_test)
+    def eval(self, y_test, y_pred):
         metrics = precision_recall_fscore_support(y_test, y_pred, average='macro')
         accuracy = accuracy_score(y_test, y_pred)
         return [accuracy, metrics]
