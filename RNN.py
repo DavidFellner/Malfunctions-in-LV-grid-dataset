@@ -1,3 +1,8 @@
+'''
+An Elman Network is implemented, taking the output of the last time step  of the time series as prediction, and also to
+compute the training loss. This is done because this output is thought of as the most informed one.
+'''
+
 import torch
 from torch import nn
 from sklearn.preprocessing import MaxAbsScaler
@@ -31,9 +36,6 @@ class RNN(nn.Module):
         self._estimator_type = 'classifier'
 
 
-    def get_params(self, deep=True):
-        return {"hidden_dim": self.hidden_dim, "n_layers": self.n_layers, "output_size": self.output_size, "input_size" : self.input_size}
-
     def forward(self, x):
         seq_length = len(x[0])
 
@@ -54,14 +56,6 @@ class RNN(nn.Module):
         hidden = torch.zeros(self.n_layers, seq_length, self.hidden_dim).to(device)
         # We'll send the tensor holding the hidden state to the device we specified earlier as well
         return hidden
-
-    def choose_device(self):
-        is_cuda = torch.cuda.is_available()
-        if is_cuda:
-            device = torch.device("cuda")
-        else:
-            device = torch.device("cpu")
-        return device
 
     def fit(self, X_train, y_train, X_test, y_test, early_stopping=True, control_lr=None):
 
@@ -210,6 +204,17 @@ class RNN(nn.Module):
         metrics = precision_recall_fscore_support(y_test, y_pred, average='macro')
         accuracy = accuracy_score(y_test, y_pred)
         return [accuracy, metrics]
+
+    def get_params(self, deep=True):
+        return {"hidden_dim": self.hidden_dim, "n_layers": self.n_layers, "output_size": self.output_size, "input_size" : self.input_size}
+
+    def choose_device(self):
+        is_cuda = torch.cuda.is_available()
+        if is_cuda:
+            device = torch.device("cuda")
+        else:
+            device = torch.device("cpu")
+        return device
 
     def detach(self, inputs=[]):
         for i in inputs:
