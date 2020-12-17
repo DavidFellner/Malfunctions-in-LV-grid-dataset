@@ -3,8 +3,9 @@ import sys
 
 #see experiment folder for all experiments (combinations of datasets, timeseries length and sample number)
 
-chosen_experiment = 'dummy_1day_5k'
+#chosen_experiment = 'dummy_1day_5k'
 
+chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_20k'
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_10k'
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_5k'
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_1k'
