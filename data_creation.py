@@ -269,6 +269,10 @@ def create_data(app, o_ElmNet, curves, study_case_obj, file):
     if config.add_data:
         results_folder = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\'
         file_folder = results_folder + file + '\\'
+        if not os.path.isdir(results_folder):
+            os.mkdir(results_folder)
+        if not os.path.isdir(file_folder):
+            os.mkdir(file_folder)
         count = len([name for name in os.listdir(file_folder) if os.path.isfile(file_folder + name)])
     else:
         count = 0
