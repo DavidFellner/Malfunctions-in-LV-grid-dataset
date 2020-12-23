@@ -80,7 +80,7 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
 
     sample_length = config.sample_length
     samples_to_go = config.number_of_samples - number_of_samples_before
-    share_from_df = 1 / config.simruns                                          # share of samples taken from current df
+    share_from_df = 1 / (config.simruns * config.number_of_grids)                                          # share of samples taken from current df
     if samples_to_go < int(config.number_of_samples * share_from_df):
         samples_from_df = samples_to_go
     else:
