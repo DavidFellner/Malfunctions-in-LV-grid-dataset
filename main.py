@@ -61,9 +61,11 @@ from sklearn.model_selection import cross_validate
 from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import MaxAbsScaler
+import torch
 
 import pandas as pd
 import os
+
 
 def generate_raw_data():
 
@@ -81,6 +83,7 @@ def generate_raw_data():
         print('Done with all grids')
 
     return
+
 
 def create_dataset():
 
@@ -138,6 +141,7 @@ def cross_val(X, y, model):
     scores = []
 
     for train_index, test_index in kf.split(X):
+        print('Split #%d' % (len(scores) + 1))
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = list(np.array(y)[train_index]), list(np.array(y)[test_index])
 
@@ -148,7 +152,7 @@ def cross_val(X, y, model):
         best_clfs.append(best_model)
         model.state_dict = best_model[0]
         y_pred, outputs = model.predict(X_test)
-        scores.append(model.eval(y_test, y_pred) + [best_model[1]])
+        scores.append(model.score(y_test, y_pred) + [best_model[1]])
 
     very_best_model = choose_best(best_clfs)
     model.state_dict = very_best_model[0]
@@ -188,6 +192,17 @@ def plot_samples(X, y):
     plotting.plot_sample(X_zeromean[samples], label=[y[i] for i in samples], title='Zeromean samples')
     plotting.plot_sample(X_maxabs, label=[y[i] for i in samples], title='Samples scaled to -1 to 1')
 
+def export_model(model):
+    dummy_input = torch.randn(1, 672, 1)
+    out = model(dummy_input)
+    input_names = ["input"]  # + ["learned_%d" % i for i in range(3)]
+    output_names = ["output"]
+    name = learning_config['dataset'] + '.onnx'
+
+    model.eval()
+    torch.onnx.export(torch.jit.trace_module(model, {'forward': dummy_input}), dummy_input, name, example_outputs=out, export_params=True, verbose=True,
+                      input_names=input_names, output_names=output_names)
+
 if __name__ == '__main__':  #see config file for settings
 
     generate_raw_data()
@@ -224,7 +239,7 @@ if __name__ == '__main__':  #see config file for settings
         clf = choose_best(clfs)
         model.state_dict = clf[0]                           #pick weights of best model found
         y_pred, outputs = model.predict(X_test)
-        score = model.eval(y_test, y_pred) + [clf[1]]
+        score = model.score(y_test, y_pred) + [clf[1]]
         print("\n########## Metrics ##########")
         print(
             "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nLowest validation loss: {4}".format(score[0], score[1][0], score[1][1], score[1][2], score[2]))
@@ -235,6 +250,10 @@ if __name__ == '__main__':  #see config file for settings
         print("########## Metrics ##########")
         for score in scores:
             print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
+
+    export_model(model)
+
+
 
 
 
