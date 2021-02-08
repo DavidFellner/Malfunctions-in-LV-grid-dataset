@@ -14,14 +14,14 @@ local_machine_tz = 'Europe/Berlin'                          #timezone; it's impo
 #Deep learning settings
 learning_config = {
     "dataset": "malfunctions_in_LV_grid_dataset_7day_20k",
-    "RNN model settings": [1, 2, 3, 12],     # number of input features, number of output features, number of features in hidden state, number of of layers
+    "RNN model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "number of epochs": 100,
     "learning rate": 0.01*10**-6,
     "activation function": 'tanh',          # relu, tanh
     "mini batch size": 60,
     "optimizer": 'Adam',                    # Adam, SGD
     "k folds": 5,                           #choose 1 to not do crossval
-    "cross_validation": False,
+    "cross_validation": True,
     "early stopping": False,
     "LR adjustment": 'None',               #None, 'warm up' , 'LR controlled'
     "percentage of epochs for warm up": 10,         #warm up not performed if percentage of epochs for warm up * epochs > epochs
@@ -40,7 +40,7 @@ learning_config = {
 
 # Dataset settings
 raw_data_set_name = 'malfunctions_in_LV_grid_dataset'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
-dataset_available = False                       #set to False to recreate instances from raw data
+dataset_available = True                       #set to False to recreate instances from raw data
 raw_data_available = True                      #set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False

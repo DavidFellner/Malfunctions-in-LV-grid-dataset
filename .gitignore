@@ -1,0 +1,21 @@
+
+Applied Deep Learning.mp4
+cli.py
+Dockerfile
+DOCKER README.txt
+data/sample3_mlfct.csv
+data/sample1_noPV.csv
+data/sample2_PV.csv
+cli.py
+add.onnx
+experiments/PV_noPV_7day_20k.py
+LICENSE
+outcome.png
+outcome.txt
+output/PV_noPV_7day_20k.csv
+output/malfunctions_in_LV_grid_dataset_7day_20k.csv
+PV_noPV_7day_20k.onnx
+sample1_noPV.csv
+sample2_PV.csv
+sample3_mlfct.csv
+README.txt

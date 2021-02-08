@@ -8,7 +8,7 @@ config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 
 
-def plot_sample(Y, x=None, label = None, title=None):
+def plot_sample(Y, x=None, label = None, title=None, save=False, figname=None):
 
     fig, ax = plt.subplots()
     marker = '.'
@@ -51,6 +51,8 @@ def plot_sample(Y, x=None, label = None, title=None):
         plt.legend(loc="best", markerscale=10)
     if title:
         plt.title(title)
+    if save:
+        plt.savefig(figname + '.png')
 
     return ax
 
