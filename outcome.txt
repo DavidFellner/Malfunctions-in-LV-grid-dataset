@@ -1,0 +1,3 @@
+The outcomes of the analysis of the voltage data provided in sample3_mlfct are:
+The connection point has a PV (probability: 52.07%)
+The PV at the connection point has a malfunction! (probability: 51.52%)
