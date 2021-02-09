@@ -52,6 +52,8 @@ from malfunctions_in_LV_grid_dataset import MlfctinLVdataset
 from PV_noPV_dataset import PVnoPVdataset
 from dummy_dataset import Dummydataset
 from RNN import RNN
+from LSTM import LSTM
+from GRU import GRU
 from Transformer import Transformer
 
 import numpy as np
@@ -226,6 +228,15 @@ if __name__ == '__main__':  #see config file for settings
     if learning_config['classifier'] == 'RNN':
         model = RNN(learning_config['RNN model settings'][0],  learning_config['RNN model settings'][1],
                     learning_config['RNN model settings'][2], learning_config['RNN model settings'][3])
+    elif learning_config['classifier'] == 'LSTM':
+        model = LSTM(learning_config['LSTM model settings'][0],  learning_config['LSTM model settings'][1],
+                    learning_config['LSTM model settings'][2], learning_config['LSTM model settings'][3])
+    elif learning_config['classifier'] == 'GRU':
+        model = GRU(learning_config['GRU model settings'][0],  learning_config['GRU model settings'][1],
+                     learning_config['GRU model settings'][2], learning_config['GRU model settings'][3])
+    elif learning_config['classifier'] == 'Transformer':
+        model = Transformer(learning_config['Transformer model settings'][0],  learning_config['Transformer model settings'][1],
+                     learning_config['Transformer model settings'][2], learning_config['Transformer model settings'][3])
 
     if not learning_config["cross_validation"]:
 
@@ -251,7 +262,8 @@ if __name__ == '__main__':  #see config file for settings
         for score in scores:
             print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
 
-    export_model(model)
+    if learning_config["export_model"]:
+        export_model(model)
 
 
 

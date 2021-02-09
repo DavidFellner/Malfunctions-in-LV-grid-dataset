@@ -20,7 +20,7 @@ class Transformer(nn.Module):
 
         # Defining the layers
         # RNN Layer
-        self._rnn = nn.RNN(input_size, hidden_dim, n_layers, batch_first=True)
+        self._transformer = nn.Transformer(input_size, hidden_dim, n_layers, batch_first=True)
         # Fully connected layer
         self._fc = nn.Linear(hidden_dim, output_size)
         self._softmax = nn.Softmax(dim=1)
@@ -37,7 +37,7 @@ class Transformer(nn.Module):
         hidden = self.init_hidden(seq_length)
 
         # Passing in the input and hidden state into the model and obtaining outputs
-        out, hidden = self._rnn(x.view(seq_length, 1, 1), hidden)
+        out, hidden = self._transformer(x.view(seq_length, 1, 1), hidden)
 
         # Reshaping the outputs such that it can be fit into the fully connected layer
         out = out.contiguous().view(-1, self._hidden_dim)

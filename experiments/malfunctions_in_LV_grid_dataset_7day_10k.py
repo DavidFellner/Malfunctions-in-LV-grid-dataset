@@ -15,6 +15,8 @@ local_machine_tz = 'Europe/Berlin'                          #timezone; it's impo
 learning_config = {
     "dataset": "malfunctions_in_LV_grid_dataset_7day_10k",
     "RNN model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
+    "LSTM model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
+    "GRU model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "number of epochs": 100,
     "learning rate": 1*10**-6,
     "activation function": 'tanh',          # relu, tanh
@@ -26,11 +28,12 @@ learning_config = {
     "LR adjustment": 'LR controlled',               #None, 'warm up' , 'LR controlled'
     "percentage of epochs for warm up": 10,         #warm up not performed if percentage of epochs for warm up * epochs > epochs
     "train test split": 0.2,                        #if int, used as number up testing examples; if float, used as share of data
-    "baseline": True,
+    "baseline": False,
     "metrics": ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro'],
     "cross_val_metrics": ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro'],
     "plot samples": True,
-    "classifier": "RNN"  # RNN
+    "classifier": "GRU",  # RNN, LSTM, GRU, Transformer
+    "export_model": False
 
 }
 
