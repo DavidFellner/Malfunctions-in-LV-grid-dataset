@@ -17,13 +17,15 @@ learning_config = {
     "RNN model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "LSTM model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "GRU model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
+    #"Transformer model settings": [1, 692],     # number of input features, feed forward dimension
+    "Transformer model settings": [2, 1, 1, 6, 2, 0.1],     # ntoken > 2 outputs, ninp > word/input embedding, nhead, nhid, nlayers, dropout=0.5
     "number of epochs": 100,
     "learning rate": 1*10**-6,
     "activation function": 'tanh',          # relu, tanh
-    "mini batch size": 60,
+    "mini batch size": 3,
     "optimizer": 'Adam',                    # Adam, SGD
     "k folds": 5,                           #choose 1 to not do crossval
-    "cross_validation": True,
+    "cross_validation": False,
     "early stopping": True,
     "LR adjustment": 'LR controlled',               #None, 'warm up' , 'LR controlled'
     "percentage of epochs for warm up": 10,         #warm up not performed if percentage of epochs for warm up * epochs > epochs
@@ -32,7 +34,7 @@ learning_config = {
     "metrics": ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro'],
     "cross_val_metrics": ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro'],
     "plot samples": True,
-    "classifier": "GRU",  # RNN, LSTM, GRU, Transformer
+    "classifier": "Transformer",  # RNN, LSTM, GRU, Transformer
     "export_model": False
 
 }
