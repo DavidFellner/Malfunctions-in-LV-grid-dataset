@@ -158,6 +158,8 @@ def cross_val(X, y, model):
 
     very_best_model = choose_best(best_clfs)
     model.state_dict = very_best_model[0]
+    #with open(args.save, 'wb') as f:           #args.save > filepath
+        #torch.save(model, f)
 
     scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores], 'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores], 'Lowest validation loss': [i[2] for i in scores]}
 
@@ -235,8 +237,7 @@ if __name__ == '__main__':  #see config file for settings
         model = GRU(learning_config['GRU model settings'][0],  learning_config['GRU model settings'][1],
                      learning_config['GRU model settings'][2], learning_config['GRU model settings'][3])
     elif learning_config['classifier'] == 'Transformer':
-        model = Transformer(learning_config['Transformer model settings'][0],  learning_config['Transformer model settings'][1],
-                     learning_config['Transformer model settings'][2], learning_config['Transformer model settings'][3])
+        model = Transformer(learning_config['Transformer model settings'][0],  learning_config['Transformer model settings'][1], learning_config['Transformer model settings'][2], learning_config['Transformer model settings'][3], learning_config['Transformer model settings'][4], learning_config['Transformer model settings'][5])
 
     if not learning_config["cross_validation"]:
 

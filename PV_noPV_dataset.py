@@ -8,7 +8,7 @@ class PVnoPVdataset:
         self._file_path = file_path
 
         self._df = pd.read_csv(file_path, header=0, sep=';', decimal='.', low_memory=False)
-        self._X = np.array(np.transpose(self._df.drop(["Unnamed: 0"], axis=1)[:-1]))
+        self._X = np.array(np.transpose(self._df.drop(["Unnamed: 0"], axis=1)[:-1].astype(np.float32)))
         self._y = list(self._df.iloc[-1].copy()[1:].astype(int))
 
         self._target_names = ['0: no PV', '1: PV']
