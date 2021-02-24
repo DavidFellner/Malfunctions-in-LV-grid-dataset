@@ -55,6 +55,7 @@ from RNN import RNN
 from LSTM import LSTM
 from GRU import GRU
 from Transformer import Transformer
+from RTransformer import RT
 
 import numpy as np
 import random
@@ -238,6 +239,8 @@ if __name__ == '__main__':  #see config file for settings
                      learning_config['GRU model settings'][2], learning_config['GRU model settings'][3])
     elif learning_config['classifier'] == 'Transformer':
         model = Transformer(learning_config['Transformer model settings'][0],  learning_config['Transformer model settings'][1], learning_config['Transformer model settings'][2], learning_config['Transformer model settings'][3], learning_config['Transformer model settings'][4], learning_config['Transformer model settings'][5])
+    elif learning_config['classifier'] == 'RTransformer':
+        model = RT(learning_config['R-Transformer model settings'][0],  learning_config['R-Transformer model settings'][1], learning_config['R-Transformer model settings'][2], learning_config['R-Transformer model settings'][3], learning_config['R-Transformer model settings'][4], learning_config['R-Transformer model settings'][5], learning_config['R-Transformer model settings'][6], learning_config['R-Transformer model settings'][7], learning_config['R-Transformer model settings'][8], learning_config['R-Transformer model settings'][9])
 
     if not learning_config["cross_validation"]:
 
