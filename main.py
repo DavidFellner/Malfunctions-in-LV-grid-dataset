@@ -51,11 +51,7 @@ from create_instances import create_samples
 from malfunctions_in_LV_grid_dataset import MlfctinLVdataset
 from PV_noPV_dataset import PVnoPVdataset
 from dummy_dataset import Dummydataset
-from RNN import RNN
-from LSTM import LSTM
-from GRU import GRU
-from Transformer import Transformer
-from RTransformer import RT
+from util import load_model, export_model, save_model, plot_samples
 
 import numpy as np
 import random
@@ -94,24 +90,29 @@ def create_dataset():
         print(
             "Dataset %s is created from raw data" % learning_config['dataset'])
         if (1/config.share_of_positive_samples).is_integer():
-            df = pd.DataFrame()
+            train_set = pd.DataFrame()
+            test_set = pd.DataFrame()
             results_folder = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\'
             for dir in os.listdir(results_folder):
                 if os.path.isdir(results_folder + dir):
                     combinations_already_in_dataset = []  # avoid having duplicate samples (i.e. data of terminal with malfunction at same terminal and same terminals having a PV)
                     files = os.listdir(results_folder + dir)[0:int(config.simruns)]
                     for file in files:
-                        samples, combinations_already_in_dataset = create_samples(results_folder + dir, file, combinations_already_in_dataset,
-                                                                               len(df.columns))
-                        df = pd.concat([df, samples], axis=1, sort=False)
-            return df
+                        train_samples, test_samples, combinations_already_in_dataset = create_samples(results_folder + dir, file, combinations_already_in_dataset,
+                                                                               len(train_set.columns) + len(test_set.columns))
+                        train_set = pd.concat([train_set, train_samples], axis=1, sort=False)
+                        test_set = pd.concat([test_set, test_samples], axis=1, sort=False)
+            return train_set, test_set
         else:
             print("Share of malfunctioning samples wrongly chosen, please choose a value that yields a real number as an inverse i.e. 0.25 or 0.5")
 
-def save_dataset(df):
+def save_dataset(df, type='train'):
 
     if config.dataset_available == False:
-        df.to_csv(config.results_folder + learning_config['dataset'] + '.csv', header=True, sep=';', decimal='.', float_format='%.' + '%sf' % config.float_decimal)
+        if config.dataset_format == 'HDF':
+         df.to_hdf(path_or_buf=config.results_folder + learning_config['dataset'] + '_' + type, key=learning_config['dataset'] + '_' + type, mode = 'w')      # mode = 'w' creates new file for every dataframe, append to same Hdf file with mode = 'a' and static path
+        else:
+            df.to_csv(config.results_folder + learning_config['dataset'] + '.csv', header=True, sep=';', decimal='.', float_format='%.' + '%sf' % config.float_decimal)
         print(
             "Dataset %s saved" % learning_config['dataset'])
 
@@ -159,8 +160,6 @@ def cross_val(X, y, model):
 
     very_best_model = choose_best(best_clfs)
     model.state_dict = very_best_model[0]
-    #with open(args.save, 'wb') as f:           #args.save > filepath
-        #torch.save(model, f)
 
     scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores], 'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores], 'Lowest validation loss': [i[2] for i in scores]}
 
@@ -197,22 +196,13 @@ def plot_samples(X, y):
     plotting.plot_sample(X_zeromean[samples], label=[y[i] for i in samples], title='Zeromean samples')
     plotting.plot_sample(X_maxabs, label=[y[i] for i in samples], title='Samples scaled to -1 to 1')
 
-def export_model(model):
-    dummy_input = torch.randn(1, 672, 1)
-    out = model(dummy_input)
-    input_names = ["input"]  # + ["learned_%d" % i for i in range(3)]
-    output_names = ["output"]
-    name = learning_config['dataset'] + '.onnx'
-
-    model.eval()
-    torch.onnx.export(torch.jit.trace_module(model, {'forward': dummy_input}), dummy_input, name, example_outputs=out, export_params=True, verbose=True,
-                      input_names=input_names, output_names=output_names)
 
 if __name__ == '__main__':  #see config file for settings
 
     generate_raw_data()
-    dataset = create_dataset()
-    save_dataset(dataset)
+    train_set, test_set = create_dataset()
+    save_dataset(train_set, 'train')
+    save_dataset(test_set, 'test')
 
     print("\n########## Configuration ##########")
     for key, value in learning_config.items():
@@ -228,19 +218,7 @@ if __name__ == '__main__':  #see config file for settings
 
     print('X data with zero mean per sample and scaled between -1 and 1 based on training samples used')
 
-    if learning_config['classifier'] == 'RNN':
-        model = RNN(learning_config['RNN model settings'][0],  learning_config['RNN model settings'][1],
-                    learning_config['RNN model settings'][2], learning_config['RNN model settings'][3])
-    elif learning_config['classifier'] == 'LSTM':
-        model = LSTM(learning_config['LSTM model settings'][0],  learning_config['LSTM model settings'][1],
-                    learning_config['LSTM model settings'][2], learning_config['LSTM model settings'][3])
-    elif learning_config['classifier'] == 'GRU':
-        model = GRU(learning_config['GRU model settings'][0],  learning_config['GRU model settings'][1],
-                     learning_config['GRU model settings'][2], learning_config['GRU model settings'][3])
-    elif learning_config['classifier'] == 'Transformer':
-        model = Transformer(learning_config['Transformer model settings'][0],  learning_config['Transformer model settings'][1], learning_config['Transformer model settings'][2], learning_config['Transformer model settings'][3], learning_config['Transformer model settings'][4], learning_config['Transformer model settings'][5])
-    elif learning_config['classifier'] == 'RTransformer':
-        model = RT(learning_config['R-Transformer model settings'][0],  learning_config['R-Transformer model settings'][1], learning_config['R-Transformer model settings'][2], learning_config['R-Transformer model settings'][3], learning_config['R-Transformer model settings'][4], learning_config['R-Transformer model settings'][5], learning_config['R-Transformer model settings'][6], learning_config['R-Transformer model settings'][7], learning_config['R-Transformer model settings'][8], learning_config['R-Transformer model settings'][9])
+    model = load_model(learning_config)
 
     if not learning_config["cross_validation"]:
 
@@ -266,8 +244,11 @@ if __name__ == '__main__':  #see config file for settings
         for score in scores:
             print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
 
+    if learning_config["save_model"]:
+        save_model(model)
+
     if learning_config["export_model"]:
-        export_model(model)
+        export_model(model, learning_config)
 
 
 

@@ -20,7 +20,7 @@ learning_config = {
     "Transformer model settings": [2, 1, 1, 6, 2, 0.1],     # ntoken > 2 outputs, ninp > word/input embedding, nhead, nhid, nlayers, dropout=0.5
     "R-Transformer model settings": [1, 3, 2, 1, 'GRU', 7, 4, 1, 0.1, 0.1],     # input size, dimension of model,output size, h (heads?), rnn_type ('GRU', 'LSTM', 'RNN'), ksize (key size?), n (# local RNN layers), n_level (how many RNN-multihead-attention-fc blocks), dropout, emb_dropout
     "number of epochs": 100,
-    "learning rate": 1*10**-7,
+    "learning rate": 1*10**-6,
     "activation function": 'relu',          # relu, tanh
     "mini batch size": 60,
     "optimizer": 'Adam',                    # Adam, SGD
@@ -35,7 +35,7 @@ learning_config = {
     "metrics": ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro'],
     "cross_val_metrics": ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro'],
     "plot samples": True,
-    "classifier": "RTransformer",  # RNN, LSTM, GRU, Transformer, RTransformer
+    "classifier": "LSTM",  # RNN, LSTM, GRU, Transformer, RTransformer
     "export_model": False
 
 }

@@ -231,6 +231,7 @@ class RT(nn.Module):
         self.linear = nn.Linear(d_model, output_size)
         self.sig = nn.Sigmoid()
         self._device = self.choose_device()
+        self.optimizer = self.choose_optimizer()
 
     def forward(self, x):
         x = self.encoder(x)
@@ -278,9 +279,9 @@ class RT(nn.Module):
             inout_seq = list(zip(input_seq, target_seq))
 
             try:
-                optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
+                self.optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
             except IndexError:
-                optimizer = self.choose_optimizer(lr)
+                self.optimizer = self.choose_optimizer(lr)
             lrs.append(lr)
 
             #optimizer.zero_grad()  # Clears existing gradients from previous epoch
@@ -288,7 +289,7 @@ class RT(nn.Module):
             for sequences, labels in inout_seq:
                 labels = labels.to(self._device)
                 sequences = sequences.to(self._device)
-                optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
+                self.optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
 
                 #output = self(sequences, labels.float()).int()
                 output = self(sequences)
@@ -300,7 +301,7 @@ class RT(nn.Module):
 
                 loss.backward()     # Does backpropagation and calculates gradients
                 #torch.nn.utils.clip_grad_norm_(self.parameters(), configuration["gradient clipping"])       # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-                optimizer.step()    # Updates the weights accordingly
+                self.optimizer.step()    # Updates the weights accordingly
 
                 gc.collect()
                 self.detach([sequences, labels])      #detach tensors from GPU to free memory
@@ -308,7 +309,7 @@ class RT(nn.Module):
             training_losses.append(loss)
             val_outputs = torch.stack([i[-1].view(-1) for i in self.predict(X_test)[1]]).to(self._device)
             val_loss = criterion(val_outputs, torch.Tensor([np.array(y_test)]).view(-1).long().to(self._device))
-            models_and_val_losses.append((copy.deepcopy(self.state_dict), val_loss.item()))
+            models_and_val_losses.append((copy.deepcopy(self.state_dict()), val_loss.item()))
 
             if self.early_stopping:
                 try:
@@ -331,14 +332,14 @@ class RT(nn.Module):
         input_sequences = torch.stack([torch.Tensor(i).view(len(i), -1) for i in X])
 
         input_sequences = input_sequences.to(self._device)
-        outputs, hidden = self(input_sequences)
+        outputs = self(input_sequences)
 
         last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
         probs = nn.Softmax(dim=-1)(last_outputs)
 
         pred = torch.argmax(probs, dim=-1)  # chose class that has highest probability
 
-        self.detach([input_sequences, hidden, outputs])
+        self.detach([input_sequences, outputs])
 
         return [i.item() for i in pred], outputs
 

@@ -38,30 +38,52 @@ def add_noise(df):
             df_noised = df
         return df_noised
 
-def add_samples(df, num_features, sample_dict, samples_per_term, samples_before, label, dummy=False):
+def add_samples(train_samples, test_samples, num_features, sample_dict, samples_per_term, samples_before, label, dummy=False):
 
     for key in random.sample(list(sample_dict), samples_per_term):
         sample = sample_dict[key]
-        sample_number = int(len(df.columns) / num_features)
+        sample_number = int(len(train_samples.columns) + len(test_samples.columns) / num_features)
 
         noised_data = add_noise(sample)
-        if num_features > 1:
-            for i in noised_data.columns:
-                if dummy:
-                    df[(str(sample_number + samples_before), i[1])] = \
-                    [noised_data[i].values.tolist()[0]] * len(noised_data[i]) + [label]
-                else:
-                    df[(str(sample_number + samples_before), i[1])] = noised_data[i].values.tolist() + [label]
-
+        if config.train_test_split == int:
+            share_of_test_samples = config.train_test_split / config.number_of_samples
         else:
-            if dummy:
-                df[str(sample_number + samples_before)] = \
-                [noised_data.values.tolist()[0]] * len(noised_data) + [label]
-            else:
-                df[str(sample_number + samples_before)] = noised_data.values.tolist() + [
-                            label]
+            share_of_test_samples = config.train_test_split
 
-    return df
+        if sample_number % int(1/share_of_test_samples) == 0:
+            if num_features > 1:
+                for i in noised_data.columns:
+                    if dummy:
+                        test_samples[(str(sample_number + samples_before), i[1])] = \
+                        [noised_data[i].values.tolist()[0]] * len(noised_data[i]) + [label]
+                    else:
+                        test_samples[(str(sample_number + samples_before), i[1])] = noised_data[i].values.tolist() + [label]
+
+            else:
+                if dummy:
+                    test_samples[str(sample_number + samples_before)] = \
+                    [noised_data.values.tolist()[0]] * len(noised_data) + [label]
+                else:
+                    test_samples[str(sample_number + samples_before)] = noised_data.values.tolist() + [
+                                label]
+        else:
+            if num_features > 1:
+                for i in noised_data.columns:
+                    if dummy:
+                        train_samples[(str(sample_number + samples_before), i[1])] = \
+                            [noised_data[i].values.tolist()[0]] * len(noised_data[i]) + [label]
+                    else:
+                        train_samples[(str(sample_number + samples_before), i[1])] = noised_data[i].values.tolist() + [label]
+
+            else:
+                if dummy:
+                    train_samples[str(sample_number + samples_before)] = \
+                        [noised_data.values.tolist()[0]] * len(noised_data) + [label]
+                else:
+                    train_samples[str(sample_number + samples_before)] = noised_data.values.tolist() + [
+                        label]
+
+    return train_samples, test_samples
 
 def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samples_before):
     '''
@@ -94,14 +116,15 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
     difference_by_flooring = int(pos_samples_per_term) * len(terminals_with_malfunctions) - int(neg_samples_per_term) * (
             len(terminals_with_devices) - len(terminals_with_malfunctions))
 
-    df_reduced = pd.DataFrame(index=df.index[:sample_length].append(pd.Index(['label'])))
+    train_samples = pd.DataFrame(index=df.index[:sample_length].append(pd.Index(['label'])))
+    test_samples = pd.DataFrame(index=df.index[:sample_length].append(pd.Index(['label'])))
     features_per_sample = len(df[terminals_with_devices[0]].columns)
 
     if len(combinations_already_in_dataset) > 0:
         for combination in combinations_already_in_dataset:
             if set(terminals_with_devices) == set(combination[0]) \
                     and (terminals_with_malfunctions) == combination[1]:
-                return df_reduced, combinations_already_in_dataset
+                return train_samples, test_samples, combinations_already_in_dataset
     else:
         combinations_already_in_dataset.append((terminals_with_devices, terminals_with_malfunctions))
 
@@ -117,7 +140,7 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
             else:
                 pos_samples = int(pos_samples_per_term)
 
-            df_reduced = add_samples(df_reduced, features_per_sample, sample_dict, pos_samples,
+            df_reduced = add_samples(train_samples, test_samples, features_per_sample, sample_dict, pos_samples,
                                      number_of_samples_before, 1)
 
         else:
@@ -128,10 +151,10 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
             else:
                 neg_samples = int(neg_samples_per_term)
 
-            df_reduced = add_samples(df_reduced, features_per_sample, sample_dict, neg_samples,
+            train_samples, test_samples = add_samples(train_samples, test_samples, features_per_sample, sample_dict, neg_samples,
                                      number_of_samples_before, 0)
 
-    return df_reduced, combinations_already_in_dataset
+    return train_samples, test_samples, combinations_already_in_dataset
 
 def extract_PV_noPV_data(df, combinations_already_in_dataset, number_of_samples_before):
     '''
@@ -271,12 +294,12 @@ def create_samples(dir, file, combinations_already_in_dataset, number_of_samples
 
     df = pd.read_csv(dir + '\\' + file, header = [0,1,2],sep=';', low_memory=False)
     if config.raw_data_set_name == 'PV_noPV':
-        df_treated, terminals_already_in_dataset = extract_PV_noPV_data(df, combinations_already_in_dataset,
+        train_samples, test_samples, terminals_already_in_dataset = extract_PV_noPV_data(df, combinations_already_in_dataset,
                                                                 number_of_samples_before)
     elif config.raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
-        df_treated, combinations_already_in_dataset = extract_malfunction_data(df, combinations_already_in_dataset, number_of_samples_before)
+        train_samples, test_samples, combinations_already_in_dataset = extract_malfunction_data(df, combinations_already_in_dataset, number_of_samples_before)
     else:
-        df_treated, combinations_already_in_dataset = extract_dummy_data(df, combinations_already_in_dataset,
+        train_samples, test_samples, combinations_already_in_dataset = extract_dummy_data(df, combinations_already_in_dataset,
                                                                             number_of_samples_before)
 
-    return df_treated, combinations_already_in_dataset
+    return train_samples, test_samples, combinations_already_in_dataset

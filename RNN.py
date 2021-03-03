@@ -30,6 +30,7 @@ class RNN(nn.Module):
         self.output_size = output_size
         self.input_size = input_size
         self._device = self.choose_device()
+        self.optimizer = self.choose_optimizer()
 
         self._rnn = nn.RNN(input_size, hidden_dim, n_layers, nonlinearity=configuration["activation function"]).to(self._device)
         self._fc = nn.Linear(hidden_dim, output_size).to(self._device)
@@ -97,9 +98,9 @@ class RNN(nn.Module):
             inout_seq = list(zip(input_seq, target_seq))
 
             try:
-                optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
+                self.optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
             except IndexError:
-                optimizer = self.choose_optimizer(lr)
+                self.optimizer = self.choose_optimizer(lr)
             lrs.append(lr)
 
             #optimizer.zero_grad()  # Clears existing gradients from previous epoch
@@ -107,7 +108,7 @@ class RNN(nn.Module):
             for sequences, labels in inout_seq:
                 labels = labels.to(self._device)
                 sequences = sequences.to(self._device)
-                optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
+                self.optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
                 output, hidden = self(sequences)
 
                 last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
@@ -117,7 +118,7 @@ class RNN(nn.Module):
 
                 loss.backward()     # Does backpropagation and calculates gradients
                 torch.nn.utils.clip_grad_norm_(self.parameters(), configuration["gradient clipping"])       # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-                optimizer.step()    # Updates the weights accordingly
+                self.optimizer.step()    # Updates the weights accordingly
 
                 self.detach([last_outputs, sequences, labels, hidden])      #detach tensors from GPU to free memory
 

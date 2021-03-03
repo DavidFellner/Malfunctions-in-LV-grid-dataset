@@ -80,6 +80,7 @@ class Transformer(nn.Module):
         #self.encoder = nn.Embedding(ntoken, ninp)
         self.ninp = ninp
         self.decoder = nn.Linear(ninp, ntoken)
+        self.optimizer = self.choose_optimizer()
 
         self.init_weights()
         self._device = self.choose_device()
@@ -152,9 +153,9 @@ class Transformer(nn.Module):
             inout_seq = list(zip(input_seq, target_seq))
 
             try:
-                optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
+                self.optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
             except IndexError:
-                optimizer = self.choose_optimizer(lr)
+                self.optimizer = self.choose_optimizer(lr)
             lrs.append(lr)
 
             #optimizer.zero_grad()  # Clears existing gradients from previous epoch
@@ -162,7 +163,7 @@ class Transformer(nn.Module):
             for sequences, labels in inout_seq:
                 labels = labels.to(self._device)
                 sequences = sequences.to(self._device)
-                optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
+                self.optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
 
                 #output = self(sequences, labels.float()).int()
                 output = self(sequences)
@@ -173,7 +174,7 @@ class Transformer(nn.Module):
                 loss = criterion(last_outputs, labels)
 
                 loss.backward()     # Does backpropagation and calculates gradients
-                optimizer.step()    # Updates the weights accordingly
+                self.optimizer.step()    # Updates the weights accordingly
 
                 gc.collect()
                 self.detach([sequences, labels])      #detach tensors from GPU to free memory
