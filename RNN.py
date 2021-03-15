@@ -211,18 +211,20 @@ class RNN(nn.Module):
         elif test_loader:
             pred = torch.Tensor()
             y_test = torch.Tensor()
+            outputs_cumm = torch.Tensor()
             for i, (input_sequences, labels, raw_seq) in enumerate(test_loader):
-                    input_sequences = input_sequences.to(self._device)
-                    outputs, hidden = self(input_sequences)
+                input_sequences = input_sequences.to(self._device)
+                outputs, hidden = self(input_sequences)
 
-                    last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
-                    probs = nn.Softmax(dim=-1)(last_outputs)
+                last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
+                probs = nn.Softmax(dim=-1)(last_outputs)
 
-                    pred = torch.cat((pred, torch.argmax(probs, dim=-1)), 0)   # chose class that has highest probability
-                    y_test = torch.cat((y_test, labels), 0)   # chose class that has highest probability
+                outputs_cumm = torch.cat((outputs_cumm, outputs), 0)   #
+                pred = torch.cat((pred, torch.argmax(probs, dim=-1)), 0)   # chose class that has highest probability
+                y_test = torch.cat((y_test, labels), 0)   # chose class that has highest probability
 
-                    self.detach([input_sequences, hidden, outputs])
-            return [i.item() for i in pred], outputs, y_test
+                self.detach([input_sequences, hidden, outputs])
+            return [i.item() for i in pred], outputs_cumm, y_test
 
         else:
             print('Either provide X or a dataloader!')

@@ -22,7 +22,7 @@ learning_config = {
     "Transformer model settings": [2, 1, 1, 3, 4, 0.1],     # ntoken > 2 outputs, ninp > word/input embedding, nhead, nhid, nlayers, dropout=0.5
     "R-Transformer model settings": [1, 3, 2, 1, 'GRU', 7, 4, 1, 0.1, 0.1], # input size, dimension of model,output size, h (heads?), rnn_type ('GRU', 'LSTM', 'RNN'), ksize (key size?), n (# local RNN layers), n_level (how many RNN-multihead-attention-fc blocks), dropout, emb_dropout
     "number of epochs": 20,
-    "learning rate": 1*10**-5,
+    "learning rate": 1*10**-3,
     "activation function": 'relu',          # relu, tanh
     "mini batch size": 60,
     "optimizer": 'Adam',                    # Adam, SGD
