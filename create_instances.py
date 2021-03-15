@@ -140,8 +140,8 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
             else:
                 pos_samples = int(pos_samples_per_term)
 
-            df_reduced = add_samples(train_samples, test_samples, features_per_sample, sample_dict, pos_samples,
-                                     number_of_samples_before, 1)
+            train_samples, test_samples = add_samples(train_samples, test_samples, features_per_sample, sample_dict, pos_samples,
+                                                      number_of_samples_before, 1)
 
         else:
 
@@ -152,7 +152,7 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
                 neg_samples = int(neg_samples_per_term)
 
             train_samples, test_samples = add_samples(train_samples, test_samples, features_per_sample, sample_dict, neg_samples,
-                                     number_of_samples_before, 0)
+                                                      number_of_samples_before, 0)
 
     return train_samples, test_samples, combinations_already_in_dataset
 

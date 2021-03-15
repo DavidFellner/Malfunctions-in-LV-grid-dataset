@@ -51,6 +51,7 @@ learning_config = {
 raw_data_set_name = 'malfunctions_in_LV_grid_dataset'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
 dataset_available = True                       #set to False to recreate instances from raw data
 train_test_split = 0.2                        #if int, used as number of testing examples; if float, used as share of data
+dataset_format = 'HDF'                         #HDF, everything else yields CSV
 raw_data_available = True                      #set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False

@@ -9,10 +9,12 @@ Metric goal is NOT reached
 data_folder = os.getcwd() + '\\input\\'
 results_folder = os.getcwd() + '\\output\\'
 test_data_folder = os.getcwd() + '\\test\\'
+models_folder = os.getcwd() + '\\models\\'
 local_machine_tz = 'Europe/Berlin'                          #timezone; it's important for Powerfactory
 
 #Deep learning settings
 learning_config = {
+    "mode": "train",    #train, eval
     "dataset": "malfunctions_in_LV_grid_dataset_7day_1k",
     "RNN model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "LSTM model settings": [1, 2, 3, 3],     # number of input features, number of output features, number of features in hidden state, number of of layers
@@ -27,7 +29,7 @@ learning_config = {
     "k folds": 5,                           #choose 1 to not do crossval
     "cross_validation": False,
     "early stopping": True,
-    "LR adjustment": 'LR controlled',               #None, 'warm up' , 'LR controlled'
+    "LR adjustment": 'None',               #None, 'warm up' , 'LR controlled'
     "percentage of epochs for warm up": 10,         #warm up not performed if percentage of epochs for warm up * epochs > epochs
     "gradient clipping": 0.25,
     "train test split": 0.2,
@@ -36,6 +38,7 @@ learning_config = {
     "cross_val_metrics": ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro'],
     "plot samples": True,
     "classifier": "RTransformer",  # RNN, LSTM, GRU, Transformer, RTransformer
+    "save_model": True,            #saves state dict and optimizer for later use/further training
     "export_model": False
 
 }
@@ -47,6 +50,8 @@ learning_config = {
 # Dataset settings
 raw_data_set_name = 'malfunctions_in_LV_grid_dataset'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
 dataset_available = True                       #set to False to recreate instances from raw data
+train_test_split = 0.2                        #if int, used as number of testing examples; if float, used as share of data
+dataset_format = 'HDF'                         #HDF, everything else yields CSV
 raw_data_available = True                      #set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False

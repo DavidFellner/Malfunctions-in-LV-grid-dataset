@@ -5,10 +5,10 @@ import sys
 
 #chosen_experiment = 'dummy_1day_5k'
 
-#chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_200k'
+chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_200k'
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_20k'
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_10k'
-chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_5k'
+#chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_5k'
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_1k'
 
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_1day_10k'

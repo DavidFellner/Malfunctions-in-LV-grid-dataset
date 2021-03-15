@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
+import torch
 
 class MlfctinLVdataset:
 
@@ -15,6 +16,7 @@ class MlfctinLVdataset:
 
         self._le = LabelEncoder()
         self._y[:] = self._le.fit_transform(self._y)
+        torch.load('data/' + ID + '.pt')
 
     def get_x(self):
         return self._X

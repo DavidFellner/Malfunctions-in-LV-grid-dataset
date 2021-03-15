@@ -6,9 +6,8 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
 import random
 import numpy as np
-import copy
 import importlib
-import math, copy, time
+import math, copy
 import gc
 
 from experiment_config import experiment_path, chosen_experiment
@@ -239,14 +238,15 @@ class RT(nn.Module):
         output = self.linear(output).double()
         return self.sig(output)
 
-    def fit(self, X_train, y_train, X_test, y_test, early_stopping=True, control_lr=None):
+    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None):
 
         torch.cuda.empty_cache()
         self.early_stopping = early_stopping
         self.control_lr = control_lr
 
-        X = X_train
-        y = y_train
+        if X_train and y_train:
+            X = X_train
+            y = y_train
 
         mini_batch_size = configuration["mini batch size"]
         criterion = nn.CrossEntropyLoss()
@@ -260,55 +260,104 @@ class RT(nn.Module):
 
         for epoch in range(1, configuration["number of epochs"] + 1):
 
-            zipped_X_y = list(zip(X, y))
-            random.shuffle(zipped_X_y)              #randomly shuffle samples to have different mini batches between epochs
-            X, y = zip(*zipped_X_y)
-            X = np.array(X)
-            y = list(y)
-
-            if len(X) % mini_batch_size > 0:               #drop some samples if necessary to fit with batch size
-                samples_to_drop = len(X) % mini_batch_size
-                X = X[:-samples_to_drop]
-                y = y[:-samples_to_drop]
-
-            mini_batches = X.reshape((int(len(X) / mini_batch_size), mini_batch_size, len(X[0])))
-            mini_batch_targets = np.array(y).reshape(int(len(y) / mini_batch_size), mini_batch_size)
-
-            input_seq = [torch.Tensor(i).view(len(i), -1, 1) for i in mini_batches]
-            target_seq = [torch.Tensor([i]).view(-1).long() for i in mini_batch_targets]
-            inout_seq = list(zip(input_seq, target_seq))
-
             try:
                 self.optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
             except IndexError:
                 self.optimizer = self.choose_optimizer(lr)
             lrs.append(lr)
 
-            #optimizer.zero_grad()  # Clears existing gradients from previous epoch
+            if X_train and y_train:
+                zipped_X_y = list(zip(X, y))
+                random.shuffle(zipped_X_y)              #randomly shuffle samples to have different mini batches between epochs
+                X, y = zip(*zipped_X_y)
+                X = np.array(X)
+                y = list(y)
 
-            for sequences, labels in inout_seq:
-                labels = labels.to(self._device)
-                sequences = sequences.to(self._device)
-                self.optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
+                if len(X) % mini_batch_size > 0:               #drop some samples if necessary to fit with batch size
+                    samples_to_drop = len(X) % mini_batch_size
+                    X = X[:-samples_to_drop]
+                    y = y[:-samples_to_drop]
 
-                #output = self(sequences, labels.float()).int()
-                output = self(sequences)
+                mini_batches = X.reshape((int(len(X) / mini_batch_size), mini_batch_size, len(X[0])))
+                mini_batch_targets = np.array(y).reshape(int(len(y) / mini_batch_size), mini_batch_size)
 
-                last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
-                last_outputs = last_outputs.to(self._device)
+                input_seq = [torch.Tensor(i).view(len(i), -1, 1) for i in mini_batches]
+                target_seq = [torch.Tensor([i]).view(-1).long() for i in mini_batch_targets]
+                inout_seq = list(zip(input_seq, target_seq))
 
-                loss = criterion(last_outputs, labels)
 
-                loss.backward()     # Does backpropagation and calculates gradients
-                #torch.nn.utils.clip_grad_norm_(self.parameters(), configuration["gradient clipping"])       # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-                self.optimizer.step()    # Updates the weights accordingly
 
-                gc.collect()
-                self.detach([sequences, labels])      #detach tensors from GPU to free memory
+                #optimizer.zero_grad()  # Clears existing gradients from previous epoch
 
-            training_losses.append(loss)
-            val_outputs = torch.stack([i[-1].view(-1) for i in self.predict(X_test)[1]]).to(self._device)
-            val_loss = criterion(val_outputs, torch.Tensor([np.array(y_test)]).view(-1).long().to(self._device))
+                for sequences, labels in inout_seq:
+                    labels = labels.to(self._device)
+                    sequences = sequences.to(self._device)
+                    self.optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
+
+                    #output = self(sequences, labels.float()).int()
+                    output = self(sequences)
+
+                    last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
+                    last_outputs = last_outputs.to(self._device)
+
+                    loss = criterion(last_outputs, labels)
+
+                    loss.backward()     # Does backpropagation and calculates gradients
+                    #torch.nn.utils.clip_grad_norm_(self.parameters(), configuration["gradient clipping"])       # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
+                    self.optimizer.step()    # Updates the weights accordingly
+
+                    gc.collect()
+                    self.detach([sequences, labels])      #detach tensors from GPU to free memory
+
+            elif train_loader and test_loader:
+                import sys
+                toolbar_width = len(train_loader)
+                # setup toolbar
+                print('Epoch completed:')
+                sys.stdout.write("[%s]" % (" " * toolbar_width))
+                sys.stdout.flush()
+                sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
+
+                for i, (sequences, labels, raw_seq) in enumerate(train_loader):
+                    labels = labels.to(self._device)
+                    sequences = sequences.to(self._device)
+                    self.optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
+                    output = self(sequences.view(len(sequences), -1, 1))
+
+                    last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
+                    last_outputs = last_outputs.to(self._device)
+
+                    labels = torch.stack([i[-1] for i in labels]).long()
+                    loss = criterion(last_outputs, labels)
+
+                    loss.backward()     # Does backpropagation and calculates gradients
+                    torch.nn.utils.clip_grad_norm_(self.parameters(), configuration["gradient clipping"])       # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
+                    self.optimizer.step()    # Updates the weights accordingly
+
+                    self.detach([last_outputs, sequences, labels])      #detach tensors from GPU to free memory
+
+
+                    progress = (i+1) / len(train_loader)
+                    sys.stdout.write("- %.1f%% " %(progress*100))
+                    sys.stdout.flush()
+
+
+                sys.stdout.write("]\n") # this ends the progress bar
+
+            else:
+                print('Either provide X and y or dataloaders!')
+
+            if X_train and y_train:
+                training_losses.append(loss)
+                val_outputs = torch.stack([i[-1].view(-1) for i in self.predict(X_test)[1]]).to(self._device)
+                val_loss = criterion(val_outputs, torch.Tensor([np.array(y_test)]).view(-1).long().to(self._device))
+            else:
+                training_losses.append(loss)
+                pred, val_outputs, y_test = self.predict(test_loader=test_loader)
+                val_outputs = torch.stack([i[-1] for i in val_outputs]).to(self._device)
+                y_test = y_test.view(-1).long().to(self._device)
+                val_loss = criterion(val_outputs, y_test).to(self._device)
+
             models_and_val_losses.append((copy.deepcopy(self.state_dict()), val_loss.item()))
 
             if self.early_stopping:
@@ -327,21 +376,39 @@ class RT(nn.Module):
 
         return models_and_val_losses, training_losses, lrs
 
-    def predict(self, X):
+    def predict(self, test_loader=None, X=None):
 
-        input_sequences = torch.stack([torch.Tensor(i).view(len(i), -1) for i in X])
+        if X is not None:
+            input_sequences = torch.stack([torch.Tensor(i).view(len(i), -1) for i in X])
 
-        input_sequences = input_sequences.to(self._device)
-        outputs = self(input_sequences)
+            input_sequences = input_sequences.to(self._device)
+            outputs= self(input_sequences)
 
-        last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
-        probs = nn.Softmax(dim=-1)(last_outputs)
+            last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
+            probs = nn.Softmax(dim=-1)(last_outputs)
 
-        pred = torch.argmax(probs, dim=-1)  # chose class that has highest probability
+            pred = torch.argmax(probs, dim=-1)  # chose class that has highest probability
 
-        self.detach([input_sequences, outputs])
+            self.detach([input_sequences, outputs])
+            return [i.item() for i in pred], outputs
+        elif test_loader:
+            pred = torch.Tensor()
+            y_test = torch.Tensor()
+            for i, (input_sequences, labels, raw_seq) in enumerate(test_loader):
+                input_sequences = input_sequences.to(self._device)
+                outputs = self(input_sequences.view(len(input_sequences), -1, 1))
 
-        return [i.item() for i in pred], outputs
+                last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
+                probs = nn.Softmax(dim=-1)(last_outputs)
+
+                pred = torch.cat((pred, torch.argmax(probs, dim=-1)), 0)   # chose class that has highest probability
+                y_test = torch.cat((y_test, labels), 0)   # chose class that has highest probability
+
+                self.detach([input_sequences, outputs])
+            return [i.item() for i in pred], outputs, y_test
+
+        else:
+            print('Either provide X or a dataloader!')
 
     def choose_optimizer(self, alpha=configuration["learning rate"]):
         if configuration["optimizer"] == 'Adam':

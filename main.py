@@ -51,16 +51,15 @@ from create_instances import create_samples
 from malfunctions_in_LV_grid_dataset import MlfctinLVdataset
 from PV_noPV_dataset import PVnoPVdataset
 from dummy_dataset import Dummydataset
-from util import load_model, export_model, save_model, plot_samples
+from util import load_model, export_model, save_model, load_data, plot_samples, model_exists
 
 import numpy as np
-import random
-from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_validate
 from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import KFold
-from sklearn.preprocessing import MaxAbsScaler
+import logging, sys
 import torch
+import h5py
 
 import pandas as pd
 import os
@@ -86,12 +85,13 @@ def generate_raw_data():
 
 def create_dataset():
 
+    train_set = pd.DataFrame()
+    test_set = pd.DataFrame()
     if config.dataset_available == False:
         print(
             "Dataset %s is created from raw data" % learning_config['dataset'])
         if (1/config.share_of_positive_samples).is_integer():
-            train_set = pd.DataFrame()
-            test_set = pd.DataFrame()
+
             results_folder = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\'
             for dir in os.listdir(results_folder):
                 if os.path.isdir(results_folder + dir):
@@ -99,45 +99,49 @@ def create_dataset():
                     files = os.listdir(results_folder + dir)[0:int(config.simruns)]
                     for file in files:
                         train_samples, test_samples, combinations_already_in_dataset = create_samples(results_folder + dir, file, combinations_already_in_dataset,
-                                                                               len(train_set.columns) + len(test_set.columns))
+                                                                                                      len(train_set.columns) + len(test_set.columns))
                         train_set = pd.concat([train_set, train_samples], axis=1, sort=False)
                         test_set = pd.concat([test_set, test_samples], axis=1, sort=False)
             return train_set, test_set
         else:
             print("Share of malfunctioning samples wrongly chosen, please choose a value that yields a real number as an inverse i.e. 0.25 or 0.5")
+            return train_set, test_set
 
-def save_dataset(df, type='train'):
+def save_dataset(df, type='train', scaler=None):
 
     if config.dataset_available == False:
         if config.dataset_format == 'HDF':
-         df.to_hdf(path_or_buf=config.results_folder + learning_config['dataset'] + '_' + type, key=learning_config['dataset'] + '_' + type, mode = 'w')      # mode = 'w' creates new file for every dataframe, append to same Hdf file with mode = 'a' and static path
+            from sklearn.preprocessing import MaxAbsScaler
+            from util import fit_scaler, preprocessing
+
+            path = config.results_folder + learning_config['dataset'] + '\\' + type + '\\'
+            if not os.path.isdir(path):
+                os.makedirs(path)
+
+            data_raw = df[:-1].astype(np.float32)
+            label = df.iloc[-1].copy()[:].astype(int)
+
+            if type == 'train':
+                scaler = fit_scaler(data_raw)
+            data_preprocessed = preprocessing(data_raw, scaler).transpose()
+
+            with h5py.File(path + learning_config['dataset'] + '_' + type + '.hdf5', 'w') as hdf:
+                if int(len(data_raw.columns)/len(label)) > 1:
+                    dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw, shape=(len(data_raw.columns), len(data_raw), int(len(data_raw.columns)/len(label))), compression='gzip', chunks=True)
+                    dset_data_pre = hdf.create_dataset('x_' + type, data=data_preprocessed, shape=(len(data_preprocessed.columns), len(data_preprocessed), int(len(data_preprocessed.columns)/len(label))), compression='gzip', chunks=True)
+                else:
+                    dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw, shape=(len(data_raw.columns), len(data_raw)), compression='gzip', chunks=True)
+                    dset_data_pre = hdf.create_dataset('x_' + type, data=data_preprocessed, shape=(len(data_preprocessed.columns), len(data_preprocessed)), compression='gzip', chunks=True)
+
+                dset_label = hdf.create_dataset('y_' + type, data=label, shape=(len(label), 1), compression='gzip', chunks=True)
+                hdf.close()
+                return scaler
         else:
             df.to_csv(config.results_folder + learning_config['dataset'] + '.csv', header=True, sep=';', decimal='.', float_format='%.' + '%sf' % config.float_decimal)
-        print(
-            "Dataset %s saved" % learning_config['dataset'])
+    print(
+        "Dataset %s saved" % learning_config['dataset'])
+    return 0
 
-    return
-
-def load_dataset(dataset=None):
-
-    if not dataset:
-        if learning_config['dataset'][:7] == 'PV_noPV':
-            dataset = PVnoPVdataset(config.results_folder + learning_config["dataset"] + '.csv')
-        elif learning_config['dataset'][:31] == 'malfunctions_in_LV_grid_dataset':
-            dataset = MlfctinLVdataset(config.results_folder + learning_config["dataset"] + '.csv')
-        else:
-            dataset = Dummydataset(config.results_folder + learning_config["dataset"] + '.csv')
-
-
-    else:
-        if learning_config['dataset'][:7] == 'PV_noPV':
-            dataset = PVnoPVdataset(config.test_data_folder + 'PV_noPV.csv')
-        else:
-            dataset = MlfctinLVdataset(config.test_data_folder + 'malfunctions_in_LV_grid_dataset.csv')
-
-    X = dataset.get_x()
-    y = dataset.get_y()
-    return dataset, X, y
 
 def cross_val(X, y, model):
     kf = KFold(n_splits=learning_config['k folds'])
@@ -168,7 +172,8 @@ def cross_val(X, y, model):
 
 def choose_best(models_and_losses):
     index_best = [i[1] for i in models_and_losses].index(min([i[1] for i in models_and_losses]))
-    return models_and_losses[index_best]
+    epoch = index_best+1
+    return models_and_losses[index_best], epoch
 
 def baseline(X, y):
     clf_baseline = SGDClassifier()
@@ -179,59 +184,84 @@ def baseline(X, y):
 
     return
 
-def plot_samples(X, y):
+def init():
 
-    X_zeromean = np.array([x - x.mean() for x in X])  # deduct it's own mean from every sample
-    X_train, X_test, y_train, y_test = train_test_split(X_zeromean, y, random_state=0, test_size=100)
+    level = 'INFO'
+    logger = logging.getLogger('main')
+    logger.setLevel(level)
 
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(level)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
-    maxabs_scaler = MaxAbsScaler().fit(X_train)  # fit scaler as to scale training data between -1 and 1
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    logger.info(f"Using {device}.")
 
-    # samples = [y.index(0), y.index(1)]
-    samples = [random.sample([i for i, x in enumerate(y) if x == 0], 1)[0],
-               random.sample([i for i, x in enumerate(y) if x == 1], 1)[0]]
-    print("Samples shown: #{0} of class 0; #{1} of class 1".format(samples[0], samples[1]))
-    X_maxabs = maxabs_scaler.transform(X_zeromean[samples])
-    plotting.plot_sample(X[samples], label=[y[i] for i in samples], title='Raw samples')
-    plotting.plot_sample(X_zeromean[samples], label=[y[i] for i in samples], title='Zeromean samples')
-    plotting.plot_sample(X_maxabs, label=[y[i] for i in samples], title='Samples scaled to -1 to 1')
+    return logger, device
 
 
 if __name__ == '__main__':  #see config file for settings
 
     generate_raw_data()
-    train_set, test_set = create_dataset()
-    save_dataset(train_set, 'train')
-    save_dataset(test_set, 'test')
+    if config.dataset_available == False:
+        train_set, test_set = create_dataset()
+        scaler = save_dataset(train_set, 'train')
+        save_dataset(test_set, 'test', scaler=scaler)
 
     print("\n########## Configuration ##########")
     for key, value in learning_config.items():
         print(key, ' : ', value)
     print("number of samples : %d" % config.number_of_samples)
 
-    dataset, X, y = load_dataset()
-    if learning_config["plot samples"]:
-        plot_samples(X, y)
+    logger, device = init()
 
-    if learning_config['baseline']:
-        baseline(X, y)
+    # Load data
+    logger.info("Loading Data ...")
+    if learning_config["mode"] == 'train':
+        train_loader = load_data('train')
+    test_loader = load_data('test')
+    logger.info(f"Loaded data.")
+
+    #dataset, X, y = load_dataset()
+    if learning_config["plot samples"]:
+        for i, (X, y, X_raw) in enumerate(train_loader):
+            plot_samples(X_raw, y, X)
+            break
+
+    #if learning_config['baseline']:
+        #baseline(X, y)
 
     print('X data with zero mean per sample and scaled between -1 and 1 based on training samples used')
 
-    model = load_model(learning_config)
+    path = config.models_folder + learning_config['classifier']
+    if model_exists(path):
+        model, optimizer = load_model(learning_config)
+    else:
+        model = load_model(learning_config)
+        optimizer = None
 
     if not learning_config["cross_validation"]:
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, test_size=learning_config['train test split'])
-        X_train, X_test = model.preprocess(X_train, X_test)
+        #X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, test_size=learning_config['train test split'])
+        #X_train, X_test = model.preprocess(X_train, X_test)
         print("\n########## Training ##########")
-        clfs, losses, lrs = model.fit(X_train, y_train, X_test, y_test, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'])
-        plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'], title='Losses after each epoch', x_label='Epoch', y_label='Loss')   #plot training loss for each epoch
-        plotting.plot_2D(lrs, labels='learning rate', title='Learning rate for each epoch', x_label='Epoch',
-                         y_label='Learning rate')
-        clf = choose_best(clfs)
-        model.state_dict = clf[0]                           #pick weights of best model found
-        y_pred, outputs = model.predict(X_test)
+        if learning_config["mode"] == 'train':
+            logger.info("Training classifier ..")
+            if optimizer is not None:
+                clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'])
+            else:
+                clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'])
+            logger.info("Training finished!")
+            logger.info('Finished Training')
+            plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'], title='Losses after each epoch', x_label='Epoch', y_label='Loss')   #plot training loss for each epoch
+            plotting.plot_2D(lrs, labels='learning rate', title='Learning rate for each epoch', x_label='Epoch',
+                             y_label='Learning rate')
+            clf, epoch = choose_best(clfs)
+            model.state_dict = clf[0]                           #pick weights of best model found
+
+        y_pred, outputs, y_test = model.predict(test_loader=test_loader)
         score = model.score(y_test, y_pred) + [clf[1]]
         print("\n########## Metrics ##########")
         print(
@@ -245,7 +275,7 @@ if __name__ == '__main__':  #see config file for settings
             print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
 
     if learning_config["save_model"]:
-        save_model(model)
+        save_model(model, epoch, clf[1])
 
     if learning_config["export_model"]:
         export_model(model, learning_config)
