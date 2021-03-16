@@ -10,6 +10,7 @@ import copy
 import importlib
 import math
 import gc
+import os
 
 from experiment_config import experiment_path, chosen_experiment
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
@@ -18,6 +19,33 @@ spec.loader.exec_module(config)
 
 
 configuration = config.learning_config
+
+def choose_best(models_and_losses):
+    index_best = [i[1] for i in models_and_losses].index(min([i[1] for i in models_and_losses]))
+    epoch = index_best+1
+    return models_and_losses[index_best], epoch
+
+def save_model(model, epoch, loss):
+    path = config.models_folder + configuration['classifier']
+
+    if not os.path.exists(config.models_folder + configuration['classifier']):
+        os.makedirs(config.models_folder + configuration['classifier']
+                    )
+
+    try:
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': model.optimizer.state_dict(),
+            'loss': loss,
+        }, path + '\\model.pth')
+    except TypeError:
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict,
+            'optimizer_state_dict': model.optimizer.state_dict(),
+            'loss': loss,
+        }, path + '\\model.pth')
 
 # Temporarily leave PositionalEncoding module here. Will be moved somewhere else.
 class PositionalEncoding(nn.Module):
@@ -234,6 +262,11 @@ class Transformer(nn.Module):
 
             models_and_val_losses.append((copy.deepcopy(self.state_dict), val_loss.item()))
 
+            if configuration["save_model"]:
+                clf, ep = choose_best(models_and_val_losses)
+                if ep == epoch:
+                    save_model(self, epoch, val_loss.item())
+
             if self.early_stopping:
                 try:
                     if abs(models_and_val_losses[-1][1] - models_and_val_losses[-2][1]) < 1*10**-6:
@@ -281,6 +314,12 @@ class Transformer(nn.Module):
                 y_test = torch.cat((y_test, labels), 0)   # chose class that has highest probability
 
                 self.detach([input_sequences, outputs])
+                if configuration["train test split"] <= 1:
+                    share_of_test_set = len(test_loader)*configuration["train test split"]*labels.size()[0]
+                else:
+                    share_of_test_set = configuration["train test split"]
+                if y_test.size()[0] >= share_of_test_set:           #to choose the test set size (memory issues!!)
+                    break
             return [i.item() for i in pred], outputs_cumm, y_test
 
         else:

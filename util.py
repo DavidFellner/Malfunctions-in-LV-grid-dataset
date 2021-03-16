@@ -25,7 +25,7 @@ learning_config = config.learning_config
 
 
 def model_exists(full_path):
-    return os.path.exists(full_path + ".model")
+    return os.path.exists(full_path + "\\model.pth")
 
 def load_model(learning_config):
     path = config.models_folder + learning_config['classifier']
@@ -56,19 +56,22 @@ def load_model(learning_config):
     if load_saved:
         print('Loading model ..')
 
-        checkpoint = torch.load(path + '\\model.pth')
-        model.load_state_dict(checkpoint['model_state_dict'])
-        model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        epoch = checkpoint['epoch']
-        loss = checkpoint['loss']
-
-        model.to(device)
-        model.optimizer.to(device)
-        return model, model.optimizer
+        try:
+            checkpoint = torch.load(path + '\\model.pth')
+            model.load_state_dict(checkpoint['model_state_dict'])
+            model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            epoch = checkpoint['epoch']
+            loss = checkpoint['loss']
+    
+            model.to(device)
+            return model, model.optimizer
+        except RuntimeError:
+            print('Improper model loaded (different architecture)')
+            pass
 
     model.to(device)
 
-    return model
+    return model, None
 
 def export_model(model, learning_config):
     dummy_input = torch.randn(1, 672, 1)
@@ -150,7 +153,7 @@ def load_data(type):
         if dataset.__len__() < 1000:
             loader_params = {'batch_size': dataset.__len__(), 'shuffle': False, 'num_workers': 1}       #load all test data at once
         else:
-            loader_params = {'batch_size': 1000, 'shuffle': False, 'num_workers': 1}       #load 1000 test samples at once
+            loader_params = {'batch_size': 100, 'shuffle': False, 'num_workers': 1}       #load 100 test samples at once
 
     else:
         loader_params = {'batch_size': learning_config['mini batch size'], 'shuffle': True, 'num_workers': 1}
@@ -197,6 +200,11 @@ def preprocessing(X, scaler):
     X_zeromean = np.array(X - X.mean())
     X = scaler.transform(X_zeromean.reshape(X_zeromean.shape[1], X_zeromean.shape[0]))
     return pd.DataFrame(data=X)
+
+def choose_best(models_and_losses):
+    index_best = [i[1] for i in models_and_losses].index(min([i[1] for i in models_and_losses]))
+    epoch = index_best+1
+    return models_and_losses[index_best], epoch
 
 
 '''def load_test_data(config):

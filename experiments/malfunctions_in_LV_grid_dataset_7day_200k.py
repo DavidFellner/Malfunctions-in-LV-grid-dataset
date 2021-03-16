@@ -32,7 +32,7 @@ learning_config = {
     "LR adjustment": 'LR controlled',               #None, 'warm up' , 'LR controlled'
     "percentage of epochs for warm up": 10,         #warm up not performed if percentage of epochs for warm up * epochs > epochs
     "gradient clipping": 0.25,
-    "train test split": 1000,                        #if int, used as number up testing examples; if float, used as share of data
+    "train test split": 1000,                        #if int, used as number of testing examples; if float, used as share of data
     "baseline": False,
     "metrics": ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro'],
     "cross_val_metrics": ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro'],

@@ -51,7 +51,7 @@ from create_instances import create_samples
 from malfunctions_in_LV_grid_dataset import MlfctinLVdataset
 from PV_noPV_dataset import PVnoPVdataset
 from dummy_dataset import Dummydataset
-from util import load_model, export_model, save_model, load_data, plot_samples, model_exists
+from util import load_model, export_model, save_model, load_data, plot_samples, model_exists, choose_best
 
 import numpy as np
 from sklearn.model_selection import cross_validate
@@ -169,12 +169,6 @@ def cross_val(X, y, model):
 
     return model, scores_dict
 
-
-def choose_best(models_and_losses):
-    index_best = [i[1] for i in models_and_losses].index(min([i[1] for i in models_and_losses]))
-    epoch = index_best+1
-    return models_and_losses[index_best], epoch
-
 def baseline(X, y):
     clf_baseline = SGDClassifier()
     scores = cross_validate(clf_baseline, X, y, scoring=learning_config["metrics"], cv=10, n_jobs=1)
@@ -239,8 +233,7 @@ if __name__ == '__main__':  #see config file for settings
     if model_exists(path):
         model, optimizer = load_model(learning_config)
     else:
-        model = load_model(learning_config)
-        optimizer = None
+        model, optimizer = load_model(learning_config)
 
     if not learning_config["cross_validation"]:
 
@@ -250,7 +243,7 @@ if __name__ == '__main__':  #see config file for settings
         if learning_config["mode"] == 'train':
             logger.info("Training classifier ..")
             if optimizer is not None:
-                clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'])
+                clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'], optimizer=optimizer)
             else:
                 clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'])
             logger.info("Training finished!")

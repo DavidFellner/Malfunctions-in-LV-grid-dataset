@@ -12,6 +12,7 @@ import random
 import numpy as np
 import copy
 import importlib
+import os
 
 from experiment_config import experiment_path, chosen_experiment
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
@@ -20,6 +21,33 @@ spec.loader.exec_module(config)
 
 
 configuration = config.learning_config
+
+def choose_best(models_and_losses):
+    index_best = [i[1] for i in models_and_losses].index(min([i[1] for i in models_and_losses]))
+    epoch = index_best+1
+    return models_and_losses[index_best], epoch
+
+def save_model(model, epoch, loss):
+    path = config.models_folder + configuration['classifier']
+
+    if not os.path.exists(config.models_folder + configuration['classifier']):
+        os.makedirs(config.models_folder + configuration['classifier']
+                    )
+
+    try:
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': model.optimizer.state_dict(),
+            'loss': loss,
+        }, path + '\\model.pth')
+    except TypeError:
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict,
+            'optimizer_state_dict': model.optimizer.state_dict(),
+            'loss': loss,
+        }, path + '\\model.pth')
 
 class GRU(nn.Module):
     def __init__(self, input_size, output_size, hidden_dim, n_layers):
@@ -60,7 +88,7 @@ class GRU(nn.Module):
         # We'll send the tensor holding the hidden state to the device we specified earlier as well
         return hidden
 
-    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None):
+    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, optimizer=None):
 
         torch.cuda.empty_cache()
         self.early_stopping = early_stopping
@@ -171,11 +199,16 @@ class GRU(nn.Module):
             else:
                 training_losses.append(loss)
                 pred, val_outputs, y_test = self.predict(test_loader=test_loader)
-                val_outputs = torch.stack([i[-1] for i in val_outputs]).to(self._device)
+                val_outputs = torch.stack([i for i in val_outputs]).to(self._device)
                 y_test = y_test.view(-1).long().to(self._device)
                 val_loss = criterion(val_outputs, y_test).to(self._device)
 
             models_and_val_losses.append((copy.deepcopy(self.state_dict), val_loss.item()))
+
+            if configuration["save_model"]:
+                clf, ep = choose_best(models_and_val_losses)
+                if ep == epoch:
+                    save_model(self, epoch, val_loss.item())
 
             if self.early_stopping:
                 try:
@@ -211,7 +244,7 @@ class GRU(nn.Module):
         elif test_loader:
             pred = torch.Tensor()
             y_test = torch.Tensor()
-            outputs_cumm = torch.Tensor()
+            last_outputs_cumm = torch.Tensor()
             for i, (input_sequences, labels, raw_seq) in enumerate(test_loader):
                 input_sequences = input_sequences.to(self._device)
                 outputs, hidden = self(input_sequences)
@@ -219,12 +252,18 @@ class GRU(nn.Module):
                 last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
                 probs = nn.Softmax(dim=-1)(last_outputs)
 
-                outputs_cumm = torch.cat((outputs_cumm, outputs), 0)   #
+                last_outputs_cumm = torch.cat((last_outputs_cumm, last_outputs), 0)   #
                 pred = torch.cat((pred, torch.argmax(probs, dim=-1)), 0)   # chose class that has highest probability
                 y_test = torch.cat((y_test, labels), 0)   # chose class that has highest probability
 
                 self.detach([input_sequences, hidden, outputs])
-            return [i.item() for i in pred], outputs_cumm, y_test
+                if configuration["train test split"] <= 1:
+                    share_of_test_set = len(test_loader)*configuration["train test split"]*labels.size()[0]
+                else:
+                    share_of_test_set = configuration["train test split"]
+                if y_test.size()[0] >= share_of_test_set:           #to choose the test set size (memory issues!!)
+                    break
+            return [i.item() for i in pred], last_outputs_cumm, y_test
 
         else:
             print('Either provide X or a dataloader!')
