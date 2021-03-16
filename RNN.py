@@ -74,10 +74,17 @@ class RNN(nn.Module):
         if x.dim() == 2:
             x = x.view(-1,seq_length, 1)
         # Passing in the input and hidden state into the model and obtaining outputs
-        out, hidden = self._rnn(x, hidden)
-
-        # feed output into the fully connected layer
-        out = self._fc(out)
+        if x.device == torch.device("cpu"):
+            self._lstm = self._lstm.to(torch.device("cpu"))
+            self._fc = self._fc.to(torch.device("cpu"))
+            out, hidden = self._lstm(x, hidden)
+            out = self._fc(out)
+        else:
+            self._lstm = self._lstm.to(self.choose_device())
+            self._fc = self._fc.to(self.choose_device())
+            out, hidden = self._lstm(x, hidden)
+            # feed output into the fully connected layer
+            out = self._fc(out)
 
         return out, hidden
 
@@ -88,11 +95,14 @@ class RNN(nn.Module):
         # We'll send the tensor holding the hidden state to the device we specified earlier as well
         return hidden
 
-    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None):
+    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, optimizer=None):
 
         torch.cuda.empty_cache()
         self.early_stopping = early_stopping
         self.control_lr = control_lr
+
+        if optimizer is not None:
+            self.optimizer = optimizer
 
         if X_train and y_train:
             X = X_train
@@ -252,8 +262,8 @@ class RNN(nn.Module):
                 last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
                 probs = nn.Softmax(dim=-1)(last_outputs)
 
-                outputs_cumm = torch.cat((outputs_cumm, outputs), 0)   #
-                pred = torch.cat((pred, torch.argmax(probs, dim=-1)), 0)   # chose class that has highest probability
+                outputs_cumm = torch.cat((outputs_cumm.to(self._device), outputs), 0)  #
+                pred = torch.cat((pred.to(self._device), torch.argmax(probs, dim=-1)), 0)  # chose class that has highest probability
                 y_test = torch.cat((y_test, labels), 0)   # chose class that has highest probability
 
                 self.detach([input_sequences, hidden, outputs])

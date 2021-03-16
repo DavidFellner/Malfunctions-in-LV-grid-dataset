@@ -266,11 +266,14 @@ class RT(nn.Module):
         output = self.linear(output).double()
         return self.sig(output)
 
-    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None):
+    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, optimizer=None):
 
         torch.cuda.empty_cache()
         self.early_stopping = early_stopping
         self.control_lr = control_lr
+
+        if optimizer is not None:
+            self.optimizer = optimizer
 
         if X_train and y_train:
             X = X_train

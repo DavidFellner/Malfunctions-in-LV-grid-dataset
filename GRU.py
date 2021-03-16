@@ -74,10 +74,17 @@ class GRU(nn.Module):
         if x.dim() == 2:
             x = x.view(-1,seq_length, 1)
         # Passing in the input and hidden state into the model and obtaining outputs
-        out, hidden = self._gru(x, hidden)
-
-        # feed output into the fully connected layer
-        out = self._fc(out)
+        if x.device == torch.device("cpu"):
+            self._lstm = self._lstm.to(torch.device("cpu"))
+            self._fc = self._fc.to(torch.device("cpu"))
+            out, hidden = self._lstm(x, hidden)
+            out = self._fc(out)
+        else:
+            self._lstm = self._lstm.to(self.choose_device())
+            self._fc = self._fc.to(self.choose_device())
+            out, hidden = self._lstm(x, hidden)
+            # feed output into the fully connected layer
+            out = self._fc(out)
 
         return out, hidden
 
@@ -93,6 +100,9 @@ class GRU(nn.Module):
         torch.cuda.empty_cache()
         self.early_stopping = early_stopping
         self.control_lr = control_lr
+
+        if optimizer is not None:
+            self.optimizer = optimizer
 
         if X_train and y_train:
             X = X_train
@@ -252,8 +262,8 @@ class GRU(nn.Module):
                 last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
                 probs = nn.Softmax(dim=-1)(last_outputs)
 
-                last_outputs_cumm = torch.cat((last_outputs_cumm, last_outputs), 0)   #
-                pred = torch.cat((pred, torch.argmax(probs, dim=-1)), 0)   # chose class that has highest probability
+                outputs_cumm = torch.cat((outputs_cumm.to(self._device), outputs), 0)  #
+                pred = torch.cat((pred.to(self._device), torch.argmax(probs, dim=-1)), 0)  # chose class that has highest probability
                 y_test = torch.cat((y_test, labels), 0)   # chose class that has highest probability
 
                 self.detach([input_sequences, hidden, outputs])
