@@ -75,12 +75,12 @@ class GRU(nn.Module):
             x = x.view(-1,seq_length, 1)
         # Passing in the input and hidden state into the model and obtaining outputs
         if x.device == torch.device("cpu"):
-            self._lstm = self._lstm.to(torch.device("cpu"))
+            self._lstm = self._gru.to(torch.device("cpu"))
             self._fc = self._fc.to(torch.device("cpu"))
             out, hidden = self._lstm(x, hidden)
             out = self._fc(out)
         else:
-            self._lstm = self._lstm.to(self.choose_device())
+            self._lstm = self._gru.to(self.choose_device())
             self._fc = self._fc.to(self.choose_device())
             out, hidden = self._lstm(x, hidden)
             # feed output into the fully connected layer
@@ -114,6 +114,9 @@ class GRU(nn.Module):
         training_losses = []
         models_and_val_losses = []
         pause = 0                                                      # for early stopping
+
+        if prev_epoch is None:
+            prev_epoch = 1
 
         for epoch in range(prev_epoch, configuration["number of epochs"] + 1):
 
@@ -204,7 +207,7 @@ class GRU(nn.Module):
             else:
                 training_losses.append(loss)
                 pred, val_outputs, y_test = self.predict(test_loader=test_loader)
-                val_outputs = torch.stack([i for i in val_outputs]).to(self._device)
+                val_outputs = torch.stack([i[-1] for i in val_outputs]).to(self._device)
                 y_test = y_test.view(-1).long().to(self._device)
                 val_loss = criterion(val_outputs, y_test).to(self._device)
 
@@ -249,7 +252,7 @@ class GRU(nn.Module):
         elif test_loader:
             pred = torch.Tensor()
             y_test = torch.Tensor()
-            last_outputs_cumm = torch.Tensor()
+            outputs_cumm = torch.Tensor()
             for i, (input_sequences, labels, raw_seq) in enumerate(test_loader):
                 input_sequences = input_sequences.to(self._device)
                 outputs, hidden = self(input_sequences)
@@ -268,7 +271,7 @@ class GRU(nn.Module):
                     share_of_test_set = configuration["train test split"]
                 if y_test.size()[0] >= share_of_test_set:           #to choose the test set size (memory issues!!)
                     break
-            return [i.item() for i in pred], last_outputs_cumm, y_test
+            return [i.item() for i in pred], outputs_cumm, y_test
 
         else:
             print('Either provide X or a dataloader!')

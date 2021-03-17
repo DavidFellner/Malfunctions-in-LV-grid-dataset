@@ -75,12 +75,12 @@ class RNN(nn.Module):
             x = x.view(-1,seq_length, 1)
         # Passing in the input and hidden state into the model and obtaining outputs
         if x.device == torch.device("cpu"):
-            self._lstm = self._lstm.to(torch.device("cpu"))
+            self._lstm = self._rnn.to(torch.device("cpu"))
             self._fc = self._fc.to(torch.device("cpu"))
             out, hidden = self._lstm(x, hidden)
             out = self._fc(out)
         else:
-            self._lstm = self._lstm.to(self.choose_device())
+            self._lstm = self._rnn.to(self.choose_device())
             self._fc = self._fc.to(self.choose_device())
             out, hidden = self._lstm(x, hidden)
             # feed output into the fully connected layer
@@ -114,6 +114,9 @@ class RNN(nn.Module):
         training_losses = []
         models_and_val_losses = []
         pause = 0                                                      # for early stopping
+
+        if prev_epoch is None:
+            prev_epoch = 1
 
         for epoch in range(prev_epoch, configuration["number of epochs"] + 1):
 

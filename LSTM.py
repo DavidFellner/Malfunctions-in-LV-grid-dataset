@@ -116,6 +116,9 @@ class LSTM(nn.Module):
         models_and_val_losses = []
         pause = 0                                                      # for early stopping
 
+        if prev_epoch is None:
+            prev_epoch = 1
+
         for epoch in range(prev_epoch, configuration["number of epochs"] + 1):
 
             if configuration["optimizer"] == 'SGD':             #ADAM optimizer has internal states and should therefore not be reinitialized every epoch; only for SGD bc here changing the learning rate makes sense

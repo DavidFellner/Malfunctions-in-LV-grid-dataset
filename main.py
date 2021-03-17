@@ -242,7 +242,7 @@ if __name__ == '__main__':  #see config file for settings
         print("\n########## Training ##########")
         if learning_config["mode"] == 'train':
             logger.info("Training classifier ..")
-            clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'], epoch=epoch, loss=loss)
+            clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'], prev_epoch=epoch, prev_loss=loss)
             logger.info("Training finished!")
             logger.info('Finished Training')
             plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'], title='Losses after each epoch', x_label='Epoch', y_label='Loss')   #plot training loss for each epoch
