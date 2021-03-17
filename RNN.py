@@ -61,7 +61,7 @@ class RNN(nn.Module):
 
         self._rnn = nn.RNN(input_size, hidden_dim, n_layers, nonlinearity=configuration["activation function"]).to(self._device)
         self._fc = nn.Linear(hidden_dim, output_size).to(self._device)
-        self.optimizer = self.choose_optimizer()
+        self.optimizer = self.choose_optimizer(alpha=configuration["learning rate"] * configuration["mini batch size"])     # linear scaling of LR
         self._estimator_type = 'classifier'
 
 
@@ -95,14 +95,11 @@ class RNN(nn.Module):
         # We'll send the tensor holding the hidden state to the device we specified earlier as well
         return hidden
 
-    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, optimizer=None):
+    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, prev_epoch=1, prev_loss=1):
 
         torch.cuda.empty_cache()
         self.early_stopping = early_stopping
         self.control_lr = control_lr
-
-        if optimizer is not None:
-            self.optimizer = optimizer
 
         if X_train and y_train:
             X = X_train
@@ -118,12 +115,10 @@ class RNN(nn.Module):
         models_and_val_losses = []
         pause = 0                                                      # for early stopping
 
-        for epoch in range(1, configuration["number of epochs"] + 1):
+        for epoch in range(prev_epoch, configuration["number of epochs"] + 1):
 
-            try:
+            if configuration["optimizer"] == 'SGD':             #ADAM optimizer has internal states and should therefore not be reinitialized every epoch; only for SGD bc here changing the learning rate makes sense
                 self.optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
-            except IndexError:
-                self.optimizer = self.choose_optimizer(lr)
             lrs.append(lr)
 
             if X_train and y_train:

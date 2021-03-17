@@ -64,14 +64,14 @@ def load_model(learning_config):
             loss = checkpoint['loss']
     
             model.to(device)
-            return model, model.optimizer
+            return model, epoch, loss
         except RuntimeError:
             print('Improper model loaded (different architecture)')
             pass
 
     model.to(device)
 
-    return model, None
+    return model, None, None
 
 def export_model(model, learning_config):
     dummy_input = torch.randn(1, 672, 1)

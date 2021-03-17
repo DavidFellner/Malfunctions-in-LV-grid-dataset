@@ -231,9 +231,9 @@ if __name__ == '__main__':  #see config file for settings
 
     path = config.models_folder + learning_config['classifier']
     if model_exists(path):
-        model, optimizer = load_model(learning_config)
+        model, epoch, loss = load_model(learning_config)
     else:
-        model, optimizer = load_model(learning_config)
+        model, epoch, loss = load_model(learning_config)
 
     if not learning_config["cross_validation"]:
 
@@ -242,10 +242,7 @@ if __name__ == '__main__':  #see config file for settings
         print("\n########## Training ##########")
         if learning_config["mode"] == 'train':
             logger.info("Training classifier ..")
-            if optimizer is not None:
-                clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'], optimizer=optimizer)
-            else:
-                clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'])
+            clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'], epoch=epoch, loss=loss)
             logger.info("Training finished!")
             logger.info('Finished Training')
             plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'], title='Losses after each epoch', x_label='Epoch', y_label='Loss')   #plot training loss for each epoch
