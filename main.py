@@ -219,7 +219,7 @@ if __name__ == '__main__':  #see config file for settings
     logger.info(f"Loaded data.")
 
     #dataset, X, y = load_dataset()
-    if learning_config["plot samples"]:
+    if learning_config["plot samples"] and learning_config["mode"] == 'train':
         for i, (X, y, X_raw) in enumerate(train_loader):
             plot_samples(X_raw, y, X)
             break
@@ -252,10 +252,23 @@ if __name__ == '__main__':  #see config file for settings
             model.state_dict = clf[0]                           #pick weights of best model found
 
         y_pred, outputs, y_test = model.predict(test_loader=test_loader)
-        score = model.score(y_test, y_pred) + [clf[1]]
-        print("\n########## Metrics ##########")
-        print(
-            "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nLowest validation loss: {4}".format(score[0], score[1][0], score[1][1], score[1][2], score[2]))
+        if learning_config["mode"] == 'eval':
+            clf = model
+            score = model.score(y_test, y_pred)
+            print("\n########## Metrics ##########")
+            print(
+                "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}".format(score[0],
+                                                                                                              score[1][
+                                                                                                                  0],
+                                                                                                              score[1][
+                                                                                                                  1],
+                                                                                                              score[1][
+                                                                                                                  2],))
+        else:
+            score = model.score(y_test, y_pred) + [clf[1]]
+            print("\n########## Metrics ##########")
+            print(
+                "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nLowest validation loss: {4}".format(score[0], score[1][0], score[1][1], score[1][2], score[2]))
 
     if learning_config["cross_validation"]:
         print("\n########## k-fold Cross-validation ##########")
@@ -264,7 +277,7 @@ if __name__ == '__main__':  #see config file for settings
         for score in scores:
             print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
 
-    if learning_config["save_model"]:
+    if learning_config["save_model"] and learning_config["mode"] == 'train':
         save_model(model, epoch, clf[1])
 
     if learning_config["export_model"]:
