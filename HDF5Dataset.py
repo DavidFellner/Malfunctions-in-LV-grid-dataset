@@ -1,6 +1,4 @@
 import h5py
-from pathlib import Path
-import torch
 from torch.utils import data
 
 class HDF5Dataset(data.Dataset):

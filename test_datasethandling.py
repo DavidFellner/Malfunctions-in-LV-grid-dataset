@@ -4,14 +4,14 @@ import importlib
 import numpy as np
 from sklearn.model_selection import train_test_split
 sys._called_from_test = True
-test_folder = os.getcwd() + '\\test\\'
+test_folder = os.path.join(os.getcwd(), 'test')
 
-spec = importlib.util.spec_from_file_location('malfunctions_in_LV_grid_dataset_test', test_folder + 'malfunctions_in_LV_grid_dataset_test.py')
+spec = importlib.util.spec_from_file_location('malfunctions_in_LV_grid_dataset_test', os.path.join(test_folder, 'malfunctions_in_LV_grid_dataset_test.py'))
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 
 experiment = 'malfunctions_in_LV_grid_dataset_test'
-f = open(test_folder + "experiment.txt", "w")
+f = open( os.path.join(test_folder, "experiment.txt"), "w")
 f.write(experiment)
 f.close()
 

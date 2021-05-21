@@ -2,7 +2,7 @@ import os
 import math
 
 '''
-Metric goal is NOT reached
+Metric goal is reached
 '''
 
 #Sytem settings
@@ -14,24 +14,32 @@ local_machine_tz = 'Europe/Berlin'                          #timezone; it's impo
 
 #Deep learning settings
 learning_config = {
-    "dataset": "PV_noPV_1day_5k",
-    "RNN model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
-    "number of epochs": 100,
-    "learning rate": 1*10**-6,
-    "activation function": 'tanh',          # relu, tanh
+    "mode": "train",    #train, eval
+    "dataset": "malfunctions_in_LV_grid_dataset_1day_200k",
+    "RNN model settings": [1, 2, 20, 5],     # number of input features, number of output features, number of features in hidden state, number of of layers
+    "LSTM model settings": [1, 2, 3, 5],     # number of input features, number of output features, number of features in hidden state, number of of layers
+    "GRU model settings": [1, 2, 20, 5],     # number of input features, number of output features, number of features in hidden state, number of of layers
+    "Transformer model settings": [2, 1, 1, 3, 4, 0.1],     # ntoken > 2 outputs, ninp > word/input embedding, nhead, nhid, nlayers, dropout=0.5
+    "R-Transformer model settings": [1, 3, 2, 1, 'GRU', 7, 4, 1, 0.1, 0.1], # input size, dimension of model,output size, h (heads?), rnn_type ('GRU', 'LSTM', 'RNN'), ksize (key size?), n (# local RNN layers), n_level (how many RNN-multihead-attention-fc blocks), dropout, emb_dropout
+    "number of epochs": 20,
+    "learning rate": 1*10**-3,
+    "activation function": 'relu',          # relu, tanh
     "mini batch size": 60,
-    "optimizer": 'Adam',                    # Adam, SGD
+    "optimizer": 'SGD',                    # Adam, SGD
     "k folds": 5,                           #choose 1 to not do crossval
-    "cross_validation": True,
+    "cross_validation": False,
     "early stopping": True,
     "LR adjustment": 'LR controlled',               #None, 'warm up' , 'LR controlled'
     "percentage of epochs for warm up": 10,         #warm up not performed if percentage of epochs for warm up * epochs > epochs
-    "train test split": 0.2,                        #if int, used as number up testing examples; if float, used as share of data
-    "baseline": True,
+    "gradient clipping": 0.25,
+    "train test split": 1000,                        #if int, used as number of testing examples; if float, used as share of data
+    "baseline": False,
     "metrics": ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro'],
     "cross_val_metrics": ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro'],
     "plot samples": True,
-    "classifier": "RNN"  # RNN
+    "classifier": "RNN",  # RNN, LSTM, GRU, Transformer, RTransformer
+    "save_model": True,            #saves state dict and optimizer for later use/further training
+    "export_model": False          #for an application
 
 }
 
@@ -40,8 +48,10 @@ learning_config = {
 #########################################################################
 
 # Dataset settings
-raw_data_set_name = 'PV_noPV'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
+raw_data_set_name = 'malfunctions_in_LV_grid_dataset'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
 dataset_available = True                       #set to False to recreate instances from raw data
+train_test_split = 0.2                        #if int, used as number of testing examples; if float, used as share of data
+dataset_format = 'HDF'                         #HDF, everything else yields CSV
 raw_data_available = True                      #set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False
@@ -49,14 +59,14 @@ accuracy = 0.01                                 #accuracy according to the Genau
 sample_length = 1 * 96                          #96 datapoints per day
 smartmeter_ratedvoltage_range = [400, 415]
 smartmeter_voltage_range = [363, 457]
-number_of_samples = 5000
+number_of_samples = 200000
 share_of_positive_samples = 0.5        #should be 0.5! only chose values that yield real numbers as invers i.e. 0.2, 0.25, 0.5 > otherwise number of samples corrupted
 number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder, i))])
 float_decimal = 5                       #decimals in dataset
 
 #Powerfactory settings
 user = 'FellnerD'
-system_language = 0                     #chose 0 for english, 1 for german according to the lagnuage of powerfactory installed on the system
+system_language = 1                     #chose 0 for english, 1 for german according to the lagnuage of powerfactory installed on the system
 parallel_computing = True
 cores = 12                              #cores to be used for parallel computing (when 64 available use 12 - 24)
 reduce_result_file_size = True          #save results as integers to save memory in csv
@@ -70,8 +80,7 @@ if raw_data_set_name == 'PV_noPV':
     positive_samples_per_simrun = 5     #data from how many terminals are there in the grid minimally > determines how many yearly simulations have to be run and used for dataset creation
     simruns = math.ceil((number_of_samples * share_of_positive_samples) / (positive_samples_per_simrun * number_of_grids) / (sim_length * 96/sample_length))
 elif raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
-    simruns = math.ceil((number_of_samples * share_of_positive_samples) / (number_of_grids) / int(
-        (sim_length * 96 / sample_length) - 1))
+    simruns = math.ceil((number_of_samples * share_of_positive_samples) / (number_of_grids) / int((sim_length * 96/sample_length)-1))
 elif raw_data_set_name == 'dummy':
     terms_per_simrun = 5                #data from how many terminals are there in the grid minimally > determines how many yearly simulations have to be run and used for dataset creation
     simruns = math.ceil((number_of_samples * share_of_positive_samples) / (terms_per_simrun * number_of_grids) / (sim_length * 96/sample_length))

@@ -6,10 +6,10 @@ Metric goal is reached
 '''
 
 #Sytem settings
-data_folder = os.getcwd() + '\\input\\'
-results_folder = os.getcwd() + '\\output\\'
-test_data_folder = os.getcwd() + '\\test\\'
-models_folder = os.getcwd() + '\\models\\'
+data_folder = os.path.join(os.getcwd(), 'input')
+results_folder = os.path.join(os.getcwd(), 'output')
+test_data_folder = os.path.join(os.getcwd(), 'test')
+models_folder = os.path.join(os.getcwd(), 'models')
 local_machine_tz = 'Europe/Berlin'                          #timezone; it's important for Powerfactory
 
 #Deep learning settings
@@ -61,7 +61,7 @@ smartmeter_ratedvoltage_range = [400, 415]
 smartmeter_voltage_range = [363, 457]
 number_of_samples = 10000
 share_of_positive_samples = 0.5        #should be 0.5! only chose values that yield real numbers as invers i.e. 0.2, 0.25, 0.5 > otherwise number of samples corrupted
-number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(data_folder + i)])
+number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder, i))])
 float_decimal = 5                       #decimals in dataset
 
 #Powerfactory settings

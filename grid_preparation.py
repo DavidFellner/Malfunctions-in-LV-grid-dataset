@@ -1,11 +1,14 @@
 import pflib.pf as pf
 import pandas as pd
 import numpy as np
+import os
 import importlib
 from experiment_config import experiment_path, chosen_experiment
+
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
+
 
 def define_PV_controls(app):
     '''
@@ -114,6 +117,7 @@ def define_PV_controls(app):
 
     return o_IntcosphiPcurve, o_IntQpcurve, o_brokenIntQpcurve, o_wrongIntcosphiPcurve
 
+
 def place_PVs(app, o_ElmNet, o_ChaTime, PV_apparent_power):
     '''
     Place photvoltaics next to every load, assign control/capability curve &  charactersitic and scale their output
@@ -128,31 +132,34 @@ def place_PVs(app, o_ElmNet, o_ChaTime, PV_apparent_power):
         o_IntQlim = o_QlimCurve_IntPrjfolder.CreateObject('IntQlim', 'Capability Curve')
         o_IntQlim.SetAttribute('cap_Ppu', [0, 1])
         o_IntQlim.SetAttribute('cap_Qmnpu',
-                               [0, -0.436])                # operational limits following the standard; max cosphi = 0.9
+                               [0, -0.436])  # operational limits following the standard; max cosphi = 0.9
         o_IntQlim.SetAttribute('cap_Qmxpu', [0, 0.436])
         o_IntQlim.SetAttribute('inputmod', 1)
 
     for o_ElmLod in app.GetCalcRelevantObjects('.ElmLod'):
-        load_cubicle = o_ElmLod.bus1                  # elements are connected to terminals via cubicles in powerfactory
+        load_cubicle = o_ElmLod.bus1  # elements are connected to terminals via cubicles in powerfactory
         o_ElmTerm = load_cubicle.cterm
 
         o_StaCubic = o_ElmTerm.CreateObject('StaCubic',
-                                            'Cubicle_' + o_ElmLod.loc_name.split(' ')[0] + ' SGen ' + o_ElmLod.loc_name.split(' ')[2])
-        o_Elm = o_ElmNet.CreateObject('ElmGenstat', o_ElmLod.loc_name.split(' ')[0] + ' SGen ' + o_ElmLod.loc_name.split(' ')[2])
+                                            'Cubicle_' + o_ElmLod.loc_name.split(' ')[0] + ' SGen ' +
+                                            o_ElmLod.loc_name.split(' ')[2])
+        o_Elm = o_ElmNet.CreateObject('ElmGenstat',
+                                      o_ElmLod.loc_name.split(' ')[0] + ' SGen ' + o_ElmLod.loc_name.split(' ')[2])
         o_Elm.SetAttribute('bus1', o_StaCubic)
         o_Elm.SetAttribute('sgn', PV_apparent_power)
         o_Elm.pgini = o_Elm.sgn * 0.9 * (o_ElmLod.plini / 0.004)
         o_Elm.cCategory = 'Photovoltaic'
         pf.set_referenced_characteristics(o_Elm, 'pgini', o_ChaTime)  # set characteristic for inserted PV
 
-        o_Elm.outserv = 1                           # deactivate all PVs at first and then activate random ones during simulation
-        o_Elm.SetAttribute('av_mode', 'qpchar')     # Control activated
+        o_Elm.outserv = 1  # deactivate all PVs at first and then activate random ones during simulation
+        o_Elm.SetAttribute('av_mode', 'qpchar')  # Control activated
         o_Elm.SetAttribute('pQPcurve', curves[config.control_curve_choice])  # Control assigned
 
-        o_Elm.SetAttribute('Pmax_ucPU', 1)          # set the operational limits for the PV
+        o_Elm.SetAttribute('Pmax_ucPU', 1)  # set the operational limits for the PV
         o_Elm.SetAttribute('pQlimType', o_IntQlim)
 
     return curves
+
 
 def utf8_complaint_naming(o_ElmNet):
     '''
@@ -180,39 +187,43 @@ def utf8_complaint_naming(o_ElmNet):
 
     return 0
 
-def prepare_grid(app, file, o_ElmNet):
 
-    #set path for load and generation profiles
+def prepare_grid(app, file, o_ElmNet):
+    # set path for load and generation profiles
     char_folder = app.GetProjectFolder('chars')
-    chars = list(pd.read_csv(config.data_folder  + file + '\\LoadProfile.csv', sep=';', index_col='time').columns) \
-            + list(pd.read_csv(config.data_folder  + file + '\\RESProfile.csv', sep=';', index_col='time').columns)
+    chars = list(
+        pd.read_csv(os.path.join(config.data_folder, file, 'LoadProfile.csv'), sep=';', index_col='time').columns) \
+            + list(
+        pd.read_csv(os.path.join(config.data_folder, file, 'RESProfile.csv'), sep=';', index_col='time').columns)
     for char_name in chars:
         char = char_folder.SearchObject(char_name + '.ChaTime')
-        init_f_name_ending = char.f_name.split('\\')[-1]
-        char.f_name = config.data_folder + file + '\\' + init_f_name_ending
+        if os.name == 'nt':
+            init_f_name_ending = char.f_name.split('\\')[-1]
+        else:
+            init_f_name_ending = char.f_name.split('/')[-1]
+        char.f_name = os.path.join(config.data_folder, file, init_f_name_ending)
 
-    for o_ElmLod in app.GetCalcRelevantObjects('.ElmLod'):                      #gas to be done like this to active profiles
+    for o_ElmLod in app.GetCalcRelevantObjects('.ElmLod'):  # gas to be done like this to active profiles
         o_ChaTime = pf.get_referenced_characteristics(o_ElmLod, 'plini')[
-            0]                                                                  # get P characteristic (profile) from load
-        pf.set_referenced_characteristics(o_ElmLod, 'plini', o_ChaTime)         # set characteristic for inserted PV
-        o_ChaTime = pf.get_referenced_characteristics(o_ElmLod, 'qlini')[       #same for Q (reactive Power)
+            0]  # get P characteristic (profile) from load
+        pf.set_referenced_characteristics(o_ElmLod, 'plini', o_ChaTime)  # set characteristic for inserted PV
+        o_ChaTime = pf.get_referenced_characteristics(o_ElmLod, 'qlini')[  # same for Q (reactive Power)
             0]
         pf.set_referenced_characteristics(o_ElmLod, 'qlini', o_ChaTime)
 
-    #deactivate storages in grid and count PVs for later use
+    # deactivate storages in grid and count PVs for later use
     for o_ElmGenstat in app.GetCalcRelevantObjects('.ElmGenstat'):
         if o_ElmGenstat.cCategory == 'Storage':
             o_ElmGenstat.outserv = 1
         elif o_ElmGenstat.cCategory == 'Photovoltaic':
             o_ChaTime = pf.get_referenced_characteristics(o_ElmGenstat, 'pgini')[
-                0]                          # get characteristic (profile) from original PV
+                0]  # get characteristic (profile) from original PV
             PV_apparent_power = o_ElmGenstat.sgn
-            o_ElmGenstat.Delete()        # delete PV in order to make space for own setup
+            o_ElmGenstat.Delete()  # delete PV in order to make space for own setup
             if len(pf.get_referenced_characteristics(o_ElmGenstat, 'pgini')) > 1:
                 print('More than one PV profile found; consider which one to choose (default: first one found chosen)')
 
     curves = place_PVs(app, o_ElmNet, o_ChaTime, PV_apparent_power)
-    utf8_complaint_naming(o_ElmNet)                    # check if element names are UTF8 compliant and rename if not
+    utf8_complaint_naming(o_ElmNet)  # check if element names are UTF8 compliant and rename if not
 
     return curves
-

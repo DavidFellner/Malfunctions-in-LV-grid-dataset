@@ -25,10 +25,10 @@ learning_config = config.learning_config
 
 
 def model_exists(full_path):
-    return os.path.exists(full_path + "\\model.pth")
+    return os.path.exists(os.path.join(full_path, "model.pth"))
 
 def load_model(learning_config):
-    path = config.models_folder + learning_config['classifier']
+    path = os.path.join(config.models_folder, learning_config['classifier'])
     if learning_config['classifier'] == 'RNN':
         load_saved = model_exists(path)
         model = RNN(learning_config['RNN model settings'][0],  learning_config['RNN model settings'][1],
@@ -57,17 +57,20 @@ def load_model(learning_config):
         print('Loading model ..')
 
         try:
-            checkpoint = torch.load(path + '\\model.pth')
+            checkpoint = torch.load(os.path.join(path, "model.pth"))
             model.load_state_dict(checkpoint['model_state_dict'])
             model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             epoch = checkpoint['epoch']
             loss = checkpoint['loss']
     
             model.to(device)
+            print('Model successfully loaded!')
             return model, epoch, loss
         except RuntimeError:
-            print('Improper model loaded (different architecture)')
+            print('Improper model loaded (different architecture), fresh model used')
             pass
+    else:
+        print('No saved Model found. Fresh model used')
 
     model.to(device)
 
@@ -86,11 +89,10 @@ def export_model(model, learning_config):
 
 
 def save_model(model, epoch, loss):
-    path = config.models_folder + learning_config['classifier']
+    path = os.path.join(config.models_folder, learning_config['classifier'])
 
-    if not os.path.exists(config.models_folder + learning_config['classifier']):
-        os.makedirs(config.models_folder + learning_config['classifier']
-                    )
+    if not os.path.exists(path):
+        os.makedirs(path)
 
     try:
         torch.save({
@@ -98,14 +100,14 @@ def save_model(model, epoch, loss):
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': model.optimizer.state_dict(),
             'loss': loss,
-        }, path + '\\model.pth')
+        }, os.path.join(path, 'model.pth'))
     except TypeError:
         torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict,
             'optimizer_state_dict': model.optimizer.state_dict(),
             'loss': loss,
-        }, path + '\\model.pth')
+        }, os.path.join(path, 'model.pth'))
 
     #torch.save(model.state_dict(), path + ".model")
     #torch.save(model.optimizer.state_dict(), path + ".optimizer")
@@ -135,12 +137,12 @@ def plot_samples(X, y, X_pre=None):
 
 def load_data(type):
 
-    path = config.results_folder + learning_config['dataset'] + '\\' + type + '\\'
-    file  = learning_config['dataset'] + '_' + type + '.hdf5'
+    path = os.path.join(config.results_folder, learning_config['dataset'], type)
+    file = learning_config['dataset'] + '_' + type + '.hdf5'
     #dataset = HDF5Dataset(path, recursive=True, load_data=False,
                           #data_cache_size=4, transform=None)
 
-    dataset = HDF5Dataset(path + file, type)
+    dataset = HDF5Dataset(os.path.join(path, file), type)
 
     #pd.read_hdf(config.results_folder + learning_config['dataset'] + '_' + 'train' + '.h5', key = 'train/data', mode='a')
     #pd.read_hdf(config.results_folder + learning_config['dataset'] + '_' + 'train' + '.h5', key = 'train/label', mode='a')

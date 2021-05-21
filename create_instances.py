@@ -292,7 +292,7 @@ def extract_dummy_data(df, combinations_already_in_dataset, number_of_samples_be
 
 def create_samples(dir, file, combinations_already_in_dataset, number_of_samples_before):
 
-    df = pd.read_csv(dir + '\\' + file, header = [0,1,2],sep=';', low_memory=False)
+    df = pd.read_csv(os.path.join(dir, file), header = [0,1,2],sep=';', low_memory=False)
     if config.raw_data_set_name == 'PV_noPV':
         train_samples, test_samples, terminals_already_in_dataset = extract_PV_noPV_data(df, combinations_already_in_dataset,
                                                                 number_of_samples_before)

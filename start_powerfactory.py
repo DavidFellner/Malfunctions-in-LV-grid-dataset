@@ -1,4 +1,5 @@
 import pflib.pf as pf
+import os
 import importlib
 from experiment_config import experiment_path, chosen_experiment
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
@@ -27,7 +28,7 @@ def start_powerfactory(file):
     except NameError:
         pass
 
-    pf.pfd_import(config.user, config.data_folder + file + '.pfd')              # freshly import project
+    pf.pfd_import(config.user, os.path.join(config.data_folder, file) + '.pfd')              # freshly import project
 
     app.ActivateProject(file)
     project = app.GetActiveProject()

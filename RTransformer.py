@@ -25,11 +25,10 @@ def choose_best(models_and_losses):
     return models_and_losses[index_best], epoch
 
 def save_model(model, epoch, loss):
-    path = config.models_folder + configuration['classifier']
+    path = os.path.join(config.models_folder, configuration['classifier'])
 
-    if not os.path.exists(config.models_folder + configuration['classifier']):
-        os.makedirs(config.models_folder + configuration['classifier']
-                    )
+    if not os.path.exists(path):
+        os.makedirs(path)
 
     try:
         torch.save({
@@ -37,14 +36,14 @@ def save_model(model, epoch, loss):
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': model.optimizer.state_dict(),
             'loss': loss,
-        }, path + '\\model.pth')
+        }, os.path.join(path, 'model.pth'))
     except TypeError:
         torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict,
             'optimizer_state_dict': model.optimizer.state_dict(),
             'loss': loss,
-        }, path + '\\model.pth')
+        }, os.path.join(path, 'model.pth'))
 
 def clones(module, N):
     "Produce N identical layers."
@@ -129,7 +128,7 @@ class MHPooling(nn.Module):
         subsequent_mask =  np.triu(np.ones(attn_shape), k=1).astype('uint8')
         try:
             self.mask = (torch.from_numpy(subsequent_mask) == 0).unsqueeze(1).cuda()
-        except RuntimeError:
+        except RuntimeError and AssertionError:
             self.mask = (torch.from_numpy(subsequent_mask) == 0).unsqueeze(1)
 
     def forward(self, x):
@@ -172,7 +171,7 @@ class LocalRNN(nn.Module):
         try:
             self.select_index = torch.LongTensor(idx).cuda()
             self.zeros = torch.zeros((self.ksize-1, input_dim)).cuda()
-        except RuntimeError:
+        except RuntimeError and AssertionError:
             self.select_index = torch.LongTensor(idx)
             self.zeros = torch.zeros((self.ksize-1, input_dim))
 
@@ -291,7 +290,7 @@ class RT(nn.Module):
 
         for epoch in range(prev_epoch, configuration["number of epochs"] + 1):
 
-            if configuration["optimizer"] == 'SGD':             #ADAM optimizer has internal states and should therefore not be reinitialized every epoch; only for SGD bc here changing the learning rate makes sense
+            if configuration["optimizer"] == 'SGD' and not epoch == prev_epoch:             #ADAM optimizer has internal states and should therefore not be reinitialized every epoch; only for SGD bc here changing the learning rate makes sense
                 self.optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
             lrs.append(lr)
 
@@ -436,9 +435,9 @@ class RT(nn.Module):
                 last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
                 probs = nn.Softmax(dim=-1)(last_outputs)
 
-                outputs_cumm = torch.cat((outputs_cumm, outputs), 0)   #
-                pred = torch.cat((pred, torch.argmax(probs, dim=-1)), 0)   # chose class that has highest probability
-                y_test = torch.cat((y_test, labels), 0)   # chose class that has highest probability
+                outputs_cumm = torch.cat((outputs_cumm.to(self._device), outputs.float()), 0)   #
+                pred = torch.cat((pred.to(self._device), torch.argmax(probs, dim=-1).float()), 0)  # chose class that has highest probability
+                y_test = torch.cat((y_test, labels.float()), 0)   # chose class that has highest probability
 
                 self.detach([input_sequences, outputs])
                 if configuration["train test split"] <= 1:

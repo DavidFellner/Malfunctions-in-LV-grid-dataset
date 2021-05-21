@@ -28,11 +28,10 @@ def choose_best(models_and_losses):
     return models_and_losses[index_best], epoch
 
 def save_model(model, epoch, loss):
-    path = config.models_folder + configuration['classifier']
+    path = os.path.join(config.models_folder, configuration['classifier'])
 
-    if not os.path.exists(config.models_folder + configuration['classifier']):
-        os.makedirs(config.models_folder + configuration['classifier']
-                    )
+    if not os.path.exists(path):
+        os.makedirs(path)
 
     try:
         torch.save({
@@ -40,14 +39,14 @@ def save_model(model, epoch, loss):
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': model.optimizer.state_dict(),
             'loss': loss,
-        }, path + '\\model.pth')
+        }, os.path.join(path, 'model.pth'))
     except TypeError:
         torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict,
             'optimizer_state_dict': model.optimizer.state_dict(),
             'loss': loss,
-        }, path + '\\model.pth')
+        }, os.path.join(path, 'model.pth'))
 
 class RNN(nn.Module):
     def __init__(self, input_size, output_size, hidden_dim, n_layers):
@@ -75,14 +74,14 @@ class RNN(nn.Module):
             x = x.view(-1,seq_length, 1)
         # Passing in the input and hidden state into the model and obtaining outputs
         if x.device == torch.device("cpu"):
-            self._lstm = self._rnn.to(torch.device("cpu"))
+            self._rnn = self._rnn.to(torch.device("cpu"))
             self._fc = self._fc.to(torch.device("cpu"))
-            out, hidden = self._lstm(x, hidden)
+            out, hidden = self._rnn(x, hidden)
             out = self._fc(out)
         else:
-            self._lstm = self._rnn.to(self.choose_device())
+            self._rnn = self._rnn.to(self.choose_device())
             self._fc = self._fc.to(self.choose_device())
-            out, hidden = self._lstm(x, hidden)
+            out, hidden = self._rnn(x, hidden)
             # feed output into the fully connected layer
             out = self._fc(out)
 
@@ -120,7 +119,7 @@ class RNN(nn.Module):
 
         for epoch in range(prev_epoch, configuration["number of epochs"] + 1):
 
-            if configuration["optimizer"] == 'SGD':             #ADAM optimizer has internal states and should therefore not be reinitialized every epoch; only for SGD bc here changing the learning rate makes sense
+            if configuration["optimizer"] == 'SGD' and not epoch == prev_epoch:             #ADAM optimizer has internal states and should therefore not be reinitialized every epoch; only for SGD bc here changing the learning rate makes sense
                 self.optimizer, lr = self.control_learning_rate(lr=lr, loss=loss, losses=training_losses, nominal_lr=nominal_lr, epoch=epoch)
             lrs.append(lr)
 
@@ -260,9 +259,9 @@ class RNN(nn.Module):
                 last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
                 probs = nn.Softmax(dim=-1)(last_outputs)
 
-                outputs_cumm = torch.cat((outputs_cumm.to(self._device), outputs), 0)  #
-                pred = torch.cat((pred.to(self._device), torch.argmax(probs, dim=-1)), 0)  # chose class that has highest probability
-                y_test = torch.cat((y_test, labels), 0)   # chose class that has highest probability
+                outputs_cumm = torch.cat((outputs_cumm.to(self._device), outputs.float()), 0)
+                pred = torch.cat((pred.to(self._device), torch.argmax(probs, dim=-1).float()), 0)  # chose class that has highest probability
+                y_test = torch.cat((y_test, labels.float()), 0)   # chose class that has highest probability
 
                 self.detach([input_sequences, hidden, outputs])
                 if configuration["train test split"] <= 1:

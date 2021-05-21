@@ -6,26 +6,26 @@ Metric goal is reached
 '''
 
 #Sytem settings
-data_folder = os.getcwd() + '\\input\\'
-results_folder = os.getcwd() + '\\output\\'
-test_data_folder = os.getcwd() + '\\test\\'
-models_folder = os.getcwd() + '\\models\\'
+data_folder = os.path.join(os.getcwd(), 'input')
+results_folder = os.path.join(os.getcwd(), 'output')
+test_data_folder = os.path.join(os.getcwd(), 'test')
+models_folder = os.path.join(os.getcwd(), 'models')
 local_machine_tz = 'Europe/Berlin'                          #timezone; it's important for Powerfactory
 
 #Deep learning settings
 learning_config = {
     "mode": "train",    #train, eval
     "dataset": "malfunctions_in_LV_grid_dataset_7day_200k",
-    "RNN model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
+    "RNN model settings": [1, 2, 20, 5],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "LSTM model settings": [1, 2, 3, 5],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "GRU model settings": [1, 2, 20, 5],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "Transformer model settings": [2, 1, 1, 3, 4, 0.1],     # ntoken > 2 outputs, ninp > word/input embedding, nhead, nhid, nlayers, dropout=0.5
     "R-Transformer model settings": [1, 3, 2, 1, 'GRU', 7, 4, 1, 0.1, 0.1], # input size, dimension of model,output size, h (heads?), rnn_type ('GRU', 'LSTM', 'RNN'), ksize (key size?), n (# local RNN layers), n_level (how many RNN-multihead-attention-fc blocks), dropout, emb_dropout
     "number of epochs": 20,
-    "learning rate": 1*10**-3,
+    "learning rate": 1*10**-6,
     "activation function": 'relu',          # relu, tanh
     "mini batch size": 60,
-    "optimizer": 'Adam',                    # Adam, SGD
+    "optimizer": 'SGD',                    # Adam, SGD
     "k folds": 5,                           #choose 1 to not do crossval
     "cross_validation": False,
     "early stopping": True,
@@ -37,7 +37,7 @@ learning_config = {
     "metrics": ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro'],
     "cross_val_metrics": ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro'],
     "plot samples": True,
-    "classifier": "GRU",  # RNN, LSTM, GRU, Transformer, RTransformer
+    "classifier": "RNN",  # RNN, LSTM, GRU, Transformer, RTransformer
     "save_model": True,            #saves state dict and optimizer for later use/further training
     "export_model": False          #for an application
 
@@ -61,7 +61,7 @@ smartmeter_ratedvoltage_range = [400, 415]
 smartmeter_voltage_range = [363, 457]
 number_of_samples = 200000
 share_of_positive_samples = 0.5        #should be 0.5! only chose values that yield real numbers as invers i.e. 0.2, 0.25, 0.5 > otherwise number of samples corrupted
-number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(data_folder + i)])
+number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder, i))])
 float_decimal = 5                       #decimals in dataset
 
 #Powerfactory settings

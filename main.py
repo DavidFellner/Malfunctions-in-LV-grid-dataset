@@ -229,11 +229,8 @@ if __name__ == '__main__':  #see config file for settings
 
     print('X data with zero mean per sample and scaled between -1 and 1 based on training samples used')
 
-    path = config.models_folder + learning_config['classifier']
-    if model_exists(path):
-        model, epoch, loss = load_model(learning_config)
-    else:
-        model, epoch, loss = load_model(learning_config)
+    path = os.path.join(config.models_folder, learning_config['classifier'])
+    model, epoch, loss = load_model(learning_config)
 
     if not learning_config["cross_validation"]:
 

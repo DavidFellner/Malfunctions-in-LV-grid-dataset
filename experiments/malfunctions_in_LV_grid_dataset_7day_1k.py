@@ -6,10 +6,10 @@ Metric goal is NOT reached
 '''
 
 #Sytem settings
-data_folder = os.getcwd() + '\\input\\'
-results_folder = os.getcwd() + '\\output\\'
-test_data_folder = os.getcwd() + '\\test\\'
-models_folder = os.getcwd() + '\\models\\'
+data_folder = os.path.join(os.getcwd(), 'input')
+results_folder = os.path.join(os.getcwd(), 'output')
+test_data_folder = os.path.join(os.getcwd(), 'test')
+models_folder = os.path.join(os.getcwd(), 'models')
 local_machine_tz = 'Europe/Berlin'                          #timezone; it's important for Powerfactory
 
 #Deep learning settings
@@ -21,7 +21,7 @@ learning_config = {
     "GRU model settings": [1, 2, 3, 4],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "Transformer model settings": [2, 1, 1, 6, 2, 0.1],     # ntoken > 2 outputs, ninp > word/input embedding, nhead, nhid, nlayers, dropout=0.5
     "R-Transformer model settings": [1, 3, 2, 1, 'GRU', 7, 4, 1, 0.1, 0.1],     # input size, dimension of model,output size, h (heads?), rnn_type ('GRU', 'LSTM', 'RNN'), ksize (key size?), n (# local RNN layers), n_level (how many RNN-multihead-attention-fc blocks), dropout, emb_dropout
-    "number of epochs": 100,
+    "number of epochs": 2,
     "learning rate": 1*10**-6,
     "activation function": 'relu',          # relu, tanh
     "mini batch size": 60,
@@ -61,7 +61,7 @@ smartmeter_ratedvoltage_range = [400, 415]
 smartmeter_voltage_range = [363, 457]
 number_of_samples = 1000
 share_of_positive_samples = 0.5        #should be 0.5! only chose values that yield real numbers as invers i.e. 0.2, 0.25, 0.5 > otherwise number of samples corrupted
-number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(data_folder + i)])
+number_of_grids = len([i for i in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder, i))])
 float_decimal = 5                       #decimals in dataset
 
 #Powerfactory settings

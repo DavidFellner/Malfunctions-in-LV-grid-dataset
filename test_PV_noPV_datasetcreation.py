@@ -5,14 +5,14 @@ import sys
 sys._called_from_test = True
 
 import importlib
-test_folder = os.getcwd() + '\\test\\'
+test_folder = os.path.join(os.getcwd(), 'test')
 
-spec = importlib.util.spec_from_file_location('PV_noPV_test', test_folder + 'PV_noPV_test.py')
+spec = importlib.util.spec_from_file_location('PV_noPV_test', os.path.join(test_folder, 'PV_noPV_test.py'))
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 
 experiment = 'PV_noPV_test'
-f = open(test_folder + "experiment.txt", "w")
+f = open(os.path.join(test_folder, "experiment.txt"), "w")
 f.write(experiment)
 f.close()
 
@@ -27,9 +27,9 @@ def test_generate_PV_noPV_raw_data():
 
     main.generate_raw_data()
 
-    results_folder = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\'
-    file_folder = results_folder + '1-LV-semiurb4--0-sw' + '\\'
-    count = len([name for name in os.listdir(file_folder) if os.path.isfile(file_folder + name)])
+    results_folder = os.path.join(config.results_folder, config.raw_data_set_name + '_raw_data')
+    file_folder = os.path.join(results_folder, '1-LV-semiurb4--0-sw')
+    count = len([name for name in os.listdir(file_folder) if os.path.isfile(os.path.join(file_folder, name))])
 
     assert count == 1
 
@@ -49,7 +49,7 @@ def test_create_samples():
     #Tests if the correct amount of samples is extracted per file and if duplicate sample listing works
     '''
 
-    dir = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\' + '1-LV-semiurb4--0-sw' + '\\'
+    dir = os.path.join(config.results_folder, config.raw_data_set_name + '_raw_data', '1-LV-semiurb4--0-sw')
     file = 'result_run#0.csv'
     terminals_already_in_dataset = []
     samples, terminals_already_in_dataset = create_samples(dir, file, terminals_already_in_dataset,
@@ -62,7 +62,7 @@ def test_extract_malfunction_data():
     #Tests if the correct number of samples of each label are extracted from a results file
     '''
 
-    df = pd.read_csv(config.results_folder + config.raw_data_set_name + '_raw_data' + '\\' + '1-LV-semiurb4--0-sw' + '\\' + 'result_run#0.csv', header=[0, 1, 2], sep=';')
+    df = pd.read_csv(os.path.join(config.results_folder, config.raw_data_set_name + '_raw_data', '1-LV-semiurb4--0-sw', 'result_run#0.csv'), header=[0, 1, 2], sep=';')
 
     df_treated, terminals_already_in_dataset = extract_malfunction_data(df, [], 0)
     number_of_positive_samples_extracted = (df_treated.iloc[-1] == 1).value_counts()[True]
