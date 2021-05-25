@@ -1,4 +1,4 @@
-    REPO for GitHub / GitLab and Google Cloud
+    Repo for GitHub / GitLab and Google Cloud
     
     Set settings for QDS (quasi dynamic load flow simulation in a power grid) and elements and save results to file to
     create a data set executing a QDS.
