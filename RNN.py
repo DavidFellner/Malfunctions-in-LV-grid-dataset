@@ -13,6 +13,7 @@ import numpy as np
 import copy
 import importlib
 import os
+import einops
 
 from experiment_config import experiment_path, chosen_experiment
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
@@ -150,8 +151,16 @@ class RNN(nn.Module):
                     self.optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
                     output, hidden = self(sequences)
 
-                    last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
-                    last_outputs = last_outputs.to(self._device)
+                    if configuration['decision criteria'] == 'majority vote':
+                        start_voting_outputs = configuration['calibration rate'] * len(output)
+                        voting_outputs = torch.stack([i[start_voting_outputs:] for i in output]) #choose last n outputs of timeseries to do majority vote
+
+                        last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
+                        last_outputs = last_outputs.to(self._device)
+                    else:
+                        last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
+                        last_outputs = last_outputs.to(self._device)
+                        #outputs =
 
                     loss = criterion(last_outputs, labels)
 
@@ -176,22 +185,35 @@ class RNN(nn.Module):
                     self.optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
                     output, hidden = self(sequences)
 
-                    last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
-                    last_outputs = last_outputs.to(self._device)
+                    if configuration['decision criteria'] == 'majority vote':
+                        start_voting_outputs = int((configuration['calibration rate']) * output.size()[1])
+                        voting_outputs = torch.stack([i[start_voting_outputs:] for i in output]) #choose last n outputs of timeseries to do majority vote
+                        relevant_outputs = voting_outputs.to(self._device)
 
-                    labels = torch.stack([i[-1] for i in labels]).long()
-                    loss = criterion(last_outputs, labels)
+                        labels = torch.stack([i[-1] for i in labels]).long()
+                        labels = einops.repeat(labels, 'b -> (b copy)', copy=relevant_outputs.size()[1])
+                        labels = torch.stack(torch.split(labels, relevant_outputs.size()[1]), dim=0)
+
+                        loss = sum([criterion(relevant_outputs[i], labels[i]) for i in list(range(labels.size()[0]))])/labels.size()[0]
+
+                    else:
+                        last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
+                        relevant_outputs = last_outputs.to(self._device)
+                        labels = torch.stack([i[-1] for i in labels]).long()
+                        loss = criterion(relevant_outputs, labels)
 
                     loss.backward()     # Does backpropagation and calculates gradients
                     torch.nn.utils.clip_grad_norm_(self.parameters(), configuration["gradient clipping"])       # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
                     self.optimizer.step()    # Updates the weights accordingly
 
-                    self.detach([last_outputs, sequences, labels, hidden])      #detach tensors from GPU to free memory
+                    self.detach([relevant_outputs, sequences, labels, hidden])      #detach tensors from GPU to free memory
 
 
                     progress = (i+1) / len(train_loader)
                     sys.stdout.write("- %.1f%% " %(progress*100))
                     sys.stdout.flush()
+                    if config.dev_mode:
+                        break
 
 
                 sys.stdout.write("]\n") # this ends the progress bar
@@ -256,11 +278,23 @@ class RNN(nn.Module):
                 input_sequences = input_sequences.to(self._device)
                 outputs, hidden = self(input_sequences)
 
-                last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
-                probs = nn.Softmax(dim=-1)(last_outputs)
+                if configuration['decision criteria'] == 'majority vote':
+                    start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[1])
+                    start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[1])
+                    voting_outputs = torch.stack([i[start_voting_outputs:] for i in outputs]) #choose last n outputs of timeseries to do majority vote
+                    relevant_outputs = voting_outputs.to(self._device)
+
+                    most_likely_outputs = torch.argmax(nn.Softmax(dim=-1)(relevant_outputs), dim=-1)
+                    majority_vote_result = torch.mode(most_likely_outputs, dim=-1)[0]
+                    pred_new = majority_vote_result.float()
+
+                else:
+                    last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
+                    probs = nn.Softmax(dim=-1)(last_outputs)
+                    pred_new = torch.argmax(probs, dim=-1).float()
 
                 outputs_cumm = torch.cat((outputs_cumm.to(self._device), outputs.float()), 0)
-                pred = torch.cat((pred.to(self._device), torch.argmax(probs, dim=-1).float()), 0)  # chose class that has highest probability
+                pred = torch.cat((pred.to(self._device), pred_new), 0)  # chose class that has highest probability
                 y_test = torch.cat((y_test, labels.float()), 0)   # chose class that has highest probability
 
                 self.detach([input_sequences, hidden, outputs])

@@ -6,6 +6,7 @@ Metric goal is reached
 '''
 
 #Sytem settings
+dev_mode = False
 data_folder = os.path.join(os.getcwd(), 'input')
 results_folder = os.path.join(os.getcwd(), 'output')
 test_data_folder = os.path.join(os.getcwd(), 'test')
@@ -21,8 +22,10 @@ learning_config = {
     "GRU model settings": [1, 2, 20, 5],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "Transformer model settings": [2, 1, 1, 3, 4, 0.1],     # ntoken > 2 outputs, ninp > word/input embedding, nhead, nhid, nlayers, dropout=0.5
     "R-Transformer model settings": [1, 3, 2, 1, 'GRU', 7, 4, 1, 0.1, 0.1], # input size, dimension of model,output size, h (heads?), rnn_type ('GRU', 'LSTM', 'RNN'), ksize (key size?), n (# local RNN layers), n_level (how many RNN-multihead-attention-fc blocks), dropout, emb_dropout
-    "number of epochs": 20,
+    "number of epochs": 3,
     "learning rate": 1*10**-3,
+    "decision criteria": 'majority vote',    #most informed, majority vote; either the most informed (last output) or the majority of outputs is used for classification
+    "calibration rate": 0.2,                #percentage of (first) outputs not used for majority vote of each sequence in order to let the network calibrate
     "activation function": 'relu',          # relu, tanh
     "mini batch size": 60,
     "optimizer": 'SGD',                    # Adam, SGD
