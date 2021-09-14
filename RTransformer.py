@@ -366,7 +366,7 @@ class RT(nn.Module):
 
                     else:
                         last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
-                        last_outputs = last_outputs.to(self._device)
+                        relevant_outputs = last_outputs.to(self._device)
 
                         labels = torch.stack([i[-1] for i in labels]).long()
                         loss = criterion(last_outputs, labels)
@@ -375,7 +375,7 @@ class RT(nn.Module):
                     torch.nn.utils.clip_grad_norm_(self.parameters(), configuration["gradient clipping"])       # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
                     self.optimizer.step()    # Updates the weights accordingly
 
-                    self.detach([last_outputs, sequences, labels])      #detach tensors from GPU to free memory
+                    self.detach([relevant_outputs, sequences, labels])      #detach tensors from GPU to free memory
 
 
                     progress = (i+1) / len(train_loader)
