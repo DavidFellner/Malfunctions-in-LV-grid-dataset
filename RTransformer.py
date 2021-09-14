@@ -369,7 +369,7 @@ class RT(nn.Module):
                         relevant_outputs = last_outputs.to(self._device)
 
                         labels = torch.stack([i[-1] for i in labels]).long()
-                        loss = criterion(last_outputs, labels)
+                        loss = criterion(relevant_outputs, labels)
 
                     loss.backward()     # Does backpropagation and calculates gradients
                     torch.nn.utils.clip_grad_norm_(self.parameters(), configuration["gradient clipping"])       # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
