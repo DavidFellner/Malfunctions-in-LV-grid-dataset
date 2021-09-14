@@ -280,7 +280,6 @@ class RNN(nn.Module):
 
                 if configuration['decision criteria'] == 'majority vote':
                     start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[1])
-                    start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[1])
                     voting_outputs = torch.stack([i[start_voting_outputs:] for i in outputs]) #choose last n outputs of timeseries to do majority vote
                     relevant_outputs = voting_outputs.to(self._device)
 

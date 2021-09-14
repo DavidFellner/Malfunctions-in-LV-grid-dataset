@@ -10,6 +10,7 @@ import importlib
 import math, copy
 import gc
 import os
+import einops
 
 from experiment_config import experiment_path, chosen_experiment
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
@@ -352,11 +353,23 @@ class RT(nn.Module):
                     self.optimizer.zero_grad()  # Clears existing gradients from previous batch so as not to backprop through entire dataset
                     output = self(sequences.view(len(sequences), -1, 1))
 
-                    last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
-                    last_outputs = last_outputs.to(self._device)
+                    if configuration['decision criteria'] == 'majority vote':
+                        start_voting_outputs = int((configuration['calibration rate']) * output.size()[1])
+                        voting_outputs = torch.stack([i[start_voting_outputs:] for i in output]) #choose last n outputs of timeseries to do majority vote
+                        relevant_outputs = voting_outputs.to(self._device)
 
-                    labels = torch.stack([i[-1] for i in labels]).long()
-                    loss = criterion(last_outputs, labels)
+                        labels = torch.stack([i[-1] for i in labels]).long()
+                        labels = einops.repeat(labels, 'b -> (b copy)', copy=relevant_outputs.size()[1])
+                        labels = torch.stack(torch.split(labels, relevant_outputs.size()[1]), dim=0)
+
+                        loss = sum([criterion(relevant_outputs[i], labels[i]) for i in list(range(labels.size()[0]))])/labels.size()[0]
+
+                    else:
+                        last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
+                        last_outputs = last_outputs.to(self._device)
+
+                        labels = torch.stack([i[-1] for i in labels]).long()
+                        loss = criterion(last_outputs, labels)
 
                     loss.backward()     # Does backpropagation and calculates gradients
                     torch.nn.utils.clip_grad_norm_(self.parameters(), configuration["gradient clipping"])       # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -432,11 +445,22 @@ class RT(nn.Module):
                 input_sequences = input_sequences.to(self._device)
                 outputs = self(input_sequences.view(len(input_sequences), -1, 1))
 
-                last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
-                probs = nn.Softmax(dim=-1)(last_outputs)
+                if configuration['decision criteria'] == 'majority vote':
+                    start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[1])
+                    voting_outputs = torch.stack([i[start_voting_outputs:] for i in outputs]) #choose last n outputs of timeseries to do majority vote
+                    relevant_outputs = voting_outputs.to(self._device)
 
-                outputs_cumm = torch.cat((outputs_cumm.to(self._device), outputs.float()), 0)   #
-                pred = torch.cat((pred.to(self._device), torch.argmax(probs, dim=-1).float()), 0)  # chose class that has highest probability
+                    most_likely_outputs = torch.argmax(nn.Softmax(dim=-1)(relevant_outputs), dim=-1)
+                    majority_vote_result = torch.mode(most_likely_outputs, dim=-1)[0]
+                    pred_new = majority_vote_result.float()
+
+                else:
+                    last_outputs = torch.stack([i[-1] for i in outputs]).to(self._device)
+                    probs = nn.Softmax(dim=-1)(last_outputs)
+                    pred_new = torch.argmax(probs, dim=-1).float()
+
+                outputs_cumm = torch.cat((outputs_cumm.to(self._device), outputs.float()), 0)
+                pred = torch.cat((pred.to(self._device), pred_new), 0)  # chose class that has highest probability
                 y_test = torch.cat((y_test, labels.float()), 0)   # chose class that has highest probability
 
                 self.detach([input_sequences, outputs])
