@@ -242,6 +242,8 @@ class Transformer(nn.Module):
                     progress = (i+1) / len(train_loader)
                     sys.stdout.write("- %.1f%% " %(progress*100))
                     sys.stdout.flush()
+                    if config.dev_mode:
+                        break
 
 
                 sys.stdout.write("]\n") # this ends the progress bar

@@ -167,7 +167,7 @@ class LSTM(nn.Module):
                 import sys
                 toolbar_width = len(train_loader)
                 # setup toolbar
-                print('Epoch completed:')
+                print('Epoch {}/{} completed:'.format(epoch, configuration["number of epochs"]))
                 sys.stdout.write("[%s]" % (" " * toolbar_width))
                 sys.stdout.flush()
                 sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
@@ -208,9 +208,12 @@ class LSTM(nn.Module):
                     progress = (i+1) / len(train_loader)
                     sys.stdout.write("- %.1f%% " %(progress*100))
                     sys.stdout.flush()
+                    if config.dev_mode:
+                        break
 
 
                 sys.stdout.write("]\n") # this ends the progress bar
+                sys.stdout.flush()
 
             else:
                 print('Either provide X and y or dataloaders!')

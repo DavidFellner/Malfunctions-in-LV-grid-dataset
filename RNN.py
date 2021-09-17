@@ -152,17 +152,26 @@ class RNN(nn.Module):
                     output, hidden = self(sequences)
 
                     if configuration['decision criteria'] == 'majority vote':
-                        start_voting_outputs = configuration['calibration rate'] * len(output)
-                        voting_outputs = torch.stack([i[start_voting_outputs:] for i in output]) #choose last n outputs of timeseries to do majority vote
+                        start_voting_outputs = int((configuration['calibration rate']) * output.size()[1])
+                        voting_outputs = torch.stack([i[start_voting_outputs:] for i in
+                                                      output])  # choose last n outputs of timeseries to do majority vote
+                        relevant_outputs = voting_outputs.to(self._device)
 
-                        last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
-                        last_outputs = last_outputs.to(self._device)
+                        labels = torch.stack([i[-1] for i in labels]).long()
+                        labels = einops.repeat(labels, 'b -> (b copy)', copy=relevant_outputs.size()[1])
+                        labels = torch.stack(torch.split(labels, relevant_outputs.size()[1]), dim=0)
+
+                        loss = sum([criterion(relevant_outputs[i], labels[i]) for i in list(range(labels.size()[0]))]) / \
+                               labels.size()[0]
+
                     else:
-                        last_outputs = torch.stack([i[-1] for i in output])         #choose last output of timeseries (most informed output)
-                        last_outputs = last_outputs.to(self._device)
-                        #outputs =
+                        last_outputs = torch.stack(
+                            [i[-1] for i in output])  # choose last output of timeseries (most informed output)
+                        relevant_outputs = last_outputs.to(self._device)
+                        labels = torch.stack([i[-1] for i in labels]).long()
+                        loss = criterion(relevant_outputs, labels)
 
-                    loss = criterion(last_outputs, labels)
+                    loss.backward()  # Does backpropagation and calculates gradients
 
                     loss.backward()     # Does backpropagation and calculates gradients
                     torch.nn.utils.clip_grad_norm_(self.parameters(), configuration["gradient clipping"])       # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -174,10 +183,11 @@ class RNN(nn.Module):
                 import sys
                 toolbar_width = len(train_loader)
                 # setup toolbar
-                print('Epoch completed:')
+                print('Epoch {}/{} completed:'.format(epoch, configuration["number of epochs"]))
                 sys.stdout.write("[%s]" % (" " * toolbar_width))
                 sys.stdout.flush()
                 sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
+                sys.stdout.flush()
 
                 for i, (sequences, labels, raw_seq) in enumerate(train_loader):
                     labels = labels.to(self._device)
@@ -217,6 +227,7 @@ class RNN(nn.Module):
 
 
                 sys.stdout.write("]\n") # this ends the progress bar
+                sys.stdout.flush()
 
             else:
                 print('Either provide X and y or dataloaders!')
@@ -231,6 +242,7 @@ class RNN(nn.Module):
                 val_outputs = torch.stack([i[-1] for i in val_outputs]).to(self._device)
                 y_test = y_test.view(-1).long().to(self._device)
                 val_loss = criterion(val_outputs, y_test).to(self._device)
+                self.detach([val_outputs])
 
             models_and_val_losses.append((copy.deepcopy(self.state_dict), val_loss.item()))
 
