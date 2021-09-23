@@ -38,11 +38,13 @@ Description:
 import importlib
 
 from experiment_config import experiment_path, chosen_experiment
+
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 learning_config = config.learning_config
 import plotting
+
 if not config.raw_data_available:
     from start_powerfactory import start_powerfactory
     from grid_preparation import prepare_grid
@@ -51,7 +53,7 @@ from create_instances import create_samples
 from malfunctions_in_LV_grid_dataset import MlfctinLVdataset
 from PV_noPV_dataset import PVnoPVdataset
 from dummy_dataset import Dummydataset
-from util import load_model, export_model, save_model, load_data, plot_samples, model_exists, choose_best
+from util import load_model, export_model, save_model, load_data, plot_samples, model_exists, choose_best, save_result
 
 import numpy as np
 from sklearn.model_selection import cross_validate
@@ -66,11 +68,9 @@ import os
 
 
 def generate_raw_data():
-
     if config.raw_data_available == False:
         for file in os.listdir(config.data_folder):
             if os.path.isdir(config.data_folder + file):
-
                 print('Creating data using the grid %s' % file)
                 app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
                 curves = prepare_grid(app, file, o_ElmNet)
@@ -84,13 +84,12 @@ def generate_raw_data():
 
 
 def create_dataset():
-
     train_set = pd.DataFrame()
     test_set = pd.DataFrame()
     if config.dataset_available == False:
         print(
             "Dataset %s is created from raw data" % learning_config['dataset'])
-        if (1/config.share_of_positive_samples).is_integer():
+        if (1 / config.share_of_positive_samples).is_integer():
 
             results_folder = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\'
             for dir in os.listdir(results_folder):
@@ -98,17 +97,19 @@ def create_dataset():
                     combinations_already_in_dataset = []  # avoid having duplicate samples (i.e. data of terminal with malfunction at same terminal and same terminals having a PV)
                     files = os.listdir(results_folder + dir)[0:int(config.simruns)]
                     for file in files:
-                        train_samples, test_samples, combinations_already_in_dataset = create_samples(results_folder + dir, file, combinations_already_in_dataset,
-                                                                                                      len(train_set.columns) + len(test_set.columns))
+                        train_samples, test_samples, combinations_already_in_dataset = create_samples(
+                            results_folder + dir, file, combinations_already_in_dataset,
+                            len(train_set.columns) + len(test_set.columns))
                         train_set = pd.concat([train_set, train_samples], axis=1, sort=False)
                         test_set = pd.concat([test_set, test_samples], axis=1, sort=False)
             return train_set, test_set
         else:
-            print("Share of malfunctioning samples wrongly chosen, please choose a value that yields a real number as an inverse i.e. 0.25 or 0.5")
+            print(
+                "Share of malfunctioning samples wrongly chosen, please choose a value that yields a real number as an inverse i.e. 0.25 or 0.5")
             return train_set, test_set
 
-def save_dataset(df, type='train', scaler=None):
 
+def save_dataset(df, type='train', scaler=None):
     if config.dataset_available == False:
         if config.dataset_format == 'HDF':
             from sklearn.preprocessing import MaxAbsScaler
@@ -126,18 +127,29 @@ def save_dataset(df, type='train', scaler=None):
             data_preprocessed = preprocessing(data_raw, scaler).transpose()
 
             with h5py.File(path + learning_config['dataset'] + '_' + type + '.hdf5', 'w') as hdf:
-                if int(len(data_raw.columns)/len(label)) > 1:
-                    dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw, shape=(len(data_raw.columns), len(data_raw), int(len(data_raw.columns)/len(label))), compression='gzip', chunks=True)
-                    dset_data_pre = hdf.create_dataset('x_' + type, data=data_preprocessed, shape=(len(data_preprocessed.columns), len(data_preprocessed), int(len(data_preprocessed.columns)/len(label))), compression='gzip', chunks=True)
+                if int(len(data_raw.columns) / len(label)) > 1:
+                    dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw, shape=(
+                        len(data_raw.columns), len(data_raw), int(len(data_raw.columns) / len(label))),
+                                                   compression='gzip',
+                                                   chunks=True)
+                    dset_data_pre = hdf.create_dataset('x_' + type, data=data_preprocessed, shape=(
+                        len(data_preprocessed.columns), len(data_preprocessed),
+                        int(len(data_preprocessed.columns) / len(label))), compression='gzip', chunks=True)
                 else:
-                    dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw, shape=(len(data_raw.columns), len(data_raw)), compression='gzip', chunks=True)
-                    dset_data_pre = hdf.create_dataset('x_' + type, data=data_preprocessed, shape=(len(data_preprocessed.columns), len(data_preprocessed)), compression='gzip', chunks=True)
+                    dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw,
+                                                   shape=(len(data_raw.columns), len(data_raw)), compression='gzip',
+                                                   chunks=True)
+                    dset_data_pre = hdf.create_dataset('x_' + type, data=data_preprocessed,
+                                                       shape=(len(data_preprocessed.columns), len(data_preprocessed)),
+                                                       compression='gzip', chunks=True)
 
-                dset_label = hdf.create_dataset('y_' + type, data=label, shape=(len(label), 1), compression='gzip', chunks=True)
+                dset_label = hdf.create_dataset('y_' + type, data=label, shape=(len(label), 1), compression='gzip',
+                                                chunks=True)
                 hdf.close()
                 return scaler
         else:
-            df.to_csv(config.results_folder + learning_config['dataset'] + '.csv', header=True, sep=';', decimal='.', float_format='%.' + '%sf' % config.float_decimal)
+            df.to_csv(config.results_folder + learning_config['dataset'] + '.csv', header=True, sep=';', decimal='.',
+                      float_format='%.' + '%sf' % config.float_decimal)
     print(
         "Dataset %s saved" % learning_config['dataset'])
     return 0
@@ -155,7 +167,9 @@ def cross_val(X, y, model):
 
         X_train, X_test = model.preprocess(X_train, X_test)
 
-        clfs, losses, lrs = model.fit(X_train, y_train, X_test, y_test, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'])
+        clfs, losses, lrs = model.fit(X_train, y_train, X_test, y_test,
+                                      early_stopping=learning_config['early stopping'],
+                                      control_lr=learning_config['LR adjustment'])
         best_model = choose_best(clfs)
         best_clfs.append(best_model)
         model.state_dict = best_model[0]
@@ -165,9 +179,12 @@ def cross_val(X, y, model):
     very_best_model = choose_best(best_clfs)
     model.state_dict = very_best_model[0]
 
-    scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores], 'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores], 'Lowest validation loss': [i[2] for i in scores]}
+    scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores],
+                   'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores],
+                   'Lowest validation loss': [i[2] for i in scores]}
 
     return model, scores_dict
+
 
 def baseline(X, y):
     clf_baseline = SGDClassifier()
@@ -178,8 +195,8 @@ def baseline(X, y):
 
     return
 
-def init():
 
+def init():
     level = 'INFO'
     logger = logging.getLogger('main')
     logger.setLevel(level)
@@ -196,7 +213,7 @@ def init():
     return logger, device
 
 
-if __name__ == '__main__':  #see config file for settings
+if __name__ == '__main__':  # see config file for settings
 
     generate_raw_data()
     if config.dataset_available == False:
@@ -218,14 +235,14 @@ if __name__ == '__main__':  #see config file for settings
     test_loader = load_data('test')
     logger.info(f"Loaded data.")
 
-    #dataset, X, y = load_dataset()
+    # dataset, X, y = load_dataset()
     if learning_config["plot samples"] and learning_config["mode"] == 'train':
         for i, (X, y, X_raw) in enumerate(train_loader):
             plot_samples(X_raw, y, X)
             break
 
-    #if learning_config['baseline']:
-        #baseline(X, y)
+    # if learning_config['baseline']:
+    # baseline(X, y)
 
     print('X data with zero mean per sample and scaled between -1 and 1 based on training samples used')
 
@@ -234,38 +251,70 @@ if __name__ == '__main__':  #see config file for settings
 
     if not learning_config["cross_validation"]:
 
-        #X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, test_size=learning_config['train test split'])
-        #X_train, X_test = model.preprocess(X_train, X_test)
-        print("\n########## Training ##########")
-        if learning_config["mode"] == 'train':
-            logger.info("Training classifier ..")
-            clfs, losses, lrs = model.fit(train_loader, test_loader, early_stopping=learning_config['early stopping'], control_lr=learning_config['LR adjustment'], prev_epoch=epoch, prev_loss=loss)
-            logger.info("Training finished!")
-            logger.info('Finished Training')
-            plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'], title='Losses after each epoch', x_label='Epoch', y_label='Loss')   #plot training loss for each epoch
-            plotting.plot_2D(lrs, labels='learning rate', title='Learning rate for each epoch', x_label='Epoch',
-                             y_label='Learning rate')
-            clf, epoch = choose_best(clfs)
-            model.state_dict = clf[0]                           #pick weights of best model found
+        # X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, test_size=learning_config['train test split'])
+        # X_train, X_test = model.preprocess(X_train, X_test)
 
-        y_pred, outputs, y_test = model.predict(test_loader=test_loader)
-        if learning_config["mode"] == 'eval':
-            clf = model
-            score = model.score(y_test, y_pred)
-            print("\n########## Metrics ##########")
-            print(
-                "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}".format(score[0],
-                                                                                                              score[1][
-                                                                                                                  0],
-                                                                                                              score[1][
-                                                                                                                  1],
-                                                                                                              score[1][
-                                                                                                                  2],))
+        print("\n########## Training ##########")
+        if learning_config["do grid search"]:
+            logger.info("Grid search on hyperparameter {}".format(learning_config["grid search"][0]))
+            runs = len(learning_config["grid search"][1])
         else:
-            score = model.score(y_test, y_pred) + [clf[1]]
-            print("\n########## Metrics ##########")
-            print(
-                "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nLowest validation loss: {4}".format(score[0], score[1][0], score[1][1], score[1][2], score[2]))
+            runs = 1
+        for i in range(runs):
+            if learning_config["mode"] == 'train':
+                logger.info("Training classifier ..")
+                if learning_config["do grid search"]: logger.info(
+                    "Value of {}: {}".format(learning_config["grid search"][0], learning_config["grid search"][1][i]))
+
+                clfs, losses, lrs = model.fit(train_loader, test_loader,
+                                              early_stopping=learning_config['early stopping'],
+                                              control_lr=learning_config['LR adjustment'], prev_epoch=epoch,
+                                              prev_loss=loss, grid_search_parameter = learning_config["grid search"][1][i])
+
+                logger.info("Training finished!")
+                logger.info('Finished Training')
+                plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'],
+                                 title='Losses after each epoch', x_label='Epoch',
+                                 y_label='Loss')  # plot training loss for each epoch
+                plotting.plot_2D(lrs, labels='learning rate', title='Learning rate for each epoch', x_label='Epoch',
+                                 y_label='Learning rate')
+                clf, epoch = choose_best(clfs)
+                model.state_dict = clf[0]  # pick weights of best model found
+
+            y_pred, outputs, y_test = model.predict(test_loader=test_loader)
+            if learning_config["mode"] == 'eval':
+                clf = model
+                score = model.score(y_test, y_pred)
+                print("\n########## Metrics ##########")
+                print(
+                    "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}".format(score[0],
+                                                                                     score[1][
+                                                                                         0],
+                                                                                     score[1][
+                                                                                         1],
+                                                                                     score[1][
+                                                                                         2], ))
+            else:
+                score = model.score(y_test, y_pred) + [clf[1]]
+                print("\n########## Metrics ##########")
+                print(
+                    "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nLowest validation loss: {4}".format(score[0],
+                                                                                                                  score[1][
+                                                                                                                      0],
+                                                                                                                  score[1][
+                                                                                                                      1],
+                                                                                                                  score[1][
+                                                                                                                      2],
+                                                                                                                  score[2]))
+            if learning_config["save_model"] and learning_config["mode"] == 'train':
+                save_model(model, epoch, clf[1], i)
+
+            if learning_config["save_result"]:
+                save_result(score, i)
+                plotting.plot_grid_search()
+
+            if learning_config["export_model"]:
+                export_model(model, learning_config, i)
 
     if learning_config["cross_validation"]:
         print("\n########## k-fold Cross-validation ##########")
@@ -274,17 +323,11 @@ if __name__ == '__main__':  #see config file for settings
         for score in scores:
             print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
 
-    if learning_config["save_model"] and learning_config["mode"] == 'train':
-        save_model(model, epoch, clf[1])
+        if learning_config["save_model"] and learning_config["mode"] == 'train':
+            save_model(model, epoch, clf[1], learning_config)
 
-    if learning_config["export_model"]:
-        export_model(model, learning_config)
+        if learning_config["save_result"]:
+            save_result(scores, learning_config)
 
-
-
-
-
-
-
-
-
+        if learning_config["export_model"]:
+            export_model(model, learning_config)

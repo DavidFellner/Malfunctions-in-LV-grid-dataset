@@ -1,11 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import importlib
+import os
 
 from experiment_config import experiment_path, chosen_experiment
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
+learning_config = config.learning_config
 
 
 def plot_sample(Y, x=None, label = None, title=None, save=False, figname=None):
@@ -56,7 +58,7 @@ def plot_sample(Y, x=None, label = None, title=None, save=False, figname=None):
 
     return ax
 
-def plot_2D(y, x=None, labels=None, title=None, x_label=None, y_label=None):
+def plot_2D(y, x=None, labels=None, title=None, x_label=None, y_label=None, save=False, figname=None):
 
     fig, ax = plt.subplots()
 
@@ -88,5 +90,19 @@ def plot_2D(y, x=None, labels=None, title=None, x_label=None, y_label=None):
         plt.xlabel(x_label)
     if y_label:
         plt.ylabel(y_label)
+    if save:
+        plt.savefig(figname + '.png')
 
     return ax
+
+
+def plot_grid_search():
+    path = os.path.join(config.models_folder, learning_config['classifier'])
+    file = os.path.join(path, learning_config["dataset"] + "_gridsearch_on_" + learning_config["grid search"][0]
+                                + "_" + 'result.txt')
+    f = open(file, 'r')
+    text = f.read()
+    F_scores = [float(i.split('\n')[0][:4]) for i in text.split('FScore: ')[1:]]
+    Precisions = [float(i.split('\n')[0][:5]) for i in text.split('Precision: ')[1:]]
+    Recalls = [float(i.split('\n')[0][:5]) for i in text.split('Recall: ')[1:]]
+    plot_2D([F_scores, Precisions, Recalls], x=learning_config["grid search"][1], labels=['F-score', 'Precision', 'Recall'], x_label=learning_config["grid search"][0] + ' Values', y_label = 'Scores', save=True, figname=file)
