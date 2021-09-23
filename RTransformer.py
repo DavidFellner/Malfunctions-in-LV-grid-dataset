@@ -11,6 +11,7 @@ import math, copy
 import gc
 import os
 import einops
+import util
 
 from experiment_config import experiment_path, chosen_experiment
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
@@ -266,7 +267,7 @@ class RT(nn.Module):
         output = self.linear(output).double()
         return self.sig(output)
 
-    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, prev_epoch=1, prev_loss=1):
+    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, prev_epoch=1, prev_loss=1, grid_search_parameter=None):
 
         torch.cuda.empty_cache()
         self.early_stopping = early_stopping
@@ -286,8 +287,10 @@ class RT(nn.Module):
         models_and_val_losses = []
         pause = 0                                                      # for early stopping
 
-        if prev_epoch is None:
+        if prev_epoch is None or grid_search_parameter:
             prev_epoch = 1
+        if grid_search_parameter is not None:
+            configuration[configuration["grid search"][0]] = grid_search_parameter
 
         for epoch in range(prev_epoch, configuration["number of epochs"] + 1):
 
@@ -313,8 +316,6 @@ class RT(nn.Module):
                 input_seq = [torch.Tensor(i).view(len(i), -1, 1) for i in mini_batches]
                 target_seq = [torch.Tensor([i]).view(-1).long() for i in mini_batch_targets]
                 inout_seq = list(zip(input_seq, target_seq))
-
-
 
                 #optimizer.zero_grad()  # Clears existing gradients from previous epoch
 
@@ -354,8 +355,13 @@ class RT(nn.Module):
                     output = self(sequences.view(len(sequences), -1, 1))
 
                     if configuration['decision criteria'] == 'majority vote':
-                        start_voting_outputs = int((configuration['calibration rate']) * output.size()[1])
-                        voting_outputs = torch.stack([i[start_voting_outputs:] for i in output]) #choose last n outputs of timeseries to do majority vote
+                        if configuration['calibration rate'] == 1:
+                            start_voting_outputs = int((configuration['calibration rate']) * output.size()[
+                                1]) - 1  # equal to only using the last output
+                        else:
+                            start_voting_outputs = int((configuration['calibration rate']) * output.size()[1])
+                        voting_outputs = torch.stack([i[start_voting_outputs:] for i in
+                                                      output])  # choose last n outputs of timeseries to do majority vote
                         relevant_outputs = voting_outputs.to(self._device)
 
                         labels = torch.stack([i[-1] for i in labels]).long()
@@ -402,7 +408,7 @@ class RT(nn.Module):
                 y_test = y_test.view(-1).long().to(self._device)
                 val_loss = criterion(val_outputs, y_test).to(self._device)
 
-            models_and_val_losses.append((copy.deepcopy(self.state_dict()), val_loss.item()))
+            models_and_val_losses.append((copy.deepcopy(util.get_weights_copy(self)), val_loss.item()))
 
             if configuration["save_model"]:
                 clf, ep = choose_best(models_and_val_losses)
@@ -449,7 +455,11 @@ class RT(nn.Module):
                 outputs = self(input_sequences.view(len(input_sequences), -1, 1))
 
                 if configuration['decision criteria'] == 'majority vote':
-                    start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[1])
+                    if configuration['calibration rate'] == 1:
+                        start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[
+                            1]) - 1  # equal to only using the last output
+                    else:
+                        start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[1])
                     voting_outputs = torch.stack([i[start_voting_outputs:] for i in outputs]) #choose last n outputs of timeseries to do majority vote
                     relevant_outputs = voting_outputs.to(self._device)
 

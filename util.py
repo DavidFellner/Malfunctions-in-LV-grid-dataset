@@ -274,6 +274,12 @@ def choose_best(models_and_losses):
     return models_and_losses[index_best], epoch
 
 
+def get_weights_copy(model):
+    weights_path = 'weights_temp.pt'
+    torch.save(model.state_dict, weights_path)
+    return torch.load(weights_path)
+
+
 '''def load_test_data(config):
 
     pd.read_hdf(config.results_folder + learning_config['dataset'] + '_' + 'test' + '.h5', key = 'test/data', mode='a')
