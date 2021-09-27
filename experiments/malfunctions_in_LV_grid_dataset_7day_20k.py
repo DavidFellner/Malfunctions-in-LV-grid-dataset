@@ -43,7 +43,7 @@ learning_config = {
     "classifier": "GRU",  # RNN, LSTM, GRU, Transformer, RTransformer
     "save_model": True,            #saves state dict and optimizer for later use/further training
     "save_result": True,           #saves evaluation result in text file
-    "export_model": False
+    "export_model": False,
     "do grid search": True,         #grid search for hyperparameter optimization
     "grid search": ("calibration rate",  [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])      #hyperparameter and values to be tried out as tuple  (("calibration rate", [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]))
 }

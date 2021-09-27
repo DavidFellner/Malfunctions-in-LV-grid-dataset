@@ -100,9 +100,11 @@ def plot_grid_search():
     path = os.path.join(config.models_folder, learning_config['classifier'])
     file = os.path.join(path, learning_config["dataset"] + "_gridsearch_on_" + learning_config["grid search"][0]
                                 + "_" + 'result.txt')
+    figure_name = os.path.join(path, learning_config["dataset"] + "_gridsearch_on_" + learning_config["grid search"][0])
+
     f = open(file, 'r')
     text = f.read()
     F_scores = [float(i.split('\n')[0][:4]) for i in text.split('FScore: ')[1:]]
     Precisions = [float(i.split('\n')[0][:5]) for i in text.split('Precision: ')[1:]]
     Recalls = [float(i.split('\n')[0][:5]) for i in text.split('Recall: ')[1:]]
-    plot_2D([F_scores, Precisions, Recalls], x=learning_config["grid search"][1], labels=['F-score', 'Precision', 'Recall'], x_label=learning_config["grid search"][0] + ' Values', y_label = 'Scores', save=True, figname=file)
+    plot_2D([F_scores, Precisions, Recalls], x=learning_config["grid search"][1], labels=['F-score', 'Precision', 'Recall'], x_label=learning_config["grid search"][0] + ' Values', y_label = 'Scores', save=True, figname=figure_name)
