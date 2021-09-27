@@ -6,6 +6,7 @@ Metric goal is reached
 '''
 
 #Sytem settings
+dev_mode = False
 data_folder = os.path.join(os.getcwd(), 'input')
 results_folder = os.path.join(os.getcwd(), 'output')
 test_data_folder = os.path.join(os.getcwd(), 'test')
@@ -14,31 +15,37 @@ local_machine_tz = 'Europe/Berlin'                          #timezone; it's impo
 
 #Deep learning settings
 learning_config = {
+    "mode": "train",    #train, eval
     "dataset": "malfunctions_in_LV_grid_dataset_7day_20k",
     "RNN model settings": [1, 2, 6, 2],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "LSTM model settings": [1, 2, 3, 3],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "GRU model settings": [1, 2, 3, 4],     # number of input features, number of output features, number of features in hidden state, number of of layers
     "Transformer model settings": [2, 1, 1, 6, 2, 0.1],     # ntoken > 2 outputs, ninp > word/input embedding, nhead, nhid, nlayers, dropout=0.5
     "R-Transformer model settings": [1, 3, 2, 1, 'GRU', 7, 4, 1, 0.1, 0.1],     # input size, dimension of model,output size, h (heads?), rnn_type ('GRU', 'LSTM', 'RNN'), ksize (key size?), n (# local RNN layers), n_level (how many RNN-multihead-attention-fc blocks), dropout, emb_dropout
-    "number of epochs": 100,
-    "learning rate": 1*10**-6,
+    "number of epochs": 20,
+    "learning rate": 1*10**-3,
+    "decision criteria": 'majority vote',    #most informed, majority vote; either the most informed (last output) or the majority of outputs is used for classification
+    "calibration rate": 0.8,                #share of (first) outputs not used for majority vote of each sequence in order to let the network calibrate; between 0 and 1
     "activation function": 'relu',          # relu, tanh
     "mini batch size": 60,
-    "optimizer": 'Adam',                    # Adam, SGD
+    "optimizer": 'SGD',                    # Adam, SGD
     "k folds": 5,                           #choose 1 to not do crossval
     "cross_validation": False,
     "early stopping": True,
-    "LR adjustment": 'None',               #None, 'warm up' , 'LR controlled'
+    "LR adjustment": 'LR controlled',               #None, 'warm up' , 'LR controlled'
     "percentage of epochs for warm up": 10,         #warm up not performed if percentage of epochs for warm up * epochs > epochs
     "gradient clipping": 0.25,
-    "train test split": 0.2,                        #if int, used as number up testing examples; if float, used as share of data
+    "train test split": 1000,                        #if int, used as number up testing examples; if float, used as share of data
     "baseline": False,
     "metrics": ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro'],
     "cross_val_metrics": ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro'],
     "plot samples": True,
-    "classifier": "LSTM",  # RNN, LSTM, GRU, Transformer, RTransformer
+    "classifier": "GRU",  # RNN, LSTM, GRU, Transformer, RTransformer
+    "save_model": True,            #saves state dict and optimizer for later use/further training
+    "save_result": True,           #saves evaluation result in text file
     "export_model": False
-
+    "do grid search": True,         #grid search for hyperparameter optimization
+    "grid search": ("calibration rate",  [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])      #hyperparameter and values to be tried out as tuple  (("calibration rate", [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]))
 }
 
 #########################################################################
@@ -48,6 +55,8 @@ learning_config = {
 # Dataset settings
 raw_data_set_name = 'malfunctions_in_LV_grid_dataset'                   #'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
 dataset_available = True                       #set to False to recreate instances from raw data
+train_test_split = 0.2                        #if int, used as number of testing examples; if float, used as share of data
+dataset_format = 'HDF'                         #HDF, everything else yields CSV
 raw_data_available = True                      #set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True                                #raw_data_available = False has to be set for this! set add_data = True to add more data to raw data;
 add_noise = False

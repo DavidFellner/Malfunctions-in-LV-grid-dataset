@@ -95,7 +95,7 @@ class RNN(nn.Module):
         # We'll send the tensor holding the hidden state to the device we specified earlier as well
         return hidden
 
-    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, prev_epoch=1, prev_loss=1):
+    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, prev_epoch=1, prev_loss=1, grid_search_parameter=None):
 
         torch.cuda.empty_cache()
         self.early_stopping = early_stopping
@@ -115,8 +115,10 @@ class RNN(nn.Module):
         models_and_val_losses = []
         pause = 0                                                      # for early stopping
 
-        if prev_epoch is None:
+        if prev_epoch is None or grid_search_parameter:
             prev_epoch = 1
+        if grid_search_parameter is not None:
+            configuration[configuration["grid search"][0]] = grid_search_parameter
 
         for epoch in range(prev_epoch, configuration["number of epochs"] + 1):
 
@@ -196,7 +198,11 @@ class RNN(nn.Module):
                     output, hidden = self(sequences)
 
                     if configuration['decision criteria'] == 'majority vote':
-                        start_voting_outputs = int((configuration['calibration rate']) * output.size()[1])
+                        if configuration['calibration rate'] == 1:
+                            start_voting_outputs = int((configuration['calibration rate']) * output.size()[
+                                1]) - 1  # equal to only using the last output
+                        else:
+                            start_voting_outputs = int((configuration['calibration rate']) * output.size()[1])
                         voting_outputs = torch.stack([i[start_voting_outputs:] for i in output]) #choose last n outputs of timeseries to do majority vote
                         relevant_outputs = voting_outputs.to(self._device)
 
@@ -291,7 +297,11 @@ class RNN(nn.Module):
                 outputs, hidden = self(input_sequences)
 
                 if configuration['decision criteria'] == 'majority vote':
-                    start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[1])
+                    if configuration['calibration rate'] == 1:
+                        start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[
+                            1]) - 1  # equal to only using the last output
+                    else:
+                        start_voting_outputs = int((configuration['calibration rate']) * outputs.size()[1])
                     voting_outputs = torch.stack([i[start_voting_outputs:] for i in outputs]) #choose last n outputs of timeseries to do majority vote
                     relevant_outputs = voting_outputs.to(self._device)
 
