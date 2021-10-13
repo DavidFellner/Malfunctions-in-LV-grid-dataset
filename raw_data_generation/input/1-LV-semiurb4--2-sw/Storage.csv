@@ -1,0 +1,5 @@
+id;node;type;profile;pStor;qStor;chargeLevel;sR;eStore;etaStore;sdStore;pMin;pMax;qMin;qMax;subnet;voltLvl
+LV4.101 Storage 1;LV4.101 Bus 14;PV_Storage;Storage_PV5_H0-A;-0.0137;0;0;0.0137;0.0274;0.95;0.13;-0.0137;0;-0.0137;0.013687;LV4.101;7
+LV4.101 Storage 2;LV4.101 Bus 37;PV_Storage;Storage_PV5_G2-A;-0.1181;0;0;0.1181;0.2362;0.95;0.13;-0.1181;0;-0.1181;0.118086;LV4.101;7
+LV4.101 Storage 3;LV4.101 Bus 34;PV_Storage;Storage_PV5_H0-G;-0.0068;0;0;0.0068;0.0137;0.95;0.13;-0.0068;0;-0.0068;0.006843;LV4.101;7
+LV4.101 Storage 4;LV4.101 Bus 38;PV_Storage;Storage_PV5_G4-A;-0.0866;0;0;0.0866;0.1731;0.95;0.13;-0.0866;0;-0.0866;0.086558;LV4.101;7

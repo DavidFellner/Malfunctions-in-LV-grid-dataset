@@ -1,0 +1,4 @@
+id;element1;element2;variable;subnet;voltLvl
+MV1.101 Measurement 32;MV1.101 Bus 52;NULL;v;MV1.101_LV4.101;5
+MV1.101 Measurement 37;MV1.101 Bus 52;NULL;p;MV1.101_LV4.101;5
+MV1.101 Measurement 42;MV1.101 Bus 52;NULL;q;MV1.101_LV4.101;5

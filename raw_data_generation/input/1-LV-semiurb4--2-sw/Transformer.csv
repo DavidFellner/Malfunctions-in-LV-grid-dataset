@@ -1,0 +1,2 @@
+id;nodeHV;nodeLV;type;tappos;autoTap;autoTapSide;loadingMax;substation;subnet;voltLvl
+MV1.101-LV4.101-Trafo 1;MV1.101 Bus 52_1;LV4.101 Bus 32_3;0.4 MVA 20/0.4 kV Dyn5 ASEA;0;0;NULL;100;NULL;LV4.101;6
