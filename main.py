@@ -47,13 +47,13 @@ import plotting
 
 if not config.raw_data_available:
     from start_powerfactory import start_powerfactory
-    from grid_preparation import prepare_grid
-    from data_creation import create_data
-from create_instances import create_samples
+    from raw_data_generation.grid_preparation import prepare_grid
+    from raw_data_generation.data_creation import create_data
+from dataset_creation.create_instances import create_samples
 from malfunctions_in_LV_grid_dataset import MlfctinLVdataset
 from PV_noPV_dataset import PVnoPVdataset
 from dummy_dataset import Dummydataset
-from util import load_model, export_model, save_model, load_data, plot_samples, model_exists, choose_best, save_result
+from util import load_model, export_model, save_model, load_data, plot_samples, choose_best, save_result
 
 import numpy as np
 from sklearn.model_selection import cross_validate
@@ -68,17 +68,17 @@ import os
 
 
 def generate_raw_data():
-    if config.raw_data_available == False:
-        for file in os.listdir(config.data_folder):
-            if os.path.isdir(config.data_folder + file):
-                print('Creating data using the grid %s' % file)
-                app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
-                curves = prepare_grid(app, file, o_ElmNet)
 
-                create_data(app, o_ElmNet, curves, study_case_obj, file)
-                print('Done with grid %s' % file)
+    for file in os.listdir(config.grid_data_folder):
+        if os.path.isdir(os.path.join(config.grid_data_folder, file)):
+            print('Creating data using the grid %s' % file)
+            app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
+            grid_data = prepare_grid(app, file, o_ElmNet)
 
-        print('Done with all grids')
+            create_data(app, o_ElmNet, grid_data, study_case_obj, file)
+            print('Done with grid %s' % file)
+
+    print('Done with all grids')
 
     return
 
@@ -91,7 +91,7 @@ def create_dataset():
             "Dataset %s is created from raw data" % learning_config['dataset'])
         if (1 / config.share_of_positive_samples).is_integer():
 
-            results_folder = config.results_folder + config.raw_data_set_name + '_raw_data' + '\\'
+            results_folder = config.raw_data_folder + config.raw_data_set_name + '_raw_data' + '\\'
             for dir in os.listdir(results_folder):
                 if os.path.isdir(results_folder + dir):
                     combinations_already_in_dataset = []  # avoid having duplicate samples (i.e. data of terminal with malfunction at same terminal and same terminals having a PV)
@@ -115,7 +115,7 @@ def save_dataset(df, type='train', scaler=None):
             from sklearn.preprocessing import MaxAbsScaler
             from util import fit_scaler, preprocessing
 
-            path = config.results_folder + learning_config['dataset'] + '\\' + type + '\\'
+            path = config.raw_data_folder + learning_config['dataset'] + '\\' + type + '\\'
             if not os.path.isdir(path):
                 os.makedirs(path)
 
@@ -126,7 +126,7 @@ def save_dataset(df, type='train', scaler=None):
                 scaler = fit_scaler(data_raw)
             data_preprocessed = preprocessing(data_raw, scaler).transpose()
 
-            with h5py.File(path + learning_config['dataset'] + '_' + type + '.hdf5', 'w') as hdf:
+            with h5py.File(path + learning_config['dataset'] + '_' + learning_config['type'] + '_' + type + '.hdf5', 'w') as hdf:
                 if int(len(data_raw.columns) / len(label)) > 1:
                     dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw, shape=(
                         len(data_raw.columns), len(data_raw), int(len(data_raw.columns) / len(label))),
@@ -148,7 +148,7 @@ def save_dataset(df, type='train', scaler=None):
                 hdf.close()
                 return scaler
         else:
-            df.to_csv(config.results_folder + learning_config['dataset'] + '.csv', header=True, sep=';', decimal='.',
+            df.to_csv(config.raw_data_folder + learning_config['dataset'] + '_' + learning_config['type'] + '.csv', header=True, sep=';', decimal='.',
                       float_format='%.' + '%sf' % config.float_decimal)
     print(
         "Dataset %s saved" % learning_config['dataset'])
@@ -215,7 +215,9 @@ def init():
 
 if __name__ == '__main__':  # see config file for settings
 
-    generate_raw_data()
+    if config.raw_data_available == False:
+        generate_raw_data()
+
     if config.dataset_available == False:
         train_set, test_set = create_dataset()
         scaler = save_dataset(train_set, 'train')
@@ -256,7 +258,6 @@ if __name__ == '__main__':  # see config file for settings
 
         print("\n########## Training ##########")
         if learning_config["do grid search"]:
-            logger.info("Grid search on hyperparameter {}".format(learning_config["grid search"][0]))
             runs = len(learning_config["grid search"][1])
         else:
             runs = 1

@@ -25,7 +25,7 @@ def test_generate_mlfct_raw_data():
 
     main.generate_raw_data()
 
-    results_folder = os.path.join(config.results_folder, config.raw_data_set_name + '_raw_data')
+    results_folder = os.path.join(config.raw_data_folder, config.raw_data_set_name + '_raw_data')
     file_folder = os.path.join(results_folder, '1-LV-semiurb4--0-sw')
     count = len([name for name in os.listdir(file_folder) if os.path.isfile(os.path.join(file_folder, name))])
 
@@ -47,7 +47,7 @@ def test_create_samples():
     #Tests if the correct amount of samples is extracted per file and if duplicate sample listing works
     '''
 
-    dir = os.path.join(config.results_folder, config.raw_data_set_name + '_raw_data', '1-LV-semiurb4--0-sw')
+    dir = os.path.join(config.raw_data_folder, config.raw_data_set_name + '_raw_data', '1-LV-semiurb4--0-sw')
     file = 'result_run#0.csv'
     terminals_already_in_dataset = []
     samples, terminals_already_in_dataset = create_samples(dir, file, terminals_already_in_dataset,
@@ -60,7 +60,7 @@ def test_extract_malfunction_data():
     #Tests if the correct number of samples of each label are extracted from a results file
     '''
 
-    df = pd.read_csv(os.path.join(config.results_folder, config.raw_data_set_name + '_raw_data', '1-LV-semiurb4--0-sw', 'result_run#0.csv'), header=[0, 1, 2], sep=';')
+    df = pd.read_csv(os.path.join(config.raw_data_folder, config.raw_data_set_name + '_raw_data', '1-LV-semiurb4--0-sw', 'result_run#0.csv'), header=[0, 1, 2], sep=';')
 
     df_treated, terminals_already_in_dataset = extract_malfunction_data(df, [], 0)
     number_of_positive_samples_extracted = (df_treated.iloc[-1] == 1).value_counts()[True]

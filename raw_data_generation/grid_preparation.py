@@ -118,7 +118,7 @@ def define_PV_controls(app):
     return o_IntcosphiPcurve, o_IntQpcurve, o_brokenIntQpcurve, o_wrongIntcosphiPcurve
 
 
-def place_PVs(app, o_ElmNet, o_ChaTime, PV_apparent_power):
+def place_PVs(app, o_ElmNet, o_ChaTime, loads_by_type, PV_apparent_power=0.005):
     '''
     Place photvoltaics next to every load, assign control/capability curve &  charactersitic and scale their output
     to the consumption of the load they are attached to so as it yields about the yearly consumption of the load
@@ -136,18 +136,22 @@ def place_PVs(app, o_ElmNet, o_ChaTime, PV_apparent_power):
         o_IntQlim.SetAttribute('cap_Qmxpu', [0, 0.436])
         o_IntQlim.SetAttribute('inputmod', 1)
 
-    for o_ElmLod in app.GetCalcRelevantObjects('.ElmLod'):
+    for load in loads_by_type['regular_loads']:
+        o_ElmLod = load[0]
         load_cubicle = o_ElmLod.bus1  # elements are connected to terminals via cubicles in powerfactory
+
         o_ElmTerm = load_cubicle.cterm
 
         o_StaCubic = o_ElmTerm.CreateObject('StaCubic',
                                             'Cubicle_' + o_ElmLod.loc_name.split(' ')[0] + ' SGen ' +
                                             o_ElmLod.loc_name.split(' ')[2])
         o_Elm = o_ElmNet.CreateObject('ElmGenstat',
-                                      o_ElmLod.loc_name.split(' ')[0] + ' SGen ' + o_ElmLod.loc_name.split(' ')[2])
+                                      o_ElmLod.loc_name.split(' ')[0] + ' SGen ' + o_ElmLod.loc_name.split(' ')[
+                                          2] + ' @ ' + o_ElmLod.bus1.cterm.loc_name
+                                      )
         o_Elm.SetAttribute('bus1', o_StaCubic)
         o_Elm.SetAttribute('sgn', PV_apparent_power)
-        o_Elm.pgini = o_Elm.sgn * 0.9 * (o_ElmLod.plini / 0.004)
+        o_Elm.pgini = o_Elm.sgn * 0.9 * (o_ElmLod.plini / 0.004)  # scale with yearly consumption of load
         o_Elm.cCategory = 'Photovoltaic'
         pf.set_referenced_characteristics(o_Elm, 'pgini', o_ChaTime)  # set characteristic for inserted PV
 
@@ -159,6 +163,55 @@ def place_PVs(app, o_ElmNet, o_ChaTime, PV_apparent_power):
         o_Elm.SetAttribute('pQlimType', o_IntQlim)
 
     return curves
+
+
+def place_home_or_work_EVCS(loads_by_type, loads, type, o_ElmNet):
+    EV_charging_stations = []
+    if type not in ['Home', 'Work']:
+        print('invalid type, valid types are: Home, Work')
+        return EV_charging_stations
+
+    for number, load in enumerate(loads):
+        o_ElmLod = load[0]
+        load_cubicle = o_ElmLod.bus1  # elements are connected to terminals via cubicles in powerfactory
+        o_ElmTerm = load_cubicle.cterm
+        o_StaCubic = o_ElmTerm.CreateObject('StaCubic',
+                                            'Cubicle_' + o_ElmLod.loc_name.split(' ')[0] + ' EVCS ' +
+                                            o_ElmLod.loc_name.split(' ')[2])
+        o_ElmEVCS = o_ElmNet.CreateObject('ElmLod',
+                                          o_ElmLod.loc_name.split(' ')[0] + ' EVCS ' + o_ElmLod.loc_name.split(' ')[
+                                              2] + ' @ ' + o_ElmLod.bus1.cterm.loc_name)
+        o_ElmEVCS.SetAttribute('bus1', o_StaCubic)
+
+        parameters = loads_by_type['EV_charging_stations'][type][
+            number % len(loads_by_type['EV_charging_stations'][type])]
+
+        o_ElmEVCS.SetAttribute('typ_id', parameters[2])
+        pf.set_referenced_characteristics(o_ElmEVCS, 'plini', parameters[0][0])  # set characteristic for inserted EVCS
+        o_ElmEVCS.plini = parameters[0][1]
+        pf.set_referenced_characteristics(o_ElmEVCS, 'qlini', parameters[1][0])  # set characteristic for inserted EVCS
+        o_ElmEVCS.qlini = parameters[1][1]
+
+        o_ElmEVCS.outserv = 1  # deactivate all EVCSs at first and then activate random ones during simulation
+
+        EV_charging_stations.append(o_ElmEVCS)
+
+    return EV_charging_stations
+
+
+def place_EVCS(o_ElmNet, loads_by_type):
+    '''
+        Place EV charging stations next to every load and assign charactersitic (according to load type)
+     '''
+
+    homes = [i for i in loads_by_type['regular_loads'] if i[1].loc_name[0] == 'H']
+    companies = [i for i in loads_by_type['regular_loads'] if i[1].loc_name[0] == 'G']
+
+    EV_charging_stations = place_home_or_work_EVCS(loads_by_type, homes, 'Home', o_ElmNet)
+    EV_charging_stations = EV_charging_stations + place_home_or_work_EVCS(loads_by_type, companies, 'Work',
+                                                                          o_ElmNet)  # making sure a work charging station is palced next to a company and a home charging station next to a home
+
+    return EV_charging_stations
 
 
 def utf8_complaint_naming(o_ElmNet):
@@ -192,38 +245,63 @@ def prepare_grid(app, file, o_ElmNet):
     # set path for load and generation profiles
     char_folder = app.GetProjectFolder('chars')
     chars = list(
-        pd.read_csv(os.path.join(config.data_folder, file, 'LoadProfile.csv'), sep=';', index_col='time').columns) \
+        pd.read_csv(os.path.join(config.grid_data_folder, file, 'LoadProfile.csv'), sep=';', index_col='time').columns) \
             + list(
-        pd.read_csv(os.path.join(config.data_folder, file, 'RESProfile.csv'), sep=';', index_col='time').columns)
+        pd.read_csv(os.path.join(config.grid_data_folder, file, 'RESProfile.csv'), sep=';', index_col='time').columns)
     for char_name in chars:
         char = char_folder.SearchObject(char_name + '.ChaTime')
         if os.name == 'nt':
             init_f_name_ending = char.f_name.split('\\')[-1]
         else:
             init_f_name_ending = char.f_name.split('/')[-1]
-        char.f_name = os.path.join(config.data_folder, file, init_f_name_ending)
+        char.f_name = os.path.join(config.grid_data_folder, file, init_f_name_ending)
 
-    for o_ElmLod in app.GetCalcRelevantObjects('.ElmLod'):  # gas to be done like this to active profiles
-        o_ChaTime = pf.get_referenced_characteristics(o_ElmLod, 'plini')[
+    # loads_df = pd.read_csv(os.path.join(config.grid_data_folder, file, 'Load.csv'), sep=';')
+    loads_by_type = {'regular_loads': [], 'heatpumps': [], 'EV_charging_stations': {'Work': [], 'Home': []}}
+
+    for o_ElmLod in app.GetCalcRelevantObjects('.ElmLod'):  # has to be done like this to activated profiles
+        o_ChaTime_p = pf.get_referenced_characteristics(o_ElmLod, 'plini')[
             0]  # get P characteristic (profile) from load
-        pf.set_referenced_characteristics(o_ElmLod, 'plini', o_ChaTime)  # set characteristic for inserted PV
-        o_ChaTime = pf.get_referenced_characteristics(o_ElmLod, 'qlini')[  # same for Q (reactive Power)
+        o_ChaTime_q = pf.get_referenced_characteristics(o_ElmLod, 'qlini')[  # same for Q (reactive Power)
             0]
-        pf.set_referenced_characteristics(o_ElmLod, 'qlini', o_ChaTime)
+
+        if o_ChaTime_p.loc_name[0] in ['H', 'G'] and o_ChaTime_p.loc_name[1].isnumeric():
+            loads_by_type['regular_loads'].append((o_ElmLod, o_ChaTime_p, o_ChaTime_q))
+        elif o_ChaTime_p.loc_name.split('_')[0] in ['Air', 'Soil']:
+            loads_by_type['heatpumps'].append((o_ChaTime_p, o_ChaTime_q))
+            o_ElmLod.Delete()  # delete to make space for own setup
+        elif o_ChaTime_p.loc_name.split('_')[0] in ['HLS', 'APLS']:
+            if o_ChaTime_p.loc_name.split('_')[0] == 'HLS':
+                loads_by_type['EV_charging_stations']['Home'].append(
+                    ((o_ChaTime_p, o_ElmLod.plini), (o_ChaTime_q, o_ElmLod.qlini), o_ElmLod.typ_id))
+            else:
+                loads_by_type['EV_charging_stations']['Work'].append(
+                    ((o_ChaTime_p, o_ElmLod.plini), (o_ChaTime_q, o_ElmLod.qlini), o_ElmLod.typ_id))
+
+            o_ElmLod.Delete()  # delete to make space for own setup
+        else:
+            print('Unknown load type found!')
+
+        pf.set_referenced_characteristics(o_ElmLod, 'plini', o_ChaTime_p)  # set characteristic for load
+
+        pf.set_referenced_characteristics(o_ElmLod, 'qlini', o_ChaTime_q)
 
     # deactivate storages in grid and count PVs for later use
     for o_ElmGenstat in app.GetCalcRelevantObjects('.ElmGenstat'):
-        if o_ElmGenstat.cCategory == 'Storage':
-            o_ElmGenstat.outserv = 1
-        elif o_ElmGenstat.cCategory == 'Photovoltaic':
+        if o_ElmGenstat.cCategory in ['Storage', 'Batterie'] and config.percentage['BESS'] == 0:
+            o_ElmGenstat.Delete()  # first copy properties? then delete BESS in order to make space for own setup
+        elif o_ElmGenstat.cCategory in ['Photovoltaic', 'Fotovoltaik']:
             o_ChaTime = pf.get_referenced_characteristics(o_ElmGenstat, 'pgini')[
                 0]  # get characteristic (profile) from original PV
-            PV_apparent_power = o_ElmGenstat.sgn
-            o_ElmGenstat.Delete()  # delete PV in order to make space for own setup
+            # PV_apparent_power = o_ElmGenstat.sgn
+            o_ElmGenstat.Delete()  # delete PV in order to make space for own setup; PVs placed are scaled with adjacent load
             if len(pf.get_referenced_characteristics(o_ElmGenstat, 'pgini')) > 1:
                 print('More than one PV profile found; consider which one to choose (default: first one found chosen)')
 
-    curves = place_PVs(app, o_ElmNet, o_ChaTime, PV_apparent_power)
+    curves = place_PVs(app, o_ElmNet, o_ChaTime, loads_by_type,
+                       PV_apparent_power=0.005)  # PV_apparent_power=0.005 means 5kWp
+    EV_charging_stations = place_EVCS(o_ElmNet, loads_by_type)
+
     utf8_complaint_naming(o_ElmNet)  # check if element names are UTF8 compliant and rename if not
 
-    return curves
+    return (curves, EV_charging_stations, loads_by_type['regular_loads'])

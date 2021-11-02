@@ -1,9 +1,9 @@
 import os
-from RNN import RNN
-from LSTM import LSTM
-from GRU import GRU
-from Transformer import Transformer
-from RTransformer import RT
+from algorithms.RNN import RNN
+from algorithms.LSTM import LSTM
+from algorithms.GRU import GRU
+from algorithms.Transformer import Transformer
+from algorithms.RTransformer import RT
 from HDF5Dataset import HDF5Dataset
 import plotting
 import torch
@@ -195,7 +195,7 @@ def plot_samples(X, y, X_pre=None):
 
 
 def load_data(type):
-    path = os.path.join(config.results_folder, learning_config['dataset'], type)
+    path = os.path.join(config.raw_data_folder, learning_config['dataset'], type)
     file = learning_config['dataset'] + '_' + type + '.hdf5'
     # dataset = HDF5Dataset(path, recursive=True, load_data=False,
     # data_cache_size=4, transform=None)
@@ -230,11 +230,11 @@ def load_dataset(dataset=None):
 
     if not dataset:
         if learning_config['dataset'][:7] == 'PV_noPV':
-            dataset = PVnoPVdataset(config.results_folder + learning_config["dataset"] + '.csv')
+            dataset = PVnoPVdataset(config.raw_data_folder + learning_config["dataset"] + '.csv')
         elif learning_config['dataset'][:31] == 'malfunctions_in_LV_grid_dataset':
-            dataset = MlfctinLVdataset(config.results_folder + learning_config["dataset"] + '.csv')
+            dataset = MlfctinLVdataset(config.raw_data_folder + learning_config["dataset"] + '.csv')
         else:
-            dataset = Dummydataset(config.results_folder + learning_config["dataset"] + '.csv')
+            dataset = Dummydataset(config.raw_data_folder + learning_config["dataset"] + '.csv')
 
 
     else:

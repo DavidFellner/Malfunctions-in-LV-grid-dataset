@@ -28,7 +28,7 @@ def start_powerfactory(file):
     except NameError:
         pass
 
-    pf.pfd_import(config.user, os.path.join(config.data_folder, file) + '.pfd')              # freshly import project
+    pf.pfd_import(config.user, os.path.join(config.grid_data_folder, file) + '.pfd')              # freshly import project
 
     app.ActivateProject(file)
     project = app.GetActiveProject()
