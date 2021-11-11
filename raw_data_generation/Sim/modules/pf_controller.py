@@ -134,15 +134,16 @@ class PfController(object):
 
         return_value = self.loadfl.Execute()
         if return_value != 0:
-            print("save current PF state - LF did not converge.")
+            #print("save current PF state - LF did not converge.")
+            print("LF did not converge.")
             if "sim_comp_powers" in kwargs:
                 err_dir = os.path.join(os.path.dirname(__file__), "..", "output", "error")
                 if not os.path.isdir(err_dir):
                     os.makedirs(err_dir)
 
-                pv_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_pv.csv"))
+                #pv_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_pv.csv"))
                 #hp_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_hp.csv"))
-                ev_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_ev.csv"))
+                #ev_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_ev.csv"))
                 #bess_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_bess.csv"))
 
         # raise RuntimeError(f"Load flow calculation failed due to nonconvergence. Error Code: {return_value}")
