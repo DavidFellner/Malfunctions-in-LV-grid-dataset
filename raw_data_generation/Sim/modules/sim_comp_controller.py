@@ -66,6 +66,9 @@ class SimCompController(object):
         self.sim_pv = {}
         self.sim_bess = {}
         self.sim_ev = {}
+        self.malfunctioning_devices = None
+        self.active_EVCs = None
+        self.active_PVs = None
 
         self.hp_power_df = None
         self.pv_power_df = None
@@ -82,9 +85,9 @@ class SimCompController(object):
 
         self.grid_name = kwargs["grid"]
         self.gridinfo = kwargs["current_grid_info"]
-        active_PVs = self.gridinfo[0]
-        active_EVCs = self.gridinfo[1]
-        malfunctioning_devices = self.gridinfo[4]
+        self.active_PVs = self.gridinfo[0]
+        self.active_EVCs = self.gridinfo[1]
+        self.malfunctioning_devices = self.gridinfo[4]
 
         pv_profile = pd.read_csv(os.path.join(configuration.grid_data_folder, self.grid_name, self.pv_profile_file),
                                  index_col=0, parse_dates=True, delimiter=';')
@@ -135,20 +138,27 @@ class SimCompController(object):
 
         # np.random.seed(12345)
 
-        for ev in active_EVCs:
+        for ev in self.active_EVCs:
             ev_demand = load_profiles[pf.get_referenced_characteristics(ev, 'plini')[0].loc_name]
             ev_chargingstation_type = pf.get_referenced_characteristics(ev, 'plini')[
                 0].loc_name
+
+
             sim_ev = sim_ev_charging_station.EVChargingStation(
                 yearly_demand=ev_demand,
                 ev_chargingstation_type=ev_chargingstation_type,
                 size=ev.plini,
                 start_sim_time=start_sim_time,
                 control_algorithm=ControlAlgorithm(),
-                phase_id="plini"            # if 3 phase calc insert sth like "plinir_plinis_plinit"
+                phase_id="plini",            # if 3 phase calc insert sth like "plinir_plinis_plinit"
+                char=pf.get_referenced_characteristics(ev, 'plini')[0]
             )
 
-            if ev not in malfunctioning_devices:
+            if configuration.QDSL_models_available:
+                for old_ref in list(ev.GetChildren(1, 'plini' + "*.ChaRef", 1)):  old_ref.Delete()
+                ev.plini = 0.0
+
+            if ev not in self.malfunctioning_devices:
                 sim_ev.control_algorithm.setup(algorithm_type="p_of_u",
                                                # write into some sort of parameter vector? also to have functioning one / broken one upackable to u_lim , p_min...
                                                u_lim_high=1.05,
@@ -157,6 +167,8 @@ class SimCompController(object):
                                                p_min=sim_ev.p_rated * 0.1875,
                                                comp="sim")
             else:
+                if configuration.QDSL_models_available:
+                    ev.qdslCtrl.SetAttribute('e:initVals', [0.0, 0.0, 1.05, 0.95, 1])
                 sim_ev.control_algorithm.setup(algorithm_type="p_of_u",
                                                u_lim_high=1.0,
                                                u_lim_low=1,
@@ -167,7 +179,7 @@ class SimCompController(object):
             # self.sim_ev[f"EV_{ev.loc_name.split(' ')[0]}"] = sim_ev             #bus name is added
             self.sim_ev[f"{ev.loc_name}"] = sim_ev  # bus name is added
 
-        for pv in active_PVs:
+        for pv in self.active_PVs:
             # add control in module?
             """self.sim_pv[f"PV_{pv.loc_name.split('_')}"] = sim_pv.PV(profile=pv_profile[start_sim_time:end_sim_time],
                                                      size=(pv.pgini, pv.qgini),
@@ -185,11 +197,15 @@ class SimCompController(object):
             sim_pv = sim_pv_inverter.PV(profile=pv_profile,
                                         size=pv.pgini,
                                         control_algorithm=ControlAlgorithm(),
+                                        control_curve=control_curve,
                                         phase_id="pgini_qgini")  # if 3 phase calc insert sth like "pginir_pginis_pginit"
 
             sim_pv.control_algorithm.setup(algorithm_type=control_curve_name,
                                            control_curve=control_curve,
                                            comp="sim")
+
+            if configuration.QDSL_models_available:
+                pv.pgini = 0.0  # reset to allow for proper function of QDSL model
 
             self.sim_pv[f"{pv.loc_name}"] = sim_pv
 
@@ -281,15 +297,20 @@ class SimCompController(object):
 
         for name, pv in self.sim_pv.items():
             split_phase_id = pv.phase_id.split("_")
-            if pv.control_algorithm.algorithm == 'cosphi(P)':
-                q = pv.control_algorithm.go(self.sim_comp_time_step,
-                                            p=pv.profile.loc[self.sim_comp_time_step].values[0])
-            elif voltages is not None:
-                q = pv.control_algorithm.go(self.sim_comp_time_step, voltage=voltages[name])
-            else:
-                q = 0.0
+            if configuration.QDSL_models_available:
+                power = pv.go(time_step=self.sim_comp_time_step)
 
-            power = pv.go(time_step=self.sim_comp_time_step, voltages=voltages, q=q)
+            else:
+                if pv.control_algorithm.algorithm == 'cosphi(P)':
+                    q = pv.control_algorithm.go(self.sim_comp_time_step,
+                                                p=pv.profile.loc[self.sim_comp_time_step].values[0])
+                elif voltages is not None:
+                    q = pv.control_algorithm.go(self.sim_comp_time_step, voltage=voltages[name])
+                else:
+                    q = 0.0
+
+                power = pv.go(time_step=self.sim_comp_time_step, voltages=voltages, q=q)
+
             if len(power) < 3:
                 for i in list(range(len(power))):
                     self.pv_power_df.loc[name, split_phase_id[i]] = power[i]
@@ -301,12 +322,17 @@ class SimCompController(object):
 
         for name, ev in self.sim_ev.items():
             split_phase_id = ev.phase_id.split("_")
-            if voltages is not None:
-                target_power = ev.control_algorithm.go(self.sim_comp_time_step, voltage=voltages.loc[name.split('@ ')[1]].values[0]) / ev.p_rated
-            else:
-                target_power = 1
+            if configuration.QDSL_models_available:
+                power = ev.go(time_step=time_step)
 
-            power = ev.go(time_step=time_step, set_power=target_power, convergence_step=convergence_step)
+            else:
+                if voltages is not None:
+                    target_power = ev.control_algorithm.go(self.sim_comp_time_step, voltage=voltages.loc[name.split('@ ')[1]].values[0]) / ev.p_rated
+                else:
+                    target_power = 1
+
+                power = ev.go(time_step=time_step, set_power=target_power)
+
             if len(power) < 3:
                 for i in list(range(len(power))):
                     try:
@@ -357,9 +383,19 @@ class SimCompController(object):
         
         '''
 
-        return (self.pv_power_df, self.ev_power_df)  # self.bess_power_df, self.hp_power_df
+        return self.pv_power_df, self.ev_power_df  # self.bess_power_df, self.hp_power_df
 
     def shutdown(self):
+        for ev in self.sim_ev:
+            ev_to_reset = self.active_EVCs[[i.loc_name for i in self.active_EVCs].index(ev)]
+            if ev_to_reset.loc_name == ev:
+                pass
+            else:
+                print('not good')
+            pf.set_referenced_characteristics(ev_to_reset, 'plini',
+                                              self.sim_ev[ev].char)  # reset characteristic for inserted EVCS
+            ev_to_reset.plini = self.sim_ev[ev].p_lini
+
         self._save_results()
 
     def _save_results(self):

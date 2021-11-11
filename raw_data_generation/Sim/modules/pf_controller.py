@@ -45,6 +45,8 @@ class PfController(object):
         self.powers_L2_df = None
         self.powers_L3_df = None
 
+        self.malfunctioning_devices = None
+
         self.trafo_loading_df = None
         self.cable_loading_df = None
 
@@ -65,6 +67,8 @@ class PfController(object):
         self.current_sim_time = kwargs["start_sim_time"]
         total_sim_steps = kwargs["total_steps"]
         sim_step_delta_s = kwargs["sim_step_delta_s"]
+        self.gridinfo = kwargs["current_grid_info"]
+        self.malfunctioning_devices = self.gridinfo[4]
 
         sim_end_time = self.current_sim_time + total_sim_steps * datetime.timedelta(seconds=sim_step_delta_s)
 
@@ -111,10 +115,22 @@ class PfController(object):
             #bess_powers /= 1000.
             #hp_powers /= 1000.
             ev_powers /= 1000.
-            self.pf_pv_pof.set_attributes(pv_powers)        #ALSO SET Q!!! > check in PF
-            #self.pf_bess_pof.set_attributes(bess_powers)
-            #self.pf_hp_pof.set_attributes(hp_powers)
-            self.pf_ev_pof.set_attributes(ev_powers)
+            if configuration.QDSL_models_available:
+                for pv in self.pf_pv_pof: pv.qdslCtrl.SetAttribute('e:initVals', list(pv_powers.loc[pv.loc_name].values))
+                for ev in self.pf_ev_pof:
+                    vals_list = ev.qdslCtrl.GetAttribute('e:initVals')
+                    if ev in self.malfunctioning_devices:
+                        vals_list = vals_list[2:4] + [1]
+                    else:
+                        vals_list = vals_list[2:4] + [0]
+                    vals_list = [ev_powers.loc[ev.loc_name].values[0], ev_powers.loc[ev.loc_name].values[0] * 0.1875] + vals_list
+                    ev.qdslCtrl.SetAttribute('e:initVals', vals_list)
+
+            else:
+                self.pf_pv_pof.set_attributes(pv_powers)        #ALSO SET Q!!! > check in PF
+                #self.pf_bess_pof.set_attributes(bess_powers)
+                #self.pf_hp_pof.set_attributes(hp_powers)
+                self.pf_ev_pof.set_attributes(ev_powers)
 
         return_value = self.loadfl.Execute()
         if return_value != 0:
@@ -126,7 +142,7 @@ class PfController(object):
 
                 pv_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_pv.csv"))
                 #hp_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_hp.csv"))
-                ev_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_hp.csv"))
+                ev_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_ev.csv"))
                 #bess_powers.to_csv(os.path.join(err_dir, f"{self.scen_name}_err_bess.csv"))
 
         # raise RuntimeError(f"Load flow calculation failed due to nonconvergence. Error Code: {return_value}")
@@ -134,7 +150,7 @@ class PfController(object):
         #voltages = self.nodes_pof.get_attributes(['m:u:A', 'm:u:B', 'm:u:C'])       # only m:u?
         voltages = self.nodes_pof.get_attributes(['m:u'])
 
-        if not convergence_step:
+        if not convergence_step or configuration.QDSL_models_available:
 
             '''self.voltages_L1_df.loc[self.current_sim_time] = voltages['m:u:A']  # .to_list() werden die richtigen werte in die richtige spalte geschrieben?
             self.voltages_L2_df.loc[self.current_sim_time] = voltages['m:u:B']  # .to_list()
@@ -158,7 +174,7 @@ class PfController(object):
             self.trafo_loading_df.loc[self.current_sim_time] = self.pf_trafos_pof.get_attributes(["c:loading"])["c:loading"]  # double call needed because .get_attributes returns single column Dataframe but we need Series
             self.cable_loading_df.loc[self.current_sim_time] = self.pf_cables_pof.get_attributes(["c:loading"])["c:loading"]
 
-        return voltages
+        return (voltages, return_value)
 
         # if self.smartest_load_pf_name != "":
         #     smartest_voltage = voltages["m:u"][self.smartest_node_pf_name]
@@ -167,7 +183,7 @@ class PfController(object):
     def shutdown(self):
         pf.app.WriteChangesToDb()
         results = self._save_results()
-        pf.app.GetActiveProject().Deactivate()
+        #pf.app.GetActiveProject().Deactivate()
 
         return results
 

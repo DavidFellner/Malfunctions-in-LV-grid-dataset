@@ -29,7 +29,8 @@ class EVChargingStation:
                  ev_chargingstation_type=None,
                  yearly_demand=None,
                  phase_id ="plinir",
-                 size=None
+                 size=None,
+                 char=None
                  ):
 
         self.ev_chargingstation_type = ev_chargingstation_type
@@ -48,9 +49,14 @@ class EVChargingStation:
 
         self.p_lini = size
 
+        self.char = char
 
-    def go(self, time_step, set_power, convergence_step=False):
 
-        real_power = self.yearly_demand[time_step] * set_power * self.p_lini
+    def go(self, time_step, set_power=1):
+
+        if configuration.QDSL_models_available:
+            real_power = self.yearly_demand[time_step] * self.p_lini
+        else:
+            real_power = self.yearly_demand[time_step] * set_power * self.p_lini
 
         return [real_power]

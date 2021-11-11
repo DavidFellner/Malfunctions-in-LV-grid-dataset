@@ -86,6 +86,7 @@ float_decimal = 5  # decimals in dataset
 user = 'FellnerD'
 system_language = 1  # chose 0 for english, 1 for german according to the lagnuage of powerfactory installed on the system
 parallel_computing = True
+QDSL_models_available = True
 cores = 12  # cores to be used for parallel computing (when 64 available use 12 - 24)
 reduce_result_file_size = True  # save results as integers to save memory in csv
 just_voltages = True  # if False also P and Q results given

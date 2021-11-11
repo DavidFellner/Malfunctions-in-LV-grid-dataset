@@ -118,12 +118,13 @@ def define_PV_controls(app):
     return o_IntcosphiPcurve, o_IntQpcurve, o_brokenIntQpcurve, o_wrongIntcosphiPcurve
 
 
-def place_PVs(app, o_ElmNet, o_ChaTime, loads_by_type, PV_apparent_power=0.005):
+def place_PVs(app, o_ElmNet, o_ChaTime, loads_by_type, PV_apparent_power=0.005, type_QDSL_model=None):
     '''
     Place photvoltaics next to every load, assign control/capability curve &  charactersitic and scale their output
     to the consumption of the load they are attached to so as it yields about the yearly consumption of the load
     '''
 
+    type_qdsl_model = import_QDSL_type('cosphi(P)')
     curves = define_PV_controls(app)
 
     o_QlimCurve_IntPrjfolder = app.GetProjectFolder('mvar')
@@ -151,21 +152,33 @@ def place_PVs(app, o_ElmNet, o_ChaTime, loads_by_type, PV_apparent_power=0.005):
                                       )
         o_Elm.SetAttribute('bus1', o_StaCubic)
         o_Elm.SetAttribute('sgn', PV_apparent_power)
-        o_Elm.pgini = o_Elm.sgn * 0.9 * (o_ElmLod.plini / 0.004)  # scale with yearly consumption of load
         o_Elm.cCategory = 'Photovoltaic'
-        pf.set_referenced_characteristics(o_Elm, 'pgini', o_ChaTime)  # set characteristic for inserted PV
-
         o_Elm.outserv = 1  # deactivate all PVs at first and then activate random ones during simulation
-        o_Elm.SetAttribute('av_mode', 'qpchar')  # Control activated
-        o_Elm.SetAttribute('pQPcurve', curves[config.control_curve_choice])  # Control assigned
 
-        o_Elm.SetAttribute('Pmax_ucPU', 1)  # set the operational limits for the PV
-        o_Elm.SetAttribute('pQlimType', o_IntQlim)
+        if not config.QDSL_models_available or config.number_of_broken_devices_and_type[1] == 'PV':
+            o_Elm.pgini = o_Elm.sgn * 0.9 * (o_ElmLod.plini / 0.004)  # scale with yearly consumption of load
+            pf.set_referenced_characteristics(o_Elm, 'pgini', o_ChaTime)  # set characteristic for inserted PV
+            o_Elm.SetAttribute('av_mode', 'qpchar')  # Control activated
+            o_Elm.SetAttribute('pQPcurve', curves[config.control_curve_choice])  # Control assigned
+
+            o_Elm.SetAttribute('Pmax_ucPU', 1)  # set the operational limits for the PV
+            o_Elm.SetAttribute('pQlimType', o_IntQlim)
+        elif config.QDSL_models_available:
+            o_Elm.pgini = o_Elm.sgn * 0.9 * (o_ElmLod.plini / 0.004)  # scale with yearly consumption of load > is reset later bc of QDSL model usage
+            o_Elm.SetAttribute('pQPcurve', curves[config.control_curve_choice])  # Control assigned
+            #insert QDSL model to do convergence loop when control is active
+            o_ElmQDSLmodel = o_ElmNet.CreateObject('ElmQdsl',
+                                              'QDSLmodel_' + o_ElmLod.loc_name.split(' ')[0] + ' PV ' + o_ElmLod.loc_name.split(' ')[
+                                                  2])
+            o_ElmQDSLmodel.typ_id = type_qdsl_model
+            o_ElmQDSLmodel.SetAttribute('e:initVals', [0.0,0.0])
+            o_ElmQDSLmodel.SetAttribute('e:objectsLdf', [o_Elm, o_Elm])
+            o_Elm.i_scale = 0
 
     return curves
 
 
-def place_home_or_work_EVCS(loads_by_type, loads, type, o_ElmNet):
+def place_home_or_work_EVCS(loads_by_type, loads, type, o_ElmNet, type_QDSL_model=None):
     EV_charging_stations = []
     if type not in ['Home', 'Work']:
         print('invalid type, valid types are: Home, Work')
@@ -186,17 +199,48 @@ def place_home_or_work_EVCS(loads_by_type, loads, type, o_ElmNet):
         parameters = loads_by_type['EV_charging_stations'][type][
             number % len(loads_by_type['EV_charging_stations'][type])]
 
-        o_ElmEVCS.SetAttribute('typ_id', parameters[2])
-        pf.set_referenced_characteristics(o_ElmEVCS, 'plini', parameters[0][0])  # set characteristic for inserted EVCS
-        o_ElmEVCS.plini = parameters[0][1]
-        pf.set_referenced_characteristics(o_ElmEVCS, 'qlini', parameters[1][0])  # set characteristic for inserted EVCS
-        o_ElmEVCS.qlini = parameters[1][1]
+        if not config.QDSL_models_available or config.number_of_broken_devices_and_type[1] == 'PV':
+            o_ElmEVCS.SetAttribute('typ_id', parameters[2])
+            pf.set_referenced_characteristics(o_ElmEVCS, 'plini', parameters[0][0])  # set characteristic for inserted EVCS
+            o_ElmEVCS.plini = parameters[0][1]
+            pf.set_referenced_characteristics(o_ElmEVCS, 'qlini', parameters[1][0])  # set characteristic for inserted EVCS
+            o_ElmEVCS.qlini = parameters[1][1]
+        elif config.QDSL_models_available:
+            pf.set_referenced_characteristics(o_ElmEVCS, 'plini',
+                                              parameters[0][0])  # set characteristic for inserted EVCS
+            o_ElmEVCS.plini = parameters[0][1]
+            #insert QDSL model to do convergence loop when control is active
+            o_ElmQDSLmodel = o_ElmNet.CreateObject('ElmQdsl',
+                                              'QDSLmodel_' + o_ElmLod.loc_name.split(' ')[0] + ' EVCS ' + o_ElmLod.loc_name.split(' ')[
+                                                  2])
+            o_ElmQDSLmodel.typ_id = type_QDSL_model
+            o_ElmQDSLmodel.SetAttribute('e:initVals', [0.0, 0.0, 1.05, 0.95, 0])
+            o_ElmQDSLmodel.SetAttribute('e:objectsLdf', [o_ElmEVCS, o_ElmTerm])
+            o_ElmEVCS.i_scale = 0
 
         o_ElmEVCS.outserv = 1  # deactivate all EVCSs at first and then activate random ones during simulation
 
         EV_charging_stations.append(o_ElmEVCS)
 
     return EV_charging_stations
+
+def import_QDSL_type(control_algorithm):
+
+    target_folder = pf.app.GetProjectFolder('blk')
+
+    if control_algorithm == 'p_of_u':
+        path = os.path.join(config.grid_data_folder, 'QDSLModels.dz')
+        folder = pf.app.ImportDz(target_folder, path)[1][0]
+        type = folder.GetContents('p_of_u')[0]
+    elif control_algorithm == 'cosphi(P)':
+        path = os.path.join(config.grid_data_folder, 'QDSLModels.dz')
+        folder = pf.app.ImportDz(target_folder, path)[1][0]
+        type = folder.GetContents('cosphi(P)')[0]
+    else:
+        type = None
+
+
+    return type
 
 
 def place_EVCS(o_ElmNet, loads_by_type):
@@ -207,9 +251,10 @@ def place_EVCS(o_ElmNet, loads_by_type):
     homes = [i for i in loads_by_type['regular_loads'] if i[1].loc_name[0] == 'H']
     companies = [i for i in loads_by_type['regular_loads'] if i[1].loc_name[0] == 'G']
 
-    EV_charging_stations = place_home_or_work_EVCS(loads_by_type, homes, 'Home', o_ElmNet)
+    type_qdsl_model = import_QDSL_type('p_of_u')
+    EV_charging_stations = place_home_or_work_EVCS(loads_by_type, homes, 'Home', o_ElmNet, type_qdsl_model)
     EV_charging_stations = EV_charging_stations + place_home_or_work_EVCS(loads_by_type, companies, 'Work',
-                                                                          o_ElmNet)  # making sure a work charging station is palced next to a company and a home charging station next to a home
+                                                                          o_ElmNet, type_qdsl_model)  # making sure a work charging station is palced next to a company and a home charging station next to a home
 
     return EV_charging_stations
 

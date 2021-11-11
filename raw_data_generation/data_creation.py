@@ -391,6 +391,7 @@ def create_data(app, o_ElmNet, grid_data, study_case_obj, file):
         if config.raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
             malfunctioning_devices, terms_with_malfunction = create_malfunctioning_devices(active_PVs, active_EVCS, o_ElmNet, curves) #only 1 malfunction looked at? also only 1 type of malfunction?
             current_grid_info.append(malfunctioning_devices)
+            print(malfunctioning_devices[0].loc_name)
             # time_of_malfunction = create_malfunction_events(app, malfunctioning_devices, t_start, t_end)
 
         if config.number_of_broken_devices_and_type[1] == 'PV':    #only here QDS can be done, otherwise malfunction has to be produced in individual loadflows
@@ -408,8 +409,6 @@ def create_data(app, o_ElmNet, grid_data, study_case_obj, file):
                          terminals=terminals)
             clean_up(app, active_PVs, active_EVCS)
 
-        active_PVs = []
-        active_EVCS = []
         count += 1
 
     return

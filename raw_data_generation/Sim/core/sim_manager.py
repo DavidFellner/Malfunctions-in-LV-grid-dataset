@@ -75,6 +75,8 @@ class SimManager(object):
         self.active_modules = {}
         self.pf_voltage = None
         self.pf_voltage_last_step = None
+        self.convergence_flag = None
+        self.inner_loop_flag = None
 
         # self.voltage_convergence = options["voltage_convergence"]
         self.voltage_convergence = True
@@ -97,24 +99,39 @@ class SimManager(object):
                          current_grid_info=self.gridinfo,
                          )
 
-        if "pf_controller" in self.active_modules \
+        if configuration.QDSL_models_available:
+            sim_comp_powers = self.active_modules["sim_comp_controller"].go(self.start_sim_time)
+            self.pf_voltage, self.convergence_flag = self.active_modules["pf_controller"].go(self.start_sim_time,
+                                                                                             sim_comp_powers=sim_comp_powers)
+        elif "pf_controller" in self.active_modules \
                 and "sim_comp_controller" in self.active_modules \
                 and self.voltage_convergence and self.sim_mode == "simulation":
             sim_comp_powers = self.active_modules["sim_comp_controller"].go(self.start_sim_time, convergence_step=True)
-            self.pf_voltage = self.active_modules["pf_controller"].go(self.start_sim_time,
+            self.pf_voltage, self.convergence_flag = self.active_modules["pf_controller"].go(self.start_sim_time,
                                                                       sim_comp_powers=sim_comp_powers,
                                                                       convergence_step=True)
 
     def go(self, time_index):
 
         # elif self.sim_mode == "simulation":
-        if self.sim_mode == "simulation":
+        if configuration.QDSL_models_available:
+            if "pf_controller" in self.active_modules \
+                    and "sim_comp_controller" in self.active_modules:
+                sim_comp_powers = self.active_modules["sim_comp_controller"].go(time_index)
+                self.pf_voltage, self.convergence_flag = self.active_modules["pf_controller"].go(time_index,
+                                                                                             sim_comp_powers=sim_comp_powers)
+
+            else:
+                raise ValueError(
+                    f"Not all required modules for simulation in active_modules! check input: {self.active_modules}")
+
+        else:
 
             if "pf_controller" in self.active_modules \
                     and "sim_comp_controller" in self.active_modules \
                     and not self.voltage_convergence:
                 sim_comp_powers = self.active_modules["sim_comp_controller"].go(time_index)
-                self.pf_voltage = self.active_modules["pf_controller"].go(time_index, sim_comp_powers=sim_comp_powers)
+                self.pf_voltage, self.convergence_flag = self.active_modules["pf_controller"].go(time_index, sim_comp_powers=sim_comp_powers)
 
             elif "pf_controller" in self.active_modules \
                     and "sim_comp_controller" in self.active_modules \
@@ -125,37 +142,39 @@ class SimManager(object):
 
                 sim_comp_powers = self.active_modules["sim_comp_controller"].go(time_index, voltages=self.pf_voltage,
                                                                                 convergence_step=True)
-                self.pf_voltage = self.active_modules["pf_controller"].go(time_index, sim_comp_powers=sim_comp_powers,
+                self.pf_voltage, self.convergence_flag = self.active_modules["pf_controller"].go(time_index, sim_comp_powers=sim_comp_powers,
                                                                           convergence_step=True)
 
                 # while (self.pf_voltage - self.pf_voltage_last_step).max(axis=1).max() > 0.001 or conv_step > 10: #? >10??
                 while (self.pf_voltage - self.pf_voltage_last_step).max(
                         axis=1).max() > 0.001 or conv_step < 10:
 
+                    self.inner_loop_flag = 1
+
                     self.pf_voltage_last_step = self.pf_voltage
                     sim_comp_powers = self.active_modules["sim_comp_controller"].go(time_index,
                                                                                     voltages=self.pf_voltage,
                                                                                     convergence_step=True)
-                    self.pf_voltage = self.active_modules["pf_controller"].go(time_index,
+                    self.pf_voltage, self.convergence_flag = self.active_modules["pf_controller"].go(time_index,
                                                                               sim_comp_powers=sim_comp_powers,
                                                                               convergence_step=True)
 
                     conv_step += 1
+                    #if conv_step > 1:
+                        #print('inner loop interation ' + str(conv_step))
+
+                self.inner_loop_flag = None
 
                 sim_comp_powers = self.active_modules["sim_comp_controller"].go(time_index,
                                                                                 voltages=self.pf_voltage,
                                                                                 convergence_step=False)
-                self.pf_voltage = self.active_modules["pf_controller"].go(time_index,
+                self.pf_voltage, self.convergence_flag = self.active_modules["pf_controller"].go(time_index,
                                                                           sim_comp_powers=sim_comp_powers,
                                                                           convergence_step=False)
 
             else:
                 raise ValueError(
                     f"Not all required modules for simulation in active_modules! check input: {self.active_modules}")
-
-        else:
-
-            raise ValueError(f"Invalid sim mode! check input: {self.sim_mode}")
 
     def shutdown(self):
 
@@ -172,9 +191,9 @@ class SimManager(object):
         counter = 0 #error counter to differentiate between timeshift error and other errors
         while (self.current_sim_time - self.start_sim_time).total_seconds() <= self.sim_duration:
             try:
-                t_before = time.time()
+                #t_before = time.time()
                 self.go(self.current_sim_time)
-                t_after = time.time()
+                #t_after = time.time()
 
                 '''if self.sim_mode == "emulation":
                 ex_time = t_after - t_before
@@ -190,6 +209,15 @@ class SimManager(object):
                     self.current_sim_time += self.sim_step_delta
                     counter += 1
                     #print('DST gap in profile bridged')
+                else:
+                    raise Exception
+            except TypeError:
+                if self.convergence_flag == 1:
+                    if self.inner_loop_flag == 1:
+                        print('Simulation skipped because of non convergence in inner loop')
+                        break
+                    print('Simulation skipped because of non convergence in outer loop')
+                    break
                 else:
                     raise Exception
 
