@@ -157,23 +157,24 @@ class PfController(object):
             self.voltages_L2_df.loc[self.current_sim_time] = voltages['m:u:B']  # .to_list()
             self.voltages_L3_df.loc[self.current_sim_time] = voltages['m:u:C']  # .to_list()'''
 
-            self.voltages_L1_df.loc[self.current_sim_time] = voltages[
-                'm:u']  # .to_list() #geht das so für symmetrisch?
+            if return_value == 0:
+                self.voltages_L1_df.loc[self.current_sim_time] = voltages[
+                    'm:u']  # .to_list() #geht das so für symmetrisch?
 
 
 
-            #powers = self.pf_all_loads_pof.get_attributes(["m:P:bus1:A", "m:P:bus1:B", "m:P:bus1:C"])
-            powers = self.pf_all_loads_pof.get_attributes(["m:P:bus1"]) #geht das so für symmetrisch?
-            powers *= 1000.  # convert from MW to kW
+                #powers = self.pf_all_loads_pof.get_attributes(["m:P:bus1:A", "m:P:bus1:B", "m:P:bus1:C"])
+                powers = self.pf_all_loads_pof.get_attributes(["m:P:bus1"]) #geht das so für symmetrisch?
+                powers *= 1000.  # convert from MW to kW
 
-            '''self.powers_L1_df.loc[self.current_sim_time] = powers["m:P:bus1:A"]
-            self.powers_L2_df.loc[self.current_sim_time] = powers["m:P:bus1:B"]
-            self.powers_L3_df.loc[self.current_sim_time] = powers["m:P:bus1:C"]'''
+                '''self.powers_L1_df.loc[self.current_sim_time] = powers["m:P:bus1:A"]
+                self.powers_L2_df.loc[self.current_sim_time] = powers["m:P:bus1:B"]
+                self.powers_L3_df.loc[self.current_sim_time] = powers["m:P:bus1:C"]'''
 
-            self.powers_L1_df.loc[self.current_sim_time] = powers["m:P:bus1"]
+                self.powers_L1_df.loc[self.current_sim_time] = powers["m:P:bus1"]
 
-            self.trafo_loading_df.loc[self.current_sim_time] = self.pf_trafos_pof.get_attributes(["c:loading"])["c:loading"]  # double call needed because .get_attributes returns single column Dataframe but we need Series
-            self.cable_loading_df.loc[self.current_sim_time] = self.pf_cables_pof.get_attributes(["c:loading"])["c:loading"]
+                self.trafo_loading_df.loc[self.current_sim_time] = self.pf_trafos_pof.get_attributes(["c:loading"])["c:loading"]  # double call needed because .get_attributes returns single column Dataframe but we need Series
+                self.cable_loading_df.loc[self.current_sim_time] = self.pf_cables_pof.get_attributes(["c:loading"])["c:loading"]
 
         return (voltages, return_value)
 
