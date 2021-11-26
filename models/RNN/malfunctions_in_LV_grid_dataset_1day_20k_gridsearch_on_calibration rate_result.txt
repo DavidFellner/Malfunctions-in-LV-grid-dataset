@@ -1,0 +1,104 @@
+Configuration:
+
+mode : train
+dataset : malfunctions_in_LV_grid_dataset_1day_20k
+RNN model settings : [1, 2, 20, 5]
+LSTM model settings : [1, 2, 3, 5]
+GRU model settings : [1, 2, 20, 5]
+Transformer model settings : [2, 1, 1, 3, 4, 0.1]
+R-Transformer model settings : [1, 3, 2, 1, 'GRU', 7, 4, 1, 0.1, 0.1]
+number of epochs : 20
+learning rate : 0.001
+decision criteria : majority vote
+calibration rate : 0.8
+activation function : relu
+mini batch size : 60
+optimizer : SGD
+k folds : 5
+cross_validation : False
+early stopping : True
+LR adjustment : LR controlled
+percentage of epochs for warm up : 10
+gradient clipping : 0.25
+train test split : 1000
+baseline : False
+metrics : ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro']
+cross_val_metrics : ['fit_time', 'test_accuracy', 'test_precision_macro', 'test_recall_macro', 'test_f1_macro']
+plot samples : True
+classifier : RNN
+save_model : True
+save_result : True
+export_model : False
+do grid search : True
+grid search : ('calibration rate', [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+Grid search on: calibration rate; value:0
+########## Metrics ##########Accuracy: 0.498
+Precision: 0.4
+Recall: 0.4960399366389862
+FScore: 0.33767494880834265
+
+Grid search on: calibration rate; value:0.05
+########## Metrics ##########Accuracy: 0.498
+Precision: 0.249
+Recall: 0.5
+FScore: 0.3324432576769025
+
+Grid search on: calibration rate; value:0.1
+########## Metrics ##########Accuracy: 0.498
+Precision: 0.249
+Recall: 0.5
+FScore: 0.3324432576769025
+
+Grid search on: calibration rate; value:0.2
+########## Metrics ##########Accuracy: 0.488
+Precision: 0.45353260869565215
+Recall: 0.4863197811164979
+FScore: 0.3770652962103183
+
+Grid search on: calibration rate; value:0.3
+########## Metrics ##########Accuracy: 0.495
+Precision: 0.446194102347153
+Recall: 0.4931318901102418
+FScore: 0.3525964727404655
+
+Grid search on: calibration rate; value:0.4
+########## Metrics ##########Accuracy: 0.502
+Precision: 0.251
+Recall: 0.5
+FScore: 0.33422103861517977
+
+Grid search on: calibration rate; value:0.5
+########## Metrics ##########Accuracy: 0.498
+Precision: 0.249
+Recall: 0.5
+FScore: 0.3324432576769025
+
+Grid search on: calibration rate; value:0.6
+########## Metrics ##########Accuracy: 0.498
+Precision: 0.249
+Recall: 0.5
+FScore: 0.3324432576769025
+
+Grid search on: calibration rate; value:0.7
+########## Metrics ##########Accuracy: 0.502
+Precision: 0.251
+Recall: 0.5
+FScore: 0.33422103861517977
+
+Grid search on: calibration rate; value:0.8
+########## Metrics ##########Accuracy: 0.498
+Precision: 0.249
+Recall: 0.5
+FScore: 0.3324432576769025
+
+Grid search on: calibration rate; value:0.9
+########## Metrics ##########Accuracy: 0.502
+Precision: 0.251
+Recall: 0.5
+FScore: 0.33422103861517977
+
+Grid search on: calibration rate; value:1
+########## Metrics ##########Accuracy: 0.5
+Precision: 0.3755020080321285
+Recall: 0.4980159682554921
+FScore: 0.3351028462917356

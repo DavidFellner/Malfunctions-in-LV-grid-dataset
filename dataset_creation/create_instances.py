@@ -34,12 +34,15 @@ def add_noise(df):
         return df_noised
     else:
         if config.just_voltages:
-            df_noised = df[('ElmTerm', 'm:u')]
+            try:
+                df_noised = df[('ElmTerm', 'm:u')]
+            except KeyError:
+                df_noised = df
         else:
             df_noised = df
         return df_noised
 
-def add_samples(train_samples, test_samples, num_features, sample_dict, samples_per_term, samples_before, label, dummy=False):
+def add_samples(train_samples, test_samples, num_features, sample_dict, samples_per_term, samples_before, label, number_of_samples_per_file, positive_test_samples_so_far, test_samples_so_far, dummy=False):
 
     for key in random.sample(list(sample_dict), samples_per_term):
         sample = sample_dict[key]
@@ -51,7 +54,18 @@ def add_samples(train_samples, test_samples, num_features, sample_dict, samples_
         else:
             share_of_test_samples = config.train_test_split
 
-        if sample_number % int(1/share_of_test_samples) == 0:
+        if int(1/share_of_test_samples) <= number_of_samples_per_file:
+            criterion1 = (int(number_of_samples_per_file * samples_before * share_of_test_samples) < share_of_test_samples*config.number_of_samples) #should always be true
+            criterion2 = True
+        else:
+            criterion1 = (test_samples_so_far < share_of_test_samples*config.number_of_samples)
+            if (label == 1 and (positive_test_samples_so_far < share_of_test_samples*config.number_of_samples*config.share_of_positive_samples)):
+                criterion2 = True
+            elif (label == 0 and ((test_samples_so_far - positive_test_samples_so_far) < (share_of_test_samples*config.number_of_samples*(1-config.share_of_positive_samples)))):
+                criterion2 = True
+            else:
+                criterion2 = False
+        if sample_number % int(1/share_of_test_samples) == 0 and criterion1 and criterion2:
             if num_features > 1:
                 for i in noised_data.columns:
                     if dummy:
@@ -86,7 +100,7 @@ def add_samples(train_samples, test_samples, num_features, sample_dict, samples_
 
     return train_samples, test_samples
 
-def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samples_before):
+def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samples_before, positive_test_samples_so_far, test_samples_so_far):
     '''
 
     :param df:
@@ -97,9 +111,17 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
     also adds noise to data
     '''
 
-    metainfo = df[('metainfo', 'in the first', 'few indices')]
+    try:
+        metainfo = df[('metainfo', 'in the first', 'few indices')]
+    except KeyError:
+        metainfo = df[str(('metainfo', 'in the first', 'few indices'))]
     terminals_with_malfunctions = [i for i in metainfo.iloc[5].split("'") if 'Bus' in i]
-    terminals_with_devices = [i for i in metainfo.iloc[6].split("'") if 'Bus' in i]
+    if config.type == 'PV':
+        line = 6
+    elif config.type == 'EV':
+        line = 7
+    terminals_with_devices = [i for i in metainfo.iloc[line].split("'") if 'Bus' in i]
+    start_time = metainfo[3].split(': ')[1].split('+')[0]
 
     sample_length = config.sample_length
     samples_to_go = config.number_of_samples - number_of_samples_before
@@ -119,19 +141,31 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
 
     train_samples = pd.DataFrame(index=df.index[:sample_length].append(pd.Index(['label'])))
     test_samples = pd.DataFrame(index=df.index[:sample_length].append(pd.Index(['label'])))
-    features_per_sample = len(df[terminals_with_devices[0]].columns)
+    try:
+        features_per_sample = len(df[terminals_with_devices[0]].columns)
+    except KeyError:
+        features_per_sample = 1
 
     if len(combinations_already_in_dataset) > 0:
         for combination in combinations_already_in_dataset:
             if set(terminals_with_devices) == set(combination[0]) \
-                    and (terminals_with_malfunctions) == combination[1]:
+                    and (terminals_with_malfunctions) == combination[1] \
+                        and (terminals_with_malfunctions) == combination[2]:
+                print('Combination already in dataset, file skipped!')
                 return train_samples, test_samples, combinations_already_in_dataset
-    else:
-        combinations_already_in_dataset.append((terminals_with_devices, terminals_with_malfunctions))
+
+    combinations_already_in_dataset.append((terminals_with_devices, terminals_with_malfunctions, start_time))
 
     for term in terminals_with_devices:
-        sample_dict = {name: group for name, group in df[term].groupby(np.arange(len(df[term])) // sample_length) if
-                       len(group) == sample_length}
+        try:
+            sample_dict = {name: group for name, group in df[term].groupby(np.arange(len(df[term])) // sample_length) if
+                           len(group) == sample_length}
+        except KeyError:
+            try:
+                sample_dict = {name: group for name, group in df[str((term, 'L1'))].groupby(np.arange(len(df[str((term, 'L1'))])) // sample_length) if
+                               len(group) == sample_length}
+            except KeyError:
+                print('Broken data file')
 
         if term in terminals_with_malfunctions:
 
@@ -142,7 +176,7 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
                 pos_samples = int(pos_samples_per_term)
 
             train_samples, test_samples = add_samples(train_samples, test_samples, features_per_sample, sample_dict, pos_samples,
-                                                      number_of_samples_before, 1)
+                                                      number_of_samples_before, 1, len(sample_dict.keys()), positive_test_samples_so_far, test_samples_so_far)
 
         else:
 
@@ -153,7 +187,7 @@ def extract_malfunction_data(df, combinations_already_in_dataset, number_of_samp
                 neg_samples = int(neg_samples_per_term)
 
             train_samples, test_samples = add_samples(train_samples, test_samples, features_per_sample, sample_dict, neg_samples,
-                                                      number_of_samples_before, 0)
+                                                      number_of_samples_before, 0, len(sample_dict.keys()), positive_test_samples_so_far, test_samples_so_far)
 
     return train_samples, test_samples, combinations_already_in_dataset
 
@@ -291,16 +325,24 @@ def extract_dummy_data(df, combinations_already_in_dataset, number_of_samples_be
 
     return df_reduced, combinations_already_in_dataset
 
-def create_samples(dir, file, combinations_already_in_dataset, number_of_samples_before):
+def create_samples(dir, file, combinations_already_in_dataset, number_of_samples_before, positive_test_samples_so_far, test_samples_so_far):
 
-    df = pd.read_csv(os.path.join(dir, file), header = [0,1,2],sep=';', low_memory=False)
-    if config.raw_data_set_name == 'PV_noPV':
-        train_samples, test_samples, terminals_already_in_dataset = extract_PV_noPV_data(df, combinations_already_in_dataset,
-                                                                number_of_samples_before)
-    elif config.raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
-        train_samples, test_samples, combinations_already_in_dataset = extract_malfunction_data(df, combinations_already_in_dataset, number_of_samples_before)
+    if config.type == 'PV':
+        df = pd.read_csv(os.path.join(dir, file), header = [0,1,2],sep=';', low_memory=False)
     else:
-        train_samples, test_samples, combinations_already_in_dataset = extract_dummy_data(df, combinations_already_in_dataset,
-                                                                            number_of_samples_before)
+        df = pd.read_csv(os.path.join(dir, file), header=[0], sep=';', low_memory=False)
+
+    if len(df.columns) > 2:
+        if config.raw_data_set_name == 'PV_noPV':
+            train_samples, test_samples, terminals_already_in_dataset = extract_PV_noPV_data(df, combinations_already_in_dataset,
+                                                                    number_of_samples_before)
+        elif config.raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
+            train_samples, test_samples, combinations_already_in_dataset = extract_malfunction_data(df, combinations_already_in_dataset, number_of_samples_before, positive_test_samples_so_far, test_samples_so_far)
+        else:
+            train_samples, test_samples, combinations_already_in_dataset = extract_dummy_data(df, combinations_already_in_dataset,
+                                                                                number_of_samples_before)
+    else:
+        train_samples = pd.DataFrame()
+        test_samples = pd.DataFrame()
 
     return train_samples, test_samples, combinations_already_in_dataset

@@ -141,7 +141,7 @@ class Transformer(nn.Module):
         #gc.collect()
         return F.log_softmax(output, dim=-1)
 
-    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, prev_epoch=1, prev_loss=1):
+    def fit(self, train_loader=None, test_loader=None, X_train=None, y_train=None, X_test=None, y_test=None, early_stopping=True, control_lr=None, prev_epoch=1, prev_loss=1, grid_search_parameter=None):
 
         torch.cuda.empty_cache()
         self.early_stopping = early_stopping

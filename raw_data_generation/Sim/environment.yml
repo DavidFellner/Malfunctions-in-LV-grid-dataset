@@ -1,0 +1,11 @@
+name: react_hil
+channels:
+- defaults
+dependencies:
+- python=3.6
+- numpy # Quick-Fix since the Windows pip-installation of numpy doesn't wok
+- pandas
+- pip:
+    - git+https://gitlab-intern.ait.ac.at/powerfactory/pflib.git@development
+    - pymodbus
+    - paho-mqtt

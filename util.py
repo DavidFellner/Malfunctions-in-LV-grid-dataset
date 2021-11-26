@@ -28,7 +28,7 @@ def model_exists(full_path):
     if learning_config["do grid search"] and learning_config["mode"] == "train":
         return False
     else:
-        return os.path.exists(os.path.join(full_path, "model.pth"))
+        return os.path.exists(os.path.join(full_path, learning_config["dataset"] + "_" + learning_config["type"] + "_" + 'model.pth'))
 
 
 def load_model(learning_config):
@@ -75,7 +75,7 @@ def load_model(learning_config):
         print('Loading model ..')
 
         try:
-            checkpoint = torch.load(os.path.join(path, "model.pth"))
+            checkpoint = torch.load(os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_" + 'model.pth'))
             model.load_state_dict(checkpoint['model_state_dict'])
             model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             epoch = checkpoint['epoch']
@@ -115,10 +115,10 @@ def save_model(model, epoch, loss, grid_search_run):
         os.makedirs(path)
 
     if learning_config["do grid search"]:
-        name = os.path.join(path, learning_config["dataset"] + "_gridsearch_on_" + learning_config["grid search"][0] +
+        name = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_gridsearch_on_" + learning_config["grid search"][0] +
                             "_value_" + str(learning_config["grid search"][1][grid_search_run]) + "_" + 'model.pth')
     else:
-        name = os.path.join(path, learning_config["dataset"] + "_" + 'model.pth')
+        name = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_" + 'model.pth')
     try:
         torch.save({
             'epoch': epoch,
@@ -145,10 +145,10 @@ def save_result(score, grid_search_run):
         os.makedirs(path)
 
     if learning_config["do grid search"]:
-        name = os.path.join(path, learning_config["dataset"] + "_gridsearch_on_" + learning_config["grid search"][0]
+        name = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_gridsearch_on_" + learning_config["grid search"][0]
                             + "_" + 'result.txt')
     else:
-        name = os.path.join(path, learning_config["dataset"], "_", 'result.txt')
+        name = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_" + 'result.txt')
 
     f = open(name, "a")
     if grid_search_run == 0:
@@ -195,8 +195,8 @@ def plot_samples(X, y, X_pre=None):
 
 
 def load_data(type):
-    path = os.path.join(config.raw_data_folder, learning_config['dataset'], type)
-    file = learning_config['dataset'] + '_' + type + '.hdf5'
+    path = os.path.join(config.datasets_folder, learning_config['dataset'], type)
+    file = learning_config['dataset'] + '_' + learning_config['type'] + '_' + type + '.hdf5'
     # dataset = HDF5Dataset(path, recursive=True, load_data=False,
     # data_cache_size=4, transform=None)
 

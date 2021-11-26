@@ -1,0 +1,55 @@
+REACT - Final Sim Setup
+-----------------------
+
+1) Each bess/hp object has control algorithm as object [done]
+2) Setup defines what algorithm is used
+	- Load and PV data required at setup [done]
+3) In sim step go function knows which function to call from algorithm setup [done]
+
+
+Open questions:
+ - Where does data come from? (load file from input at the beginning of setup) [done]
+ - How to handle UC without PV? should a "standard" PV be used for households without PV? [done]
+	- Create overall PV - overall load and derive control setpoint from this? [done]
+	
+ - Extend loads df for LV parts of grid! [done]
+ - How to consider load from other smart components in households that have both bess and hp? [negligible?]
+ - Just one profile that is the same everywhere? adding all hh profiles and pv profiles and then distributing? [yes, done]
+ 
+ 
+ - sawsan schreiben wegen lastprofilen [done]
+ - Saving of temperatures for each Heatpump? Is this necessary/interesting? Can we exploit these results? [done]
+ 	- this would require another data storage method within sim_comp_controller similar to how it is handled in pf_controller
+ - in sim_manager.py, enable sleep timeout only in emulation mode [done]
+
+ - pf_controller Line 111 (pf.app.GetActiveProject().Deactivate()) throws an AttributeError: 'NoneType' object has no attribute 'Deactivate'
+        - why? fix this! [done] problem was elsewhere - the shutdown function was called in two locations consecutively [fixed]
+
+- Analyze results from the three different scenarios. [done]
+    - potentially interesting PF elements are mentioned in tools/analyse_results.py
+
+TODOs
+-----------------------
+
+[!]- Include grid loading results? Trafo/lines? This could be very interesting! Changes probably need to happen in pf_controller [todo]
+
+- In current results PF loads are not changing maybe there is a problem with setting the time object? [todo]
+	- checked time object in Graphical Debugging mode with PF - this seems to be changing the time at each time step, so the bug is probably elsewhere!
+
+- PV does not seem to affect the results very much - check what the PV powers look like! [todo]
+
+- Is scenario0 reasonable? No intelligent components but the same PV as scenario1 - needs to be discussed on monday! [todo]
+
+- Check SoC and HP temp are being saved correctly! 
+
+- Maybe increase PV?
+
+- Change input parameter for BESS to all of PV? Distributed amongst all BESS ofc
+
+
+
+
+CHANGELOG
+-----------------------
+pd.read_excel() did not work for me (David) anymore and I had to move to openpyxl instead of xlrd as engine.
+These changes will not be checked in by me - but can be if similar problems occur in other places as well.

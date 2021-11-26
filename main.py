@@ -88,20 +88,34 @@ def create_dataset():
     test_set = pd.DataFrame()
     if config.dataset_available == False:
         print(
-            "Dataset %s is created from raw data" % learning_config['dataset'])
+            f"Dataset {learning_config['dataset']} with a {config.type} malfunction is created from raw data")
         if (1 / config.share_of_positive_samples).is_integer():
 
-            results_folder = config.raw_data_folder + config.raw_data_set_name + '_raw_data' + '\\'
+            penetrations = ''
+            for key, value in config.percentage.items():
+                if value > 0:
+                    penetrations += '_' + key + '(' + str(value) + ')'
+
+            results_folder = os.path.join(config.raw_data_folder,
+                                          (config.raw_data_set_name + penetrations + '_raw_data'))
+            print(f'Creating dataset using simulation data with the following penetrations: {penetrations}')
+            #results_folder = config.raw_data_folder + config.raw_data_set_name + '_raw_data' + '\\'
+
             for dir in os.listdir(results_folder):
-                if os.path.isdir(results_folder + dir):
+                if os.path.isdir(os.path.join(results_folder, dir)):
                     combinations_already_in_dataset = []  # avoid having duplicate samples (i.e. data of terminal with malfunction at same terminal and same terminals having a PV)
-                    files = os.listdir(results_folder + dir)[0:int(config.simruns)]
+                    files = os.listdir(os.path.join(results_folder, dir))[0:int(config.simruns)]
                     for file in files:
+                        try:
+                            postive_test_samples = int(sum(test_set.loc['label']))
+                        except KeyError:
+                            postive_test_samples = 0
                         train_samples, test_samples, combinations_already_in_dataset = create_samples(
-                            results_folder + dir, file, combinations_already_in_dataset,
-                            len(train_set.columns) + len(test_set.columns))
+                            os.path.join(results_folder, dir), file, combinations_already_in_dataset,
+                            len(train_set.columns) + len(test_set.columns), postive_test_samples, len(test_set.columns))
                         train_set = pd.concat([train_set, train_samples], axis=1, sort=False)
                         test_set = pd.concat([test_set, test_samples], axis=1, sort=False)
+
             return train_set, test_set
         else:
             print(
@@ -115,7 +129,7 @@ def save_dataset(df, type='train', scaler=None):
             from sklearn.preprocessing import MaxAbsScaler
             from util import fit_scaler, preprocessing
 
-            path = config.raw_data_folder + learning_config['dataset'] + '\\' + type + '\\'
+            path = os.path.join(config.datasets_folder, learning_config['dataset'], type)
             if not os.path.isdir(path):
                 os.makedirs(path)
 
@@ -126,7 +140,7 @@ def save_dataset(df, type='train', scaler=None):
                 scaler = fit_scaler(data_raw)
             data_preprocessed = preprocessing(data_raw, scaler).transpose()
 
-            with h5py.File(path + learning_config['dataset'] + '_' + learning_config['type'] + '_' + type + '.hdf5', 'w') as hdf:
+            with h5py.File(os.path.join(path, learning_config['dataset'] + '_' + config.type + '_' + type + '.hdf5'), 'w') as hdf:
                 if int(len(data_raw.columns) / len(label)) > 1:
                     dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw, shape=(
                         len(data_raw.columns), len(data_raw), int(len(data_raw.columns) / len(label))),
@@ -148,7 +162,7 @@ def save_dataset(df, type='train', scaler=None):
                 hdf.close()
                 return scaler
         else:
-            df.to_csv(config.raw_data_folder + learning_config['dataset'] + '_' + learning_config['type'] + '.csv', header=True, sep=';', decimal='.',
+            df.to_csv(config.raw_data_folder + learning_config['dataset'] + '_' +  config.type + '.csv', header=True, sep=';', decimal='.',
                       float_format='%.' + '%sf' % config.float_decimal)
     print(
         "Dataset %s saved" % learning_config['dataset'])
@@ -220,6 +234,9 @@ if __name__ == '__main__':  # see config file for settings
 
     if config.dataset_available == False:
         train_set, test_set = create_dataset()
+        print(f'Dataset containing {len(train_set.columns)+len(test_set.columns)} samples, {sum(train_set.loc["label"])+sum(test_set.loc["label"])} of which positive, created')
+        print(f'Test set: {len(test_set.columns)} samples, of which {sum(test_set.loc["label"])} positive')
+        print(f'Training set: {len(train_set.columns)} samples, of which {sum(train_set.loc["label"])} positive')
         scaler = save_dataset(train_set, 'train')
         save_dataset(test_set, 'test', scaler=scaler)
 
