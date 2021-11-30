@@ -333,7 +333,8 @@ if __name__ == '__main__':  # see config file for settings
             if learning_config["export_model"]:
                 export_model(model, learning_config, i)
 
-        plotting.plot_grid_search()
+        if learning_config['do grid search']:
+            plotting.plot_grid_search()
 
     if learning_config["cross_validation"]:
         print("\n########## k-fold Cross-validation ##########")
