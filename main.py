@@ -75,7 +75,11 @@ from plot_measurements import plot_scenario_test_bay, plot_scenario_case, plot_p
 from Measurement import Measurement
 from Datasets import PCA_Dataset, Raw_Dataset
 from Clustering import Clustering
-from variables import variables_B1, pca_variables_B1, variables_F1, pca_variables_F1, variables_F2, pca_variables_F2
+from detection_method_settings import Variables
+v = Variables()
+from detection_method_settings import Classifier_Combos
+c = Classifier_Combos()
+from detection_method_settings import measurements
 
 import numpy as np
 import os
@@ -170,25 +174,6 @@ def init():
     return logger, device
 
 ############################
-# correct means cosphi(P) between 1 and -0,9; wrong means flat curve coshpi = 1; inversed means cosphi(P) between 1 and 0.9
-measurements = {'measurements correct control Setup A':
-                    ['Meas_34', 'Meas_35', 'Meas_36', 'Meas_37', 'Meas_38', 'Meas_40', 'Meas_42', 'Meas_43',
-                     'Meas_44', 'Meas_45', 'Meas_46', 'Meas_48', 'Meas_50', 'Meas_51', 'Meas_53'],
-                'measurements wrong control Setup A':
-                    ['Meas_9', 'Meas_10', 'Meas_11', 'Meas_16', 'Meas_17', 'Meas_18', 'Meas_19', 'Meas_20',
-                     'Meas_22', 'Meas_25', 'Meas_26', 'Meas_28', 'Meas_29', 'Meas_30', 'Meas_33'],
-                'measurements correct control Setup B':
-                    ['Meas_56', 'Meas_57', 'Meas_58', 'Meas_59', 'Meas_60', 'Meas_61', 'Meas_62', 'Meas_63',
-                     'Meas_64', 'Meas_65', 'Meas_66', 'Meas_67', 'Meas_68', 'Meas_69', 'Meas_70'],
-                'measurements wrong control Setup B':
-                    ['Meas_71', 'Meas_72', 'Meas_73', 'Meas_74', 'Meas_75', 'Meas_76', 'Meas_81', 'Meas_82',
-                     'Meas_83', 'Meas_84', 'Meas_85', 'Meas_86', 'Meas_87', 'Meas_88', 'Meas_89'],
-                'measurements inversed control Setup B':
-                    ['Meas_90', 'Meas_91', 'Meas_92', 'Meas_93', 'Meas_94', 'Meas_95', 'Meas_96', 'Meas_97',
-                     'Meas_98', 'Meas_99', 'Meas_100', 'Meas_101', 'Meas_102', 'Meas_103', 'Meas_104'],
-                }
-
-
 def sample(data, sampling):
     datetimeindex = pd.DataFrame(columns=['Datetime'], data=pd.to_datetime(data['Datum'] + ' ' + data['Zeit']))
     data = pd.concat((data, datetimeindex), axis=1)
@@ -308,9 +293,9 @@ def scenario_plotting_case(variables, plot_all=True, scenario=1, vars=None, samp
 
 def pca(variables=None, PCA_type='PCA', analysis=False, n_components=2, data=None, sampling=None):
     if variables is None:
-        variables = {'B1': [variables_B1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
-                     'F1': [variables_F1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
-                     'F2': [variables_F2, ['Vrms ph-n L1N Avg', 'Vrms ph-n L2N Avg', 'Vrms ph-n L3N Avg']]}
+        variables = {'B1': [v.variables_B1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
+                     'F1': [v.variables_F1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
+                     'F2': [v.variables_F2, ['Vrms ph-n L1N Avg', 'Vrms ph-n L2N Avg', 'Vrms ph-n L3N Avg']]}
 
     if data is None:
         data = load_data(sampling=sampling)
@@ -356,7 +341,7 @@ def pca(variables=None, PCA_type='PCA', analysis=False, n_components=2, data=Non
     return results
 
 
-def pca_plotting(results, type='PCA', number_of_vars=len(pca_variables_B1)):
+def pca_plotting(results, type='PCA', number_of_vars=len(v.pca_variables_B1)):
     explained_variances = {}
 
     for test_bay in test_bays:
@@ -375,9 +360,9 @@ def pca_plotting(results, type='PCA', number_of_vars=len(pca_variables_B1)):
 def ssa(variables=None, sampling=None):
     # TO DO?
     if variables is None:
-        variables = {'B1': [variables_B1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
-                     'F1': [variables_F1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
-                     'F2': [variables_F2, ['Vrms ph-n L1N Avg', 'Vrms ph-n L2N Avg', 'Vrms ph-n L3N Avg']]}
+        variables = {'B1': [v.variables_B1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
+                     'F1': [v.variables_F1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
+                     'F2': [v.variables_F2, ['Vrms ph-n L1N Avg', 'Vrms ph-n L2N Avg', 'Vrms ph-n L3N Avg']]}
     results = {}
 
     data = load_data(sampling=sampling)
@@ -724,46 +709,7 @@ def remove_objects_in_list_from_list(list, object_list):
 
 plot_data = True
 
-classifier_combos_detection = [{'NuSVM': {'linear': [8], 'rbf': [11]}},
-                               {'SVM': {'poly': [7, 2]}, 'NuSVM': {'linear': [8], 'poly': [9, 3]}},
-                               {'SVM': {'poly': [7, 2]}, 'NuSVM': {'linear': [8], 'rbf': [11]}},
-                               {'SVM': {'poly': [7, 2]}, 'NuSVM': {'poly': [9, 3]}},
-                               {'NuSVM': {'linear': [8], 'poly': [9, 3]}}, {'NuSVM': {'poly': [9, 3], 'rbf': [11]}},
-                               {'NuSVM': {'linear': [11], 'poly': [9, 3], 'rbf': [11]}},
-                               {'SVM': {'poly': [7, 2]}, 'NuSVM': {'linear': [8], 'poly': [9, 3], 'rbf': [11]}}]
-classifier_combos_c_vs_w = [{'NuSVM': {'linear': [8], 'rbf': [11]}},
-                            {'SVM': {'poly': [8, 3]}, 'NuSVM': {'linear': [8], 'poly': [8, 2]}},
-                            {'SVM': {'poly': [8, 3]}, 'NuSVM': {'linear': [8], 'rbf': [11]}},
-                            {'SVM': {'poly': [8, 3]}, 'NuSVM': {'poly': [8, 2]}},
-                            {'NuSVM': {'linear': [8], 'poly': [8, 2]}}, {'NuSVM': {'poly': [8, 2], 'rbf': [11]}},
-                            {'NuSVM': {'linear': [11], 'poly': [8, 2], 'rbf': [11]}},
-                            {'SVM': {'poly': [8, 3]}, 'NuSVM': {'linear': [8], 'poly': [8, 2], 'rbf': [11]}}]
-classifier_combos_c_vs_inv = [{'NuSVM': {'poly': [11, 5], 'rbf': [6]}},
-                              {'SVM': {'poly': [6, 5]}, 'NuSVM': {'rbf': [6]}},
-                              {'SVM': {'poly': [6, 5]}, 'NuSVM': {'rbf': [6]}, 'kNN': {4: [8, 'uniform']}},
-                              {'SVM': {'poly': [6, 5]}, 'kNN': {4: [8, 'uniform']}},
-                              {'NuSVM': {'poly': [11, 5]}, 'kNN': {4: [8, 'uniform']}},
-                              {'NuSVM': {'rbf': [6]}, 'kNN': {4: [8, 'uniform']}},
-                              {'NuSVM': {'poly': [11, 5], 'rbf': [6]}, 'kNN': {4: [8, 'uniform']}},
-                              {'SVM': {'poly': [6, 5]}, 'NuSVM': {'poly': [11, 5], 'rbf': [6]},
-                               'kNN': {4: [8, 'uniform']}}]
-classifier_combos_A = [{'NuSVM': {'poly': [3, 4], 'linear': [3]}},
-                       {'SVM': {'poly': [3, 3]}, 'NuSVM': {'linear': [3]}},
-                       {'SVM': {'poly': [3, 3]}, 'NuSVM': {'linear': [3]}, 'kNN': {2: [3, 'distance']}},
-                       {'SVM': {'poly': [3, 3]}, 'kNN': {2: [3, 'distance']}},
-                       {'NuSVM': {'poly': [3, 4]}, 'kNN': {2: [3, 'distance']}},
-                       {'NuSVM': {'linear': [3]}, 'kNN': {2: [3, 'distance']}},
-                       {'SVM': {'poly': [3, 3]}, 'NuSVM': {'poly': [3, 4], 'linear': [3]}, 'kNN': {2: [3, 'distance']}}]
-classifier_combos_c_vs_w_combined_dataset = [{'NuSVM': {'poly': [1]}}, {'NuSVM': {'poly': [2]}},
-                                             {'NuSVM': {'poly': [3]}}, {'NuSVM': {'poly': [4]}},
-                                             {'NuSVM': {'poly': [5]}}, {'NuSVM': {'poly': [6]}},
-                                             {'SVM': {'poly': [1]}}, {'SVM': {'poly': [2]}}, {'SVM': {'poly': [3]}},
-                                             {'SVM': {'poly': [4]}}, {'SVM': {'poly': [5]}}, {'SVM': {'poly': [6]}},
-                                             {'NuSVM': {'rbf': []}}, {'NuSVM': {'linear': []}},
-                                             {'NuSVM': {'sigmoid': []}}, {'SVM': {'rbf': []}}, {'SVM': {'linear': []}},
-                                             {'SVM': {'sigmoid': []}},
-                                             {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}}]
-classifier_combos = classifier_combos_c_vs_w_combined_dataset
+classifier_combos = c.classifier_combos[config.classifier_combos]   #detection, c_vs_w ...
 
 #######################################################
 
@@ -921,8 +867,8 @@ if __name__ == '__main__':  # see config file for settings
         scenario = 1  # 1 to 15 as there is 15 scenarios (profiles)
         plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
                               'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
-        variables = {'B1': [variables_B1, pca_variables_B1], 'F1': [variables_F1, pca_variables_F1],
-                     'F2': [variables_F2, pca_variables_F2]}
+        variables = {'B1': [v.variables_B1, v.pca_variables_B1], 'F1': [v.variables_F1, v.pca_variables_F1],
+                     'F2': [v.variables_F2, v.pca_variables_F2]}
         sampling_step_size_in_seconds = None  # None or 0 to use all data, 1, 20 to sample once every n seconds ....
 
         setups = {'Setup_A_F2_data': ['correct', 'wrong'], 'Setup_B_F2_data1_3c': ['correct', 'wrong', 'inversed'],
@@ -963,16 +909,16 @@ if __name__ == '__main__':  # see config file for settings
                 selection = 'most important'  # most impotant, least important variables picked after assessment by PCA
 
                 if selection == 'most important':
-                    variable_selection = {'B1': [variables_B1, [i[0] for i in variable_selection[0]]],
-                                          'F1': [variables_F1, [i[0] for i in variable_selection[1]]],
-                                          'F2': [variables_F2, [i[0] for i in variable_selection[2]]]}
+                    variable_selection = {'B1': [v.variables_B1, [i[0] for i in variable_selection[0]]],
+                                          'F1': [v.variables_F1, [i[0] for i in variable_selection[1]]],
+                                          'F2': [v.variables_F2, [i[0] for i in variable_selection[2]]]}
                 if selection == 'least important':
-                    pca_variables_B1 = remove_objects_in_list_from_list(pca_variables_B1, variable_selection[0])
-                    pca_variables_F1 = remove_objects_in_list_from_list(pca_variables_F1, variable_selection[1])
-                    pca_variables_F2 = remove_objects_in_list_from_list(pca_variables_F2, variable_selection[2])
-                    variable_selection = {'B1': [variables_B1, pca_variables_B1],
-                                          'F1': [variables_F1, pca_variables_F1],
-                                          'F2': [variables_F2, pca_variables_F2]}
+                    pca_variables_B1 = remove_objects_in_list_from_list(v.pca_variables_B1, variable_selection[0])
+                    pca_variables_F1 = remove_objects_in_list_from_list(v.pca_variables_F1, variable_selection[1])
+                    pca_variables_F2 = remove_objects_in_list_from_list(v.pca_variables_F2, variable_selection[2])
+                    variable_selection = {'B1': [v.variables_B1, pca_variables_B1],
+                                          'F1': [v.variables_F1, pca_variables_F1],
+                                          'F2': [v.variables_F2, pca_variables_F2]}
 
                 if plot_data:
                     results_pca = pca(variables=variable_selection, PCA_type='PCA',
