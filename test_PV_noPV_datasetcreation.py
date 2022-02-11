@@ -25,7 +25,7 @@ def test_generate_PV_noPV_raw_data():
     Test if correct number of result files is created as raw data for mlfct dataset
     '''
 
-    main.generate_raw_data()
+    main.generate_deeplearning_raw_data()
 
     results_folder = os.path.join(config.raw_data_folder, config.raw_data_set_name + '_raw_data')
     file_folder = os.path.join(results_folder, '1-LV-semiurb4--0-sw')

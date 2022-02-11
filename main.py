@@ -49,6 +49,8 @@ if not config.raw_data_available:
     from start_powerfactory import start_powerfactory
     from raw_data_generation.grid_preparation import prepare_grid
     from raw_data_generation.data_creation import create_data
+
+from Dataset import Deep_learning_dataset
 from dataset_creation.create_instances import create_samples
 from malfunctions_in_LV_grid_dataset import MlfctinLVdataset
 from PV_noPV_dataset import PVnoPVdataset
@@ -66,8 +68,26 @@ import h5py
 import pandas as pd
 import os
 
+#muss noch überarbeitet werden
+import Datasets
+from extract_measurements import extract_data
+from plot_measurements import plot_scenario_test_bay, plot_scenario_case, plot_pca, plot_grid_search
+from Measurement import Measurement
+from Datasets import PCA_Dataset, Raw_Dataset
+from Clustering import Clustering
+from variables import variables_B1, pca_variables_B1, variables_F1, pca_variables_F1, variables_F2, pca_variables_F2
 
-def generate_raw_data():
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+import collections
+from sklearn import svm, neighbors
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import KFold, StratifiedKFold
+
+def generate_deeplearning_raw_data():
 
     for file in os.listdir(config.grid_data_folder):
         if os.path.isdir(os.path.join(config.grid_data_folder, file)):
@@ -82,92 +102,15 @@ def generate_raw_data():
 
     return
 
+def generate_detectionmethods_raw_data():
+    '''
+    USE PNDC GRID MODEL HERE
+    :return:
+    '''
 
-def create_dataset():
-    train_set = pd.DataFrame()
-    test_set = pd.DataFrame()
-    if config.dataset_available == False:
-        print(
-            f"Dataset {learning_config['dataset']} with a {config.type} malfunction is created from raw data")
-        if (1 / config.share_of_positive_samples).is_integer():
+    print('Done with all grids')
 
-            penetrations = ''
-            for key, value in config.percentage.items():
-                if value > 0:
-                    penetrations += '_' + key + '(' + str(value) + ')'
-
-            results_folder = os.path.join(config.raw_data_folder,
-                                          (config.raw_data_set_name + penetrations + '_raw_data'))
-            print(f'Creating dataset using simulation data with the following penetrations: {penetrations}')
-            #results_folder = config.raw_data_folder + config.raw_data_set_name + '_raw_data' + '\\'
-
-            for dir in os.listdir(results_folder):
-                if os.path.isdir(os.path.join(results_folder, dir)):
-                    combinations_already_in_dataset = []  # avoid having duplicate samples (i.e. data of terminal with malfunction at same terminal and same terminals having a PV)
-                    files = os.listdir(os.path.join(results_folder, dir))[0:int(config.simruns)]
-                    for file in files:
-                        try:
-                            postive_test_samples = int(sum(test_set.loc['label']))
-                        except KeyError:
-                            postive_test_samples = 0
-                        train_samples, test_samples, combinations_already_in_dataset = create_samples(
-                            os.path.join(results_folder, dir), file, combinations_already_in_dataset,
-                            len(train_set.columns) + len(test_set.columns), postive_test_samples, len(test_set.columns))
-                        train_set = pd.concat([train_set, train_samples], axis=1, sort=False)
-                        test_set = pd.concat([test_set, test_samples], axis=1, sort=False)
-
-            return train_set, test_set
-        else:
-            print(
-                "Share of malfunctioning samples wrongly chosen, please choose a value that yields a real number as an inverse i.e. 0.25 or 0.5")
-            return train_set, test_set
-
-
-def save_dataset(df, type='train', scaler=None):
-    if config.dataset_available == False:
-        if config.dataset_format == 'HDF':
-            from sklearn.preprocessing import MaxAbsScaler
-            from util import fit_scaler, preprocessing
-
-            path = os.path.join(config.datasets_folder, learning_config['dataset'], type)
-            if not os.path.isdir(path):
-                os.makedirs(path)
-
-            data_raw = df[:-1].astype(np.float32)
-            label = df.iloc[-1].copy()[:].astype(int)
-
-            if type == 'train':
-                scaler = fit_scaler(data_raw)
-            data_preprocessed = preprocessing(data_raw, scaler).transpose()
-
-            with h5py.File(os.path.join(path, learning_config['dataset'] + '_' + config.type + '_' + type + '.hdf5'), 'w') as hdf:
-                if int(len(data_raw.columns) / len(label)) > 1:
-                    dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw, shape=(
-                        len(data_raw.columns), len(data_raw), int(len(data_raw.columns) / len(label))),
-                                                   compression='gzip',
-                                                   chunks=True)
-                    dset_data_pre = hdf.create_dataset('x_' + type, data=data_preprocessed, shape=(
-                        len(data_preprocessed.columns), len(data_preprocessed),
-                        int(len(data_preprocessed.columns) / len(label))), compression='gzip', chunks=True)
-                else:
-                    dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw,
-                                                   shape=(len(data_raw.columns), len(data_raw)), compression='gzip',
-                                                   chunks=True)
-                    dset_data_pre = hdf.create_dataset('x_' + type, data=data_preprocessed,
-                                                       shape=(len(data_preprocessed.columns), len(data_preprocessed)),
-                                                       compression='gzip', chunks=True)
-
-                dset_label = hdf.create_dataset('y_' + type, data=label, shape=(len(label), 1), compression='gzip',
-                                                chunks=True)
-                hdf.close()
-                return scaler
-        else:
-            df.to_csv(config.raw_data_folder + learning_config['dataset'] + '_' +  config.type + '.csv', header=True, sep=';', decimal='.',
-                      float_format='%.' + '%sf' % config.float_decimal)
-    print(
-        "Dataset %s saved" % learning_config['dataset'])
-    return 0
-
+    return
 
 def cross_val(X, y, model):
     kf = KFold(n_splits=learning_config['k folds'])
@@ -226,128 +169,989 @@ def init():
 
     return logger, device
 
+############################
+# correct means cosphi(P) between 1 and -0,9; wrong means flat curve coshpi = 1; inversed means cosphi(P) between 1 and 0.9
+measurements = {'measurements correct control Setup A':
+                    ['Meas_34', 'Meas_35', 'Meas_36', 'Meas_37', 'Meas_38', 'Meas_40', 'Meas_42', 'Meas_43',
+                     'Meas_44', 'Meas_45', 'Meas_46', 'Meas_48', 'Meas_50', 'Meas_51', 'Meas_53'],
+                'measurements wrong control Setup A':
+                    ['Meas_9', 'Meas_10', 'Meas_11', 'Meas_16', 'Meas_17', 'Meas_18', 'Meas_19', 'Meas_20',
+                     'Meas_22', 'Meas_25', 'Meas_26', 'Meas_28', 'Meas_29', 'Meas_30', 'Meas_33'],
+                'measurements correct control Setup B':
+                    ['Meas_56', 'Meas_57', 'Meas_58', 'Meas_59', 'Meas_60', 'Meas_61', 'Meas_62', 'Meas_63',
+                     'Meas_64', 'Meas_65', 'Meas_66', 'Meas_67', 'Meas_68', 'Meas_69', 'Meas_70'],
+                'measurements wrong control Setup B':
+                    ['Meas_71', 'Meas_72', 'Meas_73', 'Meas_74', 'Meas_75', 'Meas_76', 'Meas_81', 'Meas_82',
+                     'Meas_83', 'Meas_84', 'Meas_85', 'Meas_86', 'Meas_87', 'Meas_88', 'Meas_89'],
+                'measurements inversed control Setup B':
+                    ['Meas_90', 'Meas_91', 'Meas_92', 'Meas_93', 'Meas_94', 'Meas_95', 'Meas_96', 'Meas_97',
+                     'Meas_98', 'Meas_99', 'Meas_100', 'Meas_101', 'Meas_102', 'Meas_103', 'Meas_104'],
+                }
+
+
+def sample(data, sampling):
+    datetimeindex = pd.DataFrame(columns=['Datetime'], data=pd.to_datetime(data['Datum'] + ' ' + data['Zeit']))
+    data = pd.concat((data, datetimeindex), axis=1)
+    data = data.set_index('Datetime')
+    # data = data.drop(['Datum', 'Zeit'], axis=1)
+    data.resample(str(sampling) + 'S')
+    index = pd.DataFrame(index=datetimeindex['Datetime'], columns=['new_index'], data=range(len(data)))
+    data = pd.concat((data, index), axis=1)
+    sampled_data = data.set_index('new_index')
+
+    return sampled_data
+
+
+def load_data(scenario=None, sampling=None):
+    print('Data loaded with sampling of ' + str(sampling))
+    relevant_measurements = {}
+    if scenario:
+        # to get data of entire scenario
+        for measurement in measurements:
+            for test_bay in test_bays:
+                full_path = os.path.join(data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
+                data = pd.read_csv(os.path.join(full_path, measurements[measurement][scenario - 1] + '.csv'), sep=',',
+                                   decimal=',', low_memory=False)
+                data = data[
+                       2 * 60 * 4:]  # cut off the first 2 minutes because this is where laods / PV where started up
+                data = data[
+                       :6000]  # cut off after 25 minutes (25*60*4 bc 4 samples per second) because measurements were not turned off at same time
+                data['new_index'] = range(len(data))
+                data = data.set_index('new_index')
+
+                if sampling:
+                    data = sample(data, sampling)
+
+                name = str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(test_bay)
+                relevant_measurements[
+                    str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(test_bay)] = Measurement(
+                    data, name)
+    else:
+        # get all data
+        for measurement in measurements:
+            for scenario in measurements[measurement]:
+                for test_bay in test_bays:
+                    full_path = os.path.join(data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
+                    data = pd.read_csv(os.path.join(full_path, scenario + '.csv'),
+                                       sep=',',
+                                       decimal=',', low_memory=False)
+                    data = data[
+                           2 * 60 * 4:]  # cut off the first 2 minutes because this is where laods / PV where started up
+                    data = data[
+                           :6000]  # cut off after 25 minutes (25*60*4 bc 4 samples per second) because measurements were not turned off at same time
+                    data['new_index'] = range(len(data))
+                    data = data.set_index('new_index')
+
+                    if sampling:
+                        data = sample(data, sampling)
+
+                    name = str(measurement)[13:] + ' Scenario ' + str(
+                        measurements[measurement].index(scenario) + 1) + ': Test Bay ' + str(test_bay)
+                    relevant_measurements[
+                        str(measurement)[13:] + ' Scenario ' + str(
+                            measurements[measurement].index(scenario) + 1) + ': Test Bay ' + str(
+                            test_bay)] = Measurement(
+                        data, name)
+
+    return relevant_measurements
+
+
+def scenario_plotting_test_bay(variables, plot_all=True, scenario=1, vars=None, sampling=None):
+    if vars is None:
+        vars = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg', 'F2': 'Vrms ph-n L1N Avg'}
+    fgs = {}
+    axs = {}
+
+    try:
+        var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
+                       vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
+    except ValueError:
+        print(f"The variable  defined is not available")
+        return fgs, axs
+
+    vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]), 'F2': (vars['F2'], var_numbers[2])}
+    if plot_all:
+        for scenario in range(1, 16):
+            relevant_measurements = load_data(scenario, sampling=sampling)
+            fgs, axs = plot_scenario_test_bay(relevant_measurements, fgs, axs, vars)
+    else:
+        relevant_measurements = load_data(scenario, sampling=sampling)
+        fgs, axs = plot_scenario_test_bay(relevant_measurements, fgs, axs, vars)
+
+    return fgs, axs
+
+
+def scenario_plotting_case(variables, plot_all=True, scenario=1, vars=None, sampling=None):
+    if vars is None:
+        vars = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg', 'F2': 'Vrms ph-n AN Avg'}
+    fgs = {}
+    axs = {}
+
+    try:
+        var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
+                       vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
+    except ValueError:
+        print(f"The variable  defined is not available")
+        return fgs, axs
+
+    vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]), 'F2': (vars['F2'], var_numbers[2])}
+    if plot_all:
+        for scenario in range(1, 16):
+            relevant_measurements = load_data(scenario, sampling=sampling)
+            fgs, axs = plot_scenario_case(relevant_measurements, fgs, axs, vars)
+    else:
+        relevant_measurements = load_data(scenario, sampling=sampling)
+        fgs, axs = plot_scenario_case(relevant_measurements, fgs, axs, vars)
+
+    return fgs, axs
+
+
+def pca(variables=None, PCA_type='PCA', analysis=False, n_components=2, data=None, sampling=None):
+    if variables is None:
+        variables = {'B1': [variables_B1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
+                     'F1': [variables_F1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
+                     'F2': [variables_F2, ['Vrms ph-n L1N Avg', 'Vrms ph-n L2N Avg', 'Vrms ph-n L3N Avg']]}
+
+    if data is None:
+        data = load_data(sampling=sampling)
+        results = {}
+    else:
+        results = []
+
+    for measurement in data:
+        try:
+            if type(data) is dict:
+                var_numbers = [variables[data[measurement].name[-2:]][0].index(i) + 1 for i in
+                               variables[data[measurement].name[-2:]][1]]
+            else:
+                var_numbers = [variables[measurement.name[-2:]][0].index(i) + 1 for i in
+                               variables[measurement.name[-2:]][1]]
+        except ValueError:
+            [print(f"Variable {i} not available") for i in variables[data[measurement].name[-2:]][1] if
+             i not in variables[data[measurement].name[-2:]][0]]
+
+        if type(data) is dict:
+            if PCA_type == 'PCA':
+                results[f"{data[measurement].name}"] = data[measurement].pca(variables[data[measurement].name[-2:]][1],
+                                                                             var_numbers, analysis=analysis,
+                                                                             n_components=n_components)
+            elif PCA_type == 'kPCA':
+                results[f"{data[measurement].name}"] = data[measurement].kpca(variables[data[measurement].name[-2:]][1],
+                                                                              var_numbers)
+            else:
+                print('Unknown type of PCA enterered (enter either PCA or kPCA)')
+        else:
+            if PCA_type == 'PCA':
+                results.append(measurement.pca(variables[measurement.name[-2:]][1], var_numbers, analysis=analysis,
+                                               n_components=n_components)[1])
+            elif PCA_type == 'kPCA':
+                results.append(measurement.kpca(variables[measurement.name[-2:]][1],
+                                                var_numbers)[1])
+            else:
+                print('Unknown type of PCA enterered (enter either PCA or kPCA)')
+
+    if type(results) is list:
+        results = np.array(results)
+
+    return results
+
+
+def pca_plotting(results, type='PCA', number_of_vars=len(pca_variables_B1)):
+    explained_variances = {}
+
+    for test_bay in test_bays:
+        for measurement in measurements:
+            explained_variances[str(measurement)[13:] + ': Test Bay ' + str(test_bay)] = []
+            for scenario in measurements[measurement]:
+                explained_variances[str(measurement)[13:] + ': Test Bay ' + str(test_bay)].append(
+                    results[str(measurement)[13:] + ' Scenario ' + str(
+                        measurements[measurement].index(scenario) + 1) + ': Test Bay ' + str(test_bay)][1])
+
+    fgs, axs = plot_pca(explained_variances, type=type, number_of_vars=number_of_vars)
+
+    return fgs, axs
+
+
+def ssa(variables=None, sampling=None):
+    # TO DO?
+    if variables is None:
+        variables = {'B1': [variables_B1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
+                     'F1': [variables_F1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
+                     'F2': [variables_F2, ['Vrms ph-n L1N Avg', 'Vrms ph-n L2N Avg', 'Vrms ph-n L3N Avg']]}
+    results = {}
+
+    data = load_data(sampling=sampling)
+    for measurement in data:
+        var_numbers = [variables[data[measurement].name[-2:]][0].index(i) + 1 for i in
+                       variables[data[measurement].name[-2:]][1]]
+        results[f"{data[measurement].name}"] = data[measurement].ssa(variables[data[measurement].name[-2:]][1],
+                                                                     var_numbers)
+
+    return results
+
+
+def find_most_common_PCs(results_pca):  # , number_of_variables=15):
+    """results_B1 = [print(
+        key + ': #components: ' + str(results_pca[key][2]) + '; most important components: ' + str(results_pca[key][3]))
+                  for key in results_pca if key[-2:] == 'B1']"""
+
+    min_number_of_dimensions_B1 = min([results_pca[i][2] for i in results_pca if i[
+                                                                                 -2:] == 'B1'])  # get lowest number of dimensions needed to capture 99% of variance
+    number_of_variables_B1 = min_number_of_dimensions_B1
+
+    min_number_of_dimensions_F1 = min([results_pca[i][2] for i in results_pca if i[
+                                                                                 -2:] == 'F1'])  # get lowest number of dimensions needed to capture 99% of variance
+    number_of_variables_F1 = min_number_of_dimensions_F1
+
+    min_number_of_dimensions_F2 = min([results_pca[i][2] for i in results_pca if i[
+                                                                                 -2:] == 'F2'])  # get lowest number of dimensions needed to capture 99% of variance
+    number_of_variables_F2 = min_number_of_dimensions_F2
+
+    most_common_B1 = []
+    least_common_B1 = []
+    for most_important in [results_pca[key][3] for key in results_pca if key[-2:] == 'B1']:
+        most_common_B1 = most_common_B1 + most_important[:number_of_variables_B1]
+        # least_common_B1 = most_common_B1 + most_important[:number_of_variables_B1]
+    a_counter = collections.Counter(most_common_B1)
+    most_common_B1 = a_counter.most_common(number_of_variables_B1)
+    print('most common most important variables for PCA for B1: ' + str(most_common_B1))
+
+    """results_F1 = [print(
+        key + ': #components: ' + str(results_pca[key][2]) + '; most important components: ' + str(results_pca[key][3]))
+                  for key in results_pca if key[-2:] == 'F1']"""
+    most_common_F1 = []
+    for most_important in [results_pca[key][3] for key in results_pca if key[-2:] == 'F1']:
+        most_common_F1 = most_common_F1 + most_important[:number_of_variables_F1]
+    a_counter = collections.Counter(most_common_F1)
+    most_common_F1 = a_counter.most_common(number_of_variables_F1)
+    print('most common most important variables for PCA for F1: ' + str(most_common_F1))
+
+    """results_F2 = [print(
+        key + ': #components: ' + str(results_pca[key][2]) + '; most important components: ' + str(results_pca[key][3]))
+                  for key in results_pca if key[-2:] == 'F2']"""
+    most_common_F2 = []
+    for most_important in [results_pca[key][3] for key in results_pca if key[-2:] == 'F2']:
+        most_common_F2 = most_common_F2 + most_important[:number_of_variables_F2]
+    a_counter = collections.Counter(most_common_F2)
+    most_common_F2 = a_counter.most_common(number_of_variables_F2)
+    print('most common most important variables for PCA for F2: ' + str(
+        most_common_F2))  # each occurence means that the variable is the most important for a component of the PCA
+
+    return most_common_B1, most_common_F1, most_common_F2
+
+
+def scoring(y_test, y_pred):
+    metrics = precision_recall_fscore_support(y_test, y_pred, average='macro', zero_division=0)
+    accuracy = accuracy_score(y_test, y_pred)
+
+    return [accuracy, metrics]
+
+
+def svm_algorithm(data, SVM_type='SVM', cross_val=False, kernel='linear', gamma='scale', degree=3):
+    if not cross_val:
+        X_train, X_test, y_train, y_test = train_test_split(data.X, data.y)
+    else:
+        X_train = data[0]
+        X_test = data[1]
+        y_train = data[2]
+        y_test = data[3]
+
+    # Create a svm Classifier
+    if SVM_type == 'SVM':
+        clf = svm.SVC(kernel=kernel, gamma=gamma, degree=degree)  # default Linear Kernel
+    elif SVM_type == 'NuSVM':
+        clf = svm.NuSVC(kernel=kernel,
+                        gamma=gamma,
+                        degree=degree)  # Nu-Support Vector Classification. Similar to SVC but uses a parameter to control the number of support vectors.
+
+    # Train the model using the training sets
+    clf.fit(X_train, y_train)
+
+    # Predict the response for test dataset
+    y_pred = clf.predict(X_test)
+
+    if not cross_val:
+        scores = scoring(y_test, y_pred)
+
+        print(f'Predicted labels: {y_pred}; correct labels: {y_test}')
+        print(f"\n########## Metrics for {data.name} ##########")
+        print("Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\n".format(scores[0], scores[1][1], scores[1][2],
+                                                                                 scores[1][3]))
+
+    return y_pred, y_test
+
+
+def kNN_algorithm(data, cross_val=False, neighbours=2, weights='uniform'):
+    if not cross_val:
+        X_train, X_test, y_train, y_test = train_test_split(data.X, data.y)
+    else:
+        X_train = data[0]
+        X_test = data[1]
+        y_train = data[2]
+        y_test = data[3]
+
+    # Create a kNN Classifier
+    clf = neighbors.KNeighborsClassifier(n_neighbors=neighbours, weights=weights)
+
+    # Train the model using the training sets
+    clf.fit(X_train, y_train)
+
+    # Predict the response for test dataset
+    y_pred = clf.predict(X_test)
+
+    if not cross_val:
+        scores = scoring(y_test, y_pred)
+
+        print(f'Predicted labels: {y_pred}; correct labels: {y_test}')
+        print(f"\n########## Metrics for {data.name} ##########")
+        print("Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\n".format(scores[0], scores[1][1], scores[1][2],
+                                                                                 scores[1][3]))
+
+    return y_pred, y_test
+
+
+def assembly_learner_single_dataset(data, clf_types_and_paras, cross_val=False, variables=None):
+    if not cross_val:
+        X_train, X_test, y_train, y_test = train_test_split(data.X, data.y)
+    else:
+        X_train = data[0]
+        X_test = data[1]
+        y_train = data[2]
+        y_test = data[3]
+
+    clfs = {}
+    y_preds = {}
+    for clf_type in clf_types_and_paras.keys():
+
+        # Create a classifier & train the model using the training sets
+        if clf_type == 'SVM':
+            for kernel in clf_types_and_paras[clf_type]:
+                X_train_pca = pca(variables=variables, PCA_type='PCA',
+                                  n_components=clf_types_and_paras[clf_type][kernel][0], data=X_train,
+                                  sampling=sampling_step_size_in_seconds)
+                X_test_pca = pca(variables=variables, PCA_type='PCA',
+                                 n_components=clf_types_and_paras[clf_type][kernel][0], data=X_test,
+                                 sampling=sampling_step_size_in_seconds)
+                if kernel == 'poly':
+                    clfs[clf_type + '_' + kernel] = svm.SVC(kernel=kernel, degree=clf_types_and_paras[clf_type][kernel][
+                        1])  # default Linear Kernel
+                else:
+                    clfs[clf_type + '_' + kernel] = svm.SVC(kernel=kernel)
+                clfs[clf_type + '_' + kernel].fit(X_train_pca, y_train)
+                y_preds[clf_type + '_' + kernel] = clfs[clf_type + '_' + kernel].predict(
+                    X_test_pca)  # Predict the response for test dataset
+        elif clf_type == 'NuSVM':
+            for kernel in clf_types_and_paras[clf_type]:
+                X_train_pca = pca(variables=variables, PCA_type='PCA',
+                                  n_components=clf_types_and_paras[clf_type][kernel][0], data=X_train,
+                                  sampling=sampling_step_size_in_seconds)
+                X_test_pca = pca(variables=variables, PCA_type='PCA',
+                                 n_components=clf_types_and_paras[clf_type][kernel][0], data=X_test,
+                                 sampling=sampling_step_size_in_seconds)
+                if kernel == 'poly':
+                    clfs[clf_type + '_' + kernel] = svm.NuSVC(
+                        kernel=kernel, degree=clf_types_and_paras[clf_type][kernel][
+                            1])  # Nu-Support Vector Classification. Similar to SVC but uses a parameter to control the number of support vectors.
+                else:
+                    clfs[clf_type + '_' + kernel] = svm.NuSVC(
+                        kernel=kernel)  # Nu-Support Vector Classification. Similar to SVC but uses a parameter to control the number of support vectors.
+                clfs[clf_type + '_' + kernel].fit(X_train_pca, y_train)
+                y_preds[clf_type + '_' + kernel] = clfs[clf_type + '_' + kernel].predict(
+                    X_test_pca)  # Predict the response for test dataset
+        elif clf_type == 'kNN':
+            for neighbours in clf_types_and_paras[clf_type]:
+                X_train_pca = pca(variables=variables, PCA_type='PCA',
+                                  n_components=clf_types_and_paras[clf_type][neighbours][0],
+                                  data=X_train, sampling=sampling_step_size_in_seconds)
+                X_test_pca = pca(variables=variables, PCA_type='PCA',
+                                 n_components=clf_types_and_paras[clf_type][neighbours][0],
+                                 data=X_test, sampling=sampling_step_size_in_seconds)
+                clfs[clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                    1] + '_weights'] = neighbors.KNeighborsClassifier(n_neighbors=neighbours,
+                                                                      weights=clf_types_and_paras[clf_type][neighbours][
+                                                                          1])
+                clfs[clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                    1] + '_weights'].fit(X_train_pca, y_train)
+                y_preds[clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                    1] + '_weights'] = clfs[
+                    clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                        1] + '_weights'].predict(
+                    X_test_pca)  # Predict the response for test dataset
+
+    y_pred = []
+    for index in list(range(len(y_test))):
+        y_pred.append(max(set([i[index] for i in y_preds.values()]),
+                          key=[i[index] for i in y_preds.values()].count))  # pick class that's most commonly predicted
+    y_pred = np.array(y_pred)
+
+    if not cross_val:
+        scores = scoring(y_test, y_pred)
+
+        print(f'Predicted labels: {y_pred}; correct labels: {y_test}')
+        print(f"\n########## Metrics for {data.name} ##########")
+        print("Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\n".format(scores[0], scores[1][1], scores[1][2],
+                                                                                 scores[1][3]))
+
+    return y_pred, y_test
+
+
+def assembly_learner_combined_dataset(data, clf_types_and_paras, cross_val=False):
+    if not cross_val:
+        X_train, X_test, y_train, y_test = train_test_split(data.X, data.y)
+    else:
+        X_train = data[0]
+        X_test = data[1]
+        y_train = data[2]
+        y_test = data[3]
+
+    clfs = {}
+    y_preds = {}
+    for clf_type in clf_types_and_paras.keys():
+
+        # Create a classifier & train the model using the training sets
+        if clf_type == 'SVM':
+            for kernel in clf_types_and_paras[clf_type]:
+                if kernel == 'poly':
+                    clfs[clf_type + '_' + kernel] = svm.SVC(kernel=kernel, degree=clf_types_and_paras[clf_type][kernel][
+                        0])  # default Linear Kernel
+                else:
+                    clfs[clf_type + '_' + kernel] = svm.SVC(kernel=kernel)
+                clfs[clf_type + '_' + kernel].fit(X_train, y_train)
+                y_preds[clf_type + '_' + kernel] = clfs[clf_type + '_' + kernel].predict(
+                    X_test)  # Predict the response for test dataset
+        elif clf_type == 'NuSVM':
+            for kernel in clf_types_and_paras[clf_type]:
+                if kernel == 'poly':
+                    clfs[clf_type + '_' + kernel] = svm.NuSVC(
+                        kernel=kernel, degree=clf_types_and_paras[clf_type][kernel][
+                            0])  # Nu-Support Vector Classification. Similar to SVC but uses a parameter to control the number of support vectors.
+                else:
+                    clfs[clf_type + '_' + kernel] = svm.NuSVC(
+                        kernel=kernel)  # Nu-Support Vector Classification. Similar to SVC but uses a parameter to control the number of support vectors.
+                clfs[clf_type + '_' + kernel].fit(X_train, y_train)
+                y_preds[clf_type + '_' + kernel] = clfs[clf_type + '_' + kernel].predict(
+                    X_test)  # Predict the response for test dataset
+        elif clf_type == 'kNN':
+            for neighbours in clf_types_and_paras[clf_type]:
+                clfs[clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                    0] + '_weights'] = neighbors.KNeighborsClassifier(n_neighbors=neighbours,
+                                                                      weights=clf_types_and_paras[clf_type][neighbours][
+                                                                          0])
+                clfs[clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                    0] + '_weights'].fit(X_train, y_train)
+                y_preds[clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                    0] + '_weights'] = clfs[
+                    clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                        0] + '_weights'].predict(
+                    X_test)  # Predict the response for test dataset
+
+    y_pred = []
+    for index in list(range(len(y_test))):
+        y_pred.append(max(set([i[index] for i in y_preds.values()]),
+                          key=[i[index] for i in y_preds.values()].count))  # pick class that's most commonly predicted
+    y_pred = np.array(y_pred)
+
+    if not cross_val:
+        scores = scoring(y_test, y_pred)
+
+        print(f'Predicted labels: {y_pred}; correct labels: {y_test}')
+        print(f"\n########## Metrics for {data.name} ##########")
+        print("Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\n".format(scores[0], scores[1][1], scores[1][2],
+                                                                                 scores[1][3]))
+
+    return y_pred, y_test
+
+
+def cross_val(data, clf='SVM', kernel='linear', neighbours=2, weights='uniform', degree=3,
+              classifiers_and_parameters=None,
+              setup='Setup_B_F2_data1_3c', mode='classification', sampling=None, data_mode='measurement_wise'):
+    if classifiers_and_parameters is None:
+        classifiers_and_parameters = {'SVM': {'poly': [8]}, 'NuSVM': {'linear': [9], 'poly': [11], 'rbf': [2]},
+                                      'kNN': {3: [18, 'uniform']}}
+    if clf != 'Assembly' or data_mode == 'combined_data':
+        X = data.X
+        y = data.y
+        # kf = KFold(n_splits=7, shuffle=True)
+        kf = StratifiedKFold(n_splits=7,
+                             shuffle=True)  # ensures balanced classes in batches!! (as much as possible) > important
+    if clf == 'Assembly' and data_mode == 'measurement_wise':
+        variables = data
+        data = load_data(sampling=sampling)
+        raw_dataset = Raw_Dataset(data, name=setup, classes=setups[setup], bay=setup.split('_')[2],
+                                  Setup=setup.split('_')[1], labelling=mode)
+        X = raw_dataset.X
+        y = raw_dataset.y
+        kf = StratifiedKFold(n_splits=7,
+                             shuffle=True)  # ensures balanced classes in batches!! (as much as possible) > important
+    scores = []
+
+    for train_index, test_index in kf.split(X, y):
+        # print('Split #%d' % (len(scores) + 1))
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = np.array(y)[train_index], np.array(y)[test_index]
+
+        if clf == 'SVM' or clf == 'NuSVM':
+            y_pred, y_test = svm_algorithm([X_train, X_test, y_train, y_test], SVM_type=clf, cross_val=True,
+                                           kernel=kernel, degree=degree)
+            scores.append(scoring(y_test, y_pred))
+        elif clf == 'kNN':
+            y_pred, y_test = kNN_algorithm([X_train, X_test, y_train, y_test], cross_val=True, neighbours=neighbours,
+                                           weights=weights)
+            scores.append(scoring(y_test, y_pred))
+        elif clf == 'Assembly':
+            if data_mode == 'measurement_wise':
+                y_pred, y_test = assembly_learner_single_dataset([X_train, X_test, y_train, y_test],
+                                                                 classifiers_and_parameters, cross_val=True,
+                                                                 variables=variables)
+            elif data_mode == 'combined_data':
+                y_pred, y_test = assembly_learner_combined_dataset([X_train, X_test, y_train, y_test],
+                                                                   classifiers_and_parameters, cross_val=True)
+            scores.append(scoring(y_test, y_pred))
+        else:
+            print('undefined classifier entered')
+
+    scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores],
+                   'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores]}
+
+    return scores_dict
+
+
+def remove_objects_in_list_from_list(list, object_list):
+    for i in object_list:
+        list.remove(i[0])
+    return list
+
+
+plot_data = True
+
+classifier_combos_detection = [{'NuSVM': {'linear': [8], 'rbf': [11]}},
+                               {'SVM': {'poly': [7, 2]}, 'NuSVM': {'linear': [8], 'poly': [9, 3]}},
+                               {'SVM': {'poly': [7, 2]}, 'NuSVM': {'linear': [8], 'rbf': [11]}},
+                               {'SVM': {'poly': [7, 2]}, 'NuSVM': {'poly': [9, 3]}},
+                               {'NuSVM': {'linear': [8], 'poly': [9, 3]}}, {'NuSVM': {'poly': [9, 3], 'rbf': [11]}},
+                               {'NuSVM': {'linear': [11], 'poly': [9, 3], 'rbf': [11]}},
+                               {'SVM': {'poly': [7, 2]}, 'NuSVM': {'linear': [8], 'poly': [9, 3], 'rbf': [11]}}]
+classifier_combos_c_vs_w = [{'NuSVM': {'linear': [8], 'rbf': [11]}},
+                            {'SVM': {'poly': [8, 3]}, 'NuSVM': {'linear': [8], 'poly': [8, 2]}},
+                            {'SVM': {'poly': [8, 3]}, 'NuSVM': {'linear': [8], 'rbf': [11]}},
+                            {'SVM': {'poly': [8, 3]}, 'NuSVM': {'poly': [8, 2]}},
+                            {'NuSVM': {'linear': [8], 'poly': [8, 2]}}, {'NuSVM': {'poly': [8, 2], 'rbf': [11]}},
+                            {'NuSVM': {'linear': [11], 'poly': [8, 2], 'rbf': [11]}},
+                            {'SVM': {'poly': [8, 3]}, 'NuSVM': {'linear': [8], 'poly': [8, 2], 'rbf': [11]}}]
+classifier_combos_c_vs_inv = [{'NuSVM': {'poly': [11, 5], 'rbf': [6]}},
+                              {'SVM': {'poly': [6, 5]}, 'NuSVM': {'rbf': [6]}},
+                              {'SVM': {'poly': [6, 5]}, 'NuSVM': {'rbf': [6]}, 'kNN': {4: [8, 'uniform']}},
+                              {'SVM': {'poly': [6, 5]}, 'kNN': {4: [8, 'uniform']}},
+                              {'NuSVM': {'poly': [11, 5]}, 'kNN': {4: [8, 'uniform']}},
+                              {'NuSVM': {'rbf': [6]}, 'kNN': {4: [8, 'uniform']}},
+                              {'NuSVM': {'poly': [11, 5], 'rbf': [6]}, 'kNN': {4: [8, 'uniform']}},
+                              {'SVM': {'poly': [6, 5]}, 'NuSVM': {'poly': [11, 5], 'rbf': [6]},
+                               'kNN': {4: [8, 'uniform']}}]
+classifier_combos_A = [{'NuSVM': {'poly': [3, 4], 'linear': [3]}},
+                       {'SVM': {'poly': [3, 3]}, 'NuSVM': {'linear': [3]}},
+                       {'SVM': {'poly': [3, 3]}, 'NuSVM': {'linear': [3]}, 'kNN': {2: [3, 'distance']}},
+                       {'SVM': {'poly': [3, 3]}, 'kNN': {2: [3, 'distance']}},
+                       {'NuSVM': {'poly': [3, 4]}, 'kNN': {2: [3, 'distance']}},
+                       {'NuSVM': {'linear': [3]}, 'kNN': {2: [3, 'distance']}},
+                       {'SVM': {'poly': [3, 3]}, 'NuSVM': {'poly': [3, 4], 'linear': [3]}, 'kNN': {2: [3, 'distance']}}]
+classifier_combos_c_vs_w_combined_dataset = [{'NuSVM': {'poly': [1]}}, {'NuSVM': {'poly': [2]}},
+                                             {'NuSVM': {'poly': [3]}}, {'NuSVM': {'poly': [4]}},
+                                             {'NuSVM': {'poly': [5]}}, {'NuSVM': {'poly': [6]}},
+                                             {'SVM': {'poly': [1]}}, {'SVM': {'poly': [2]}}, {'SVM': {'poly': [3]}},
+                                             {'SVM': {'poly': [4]}}, {'SVM': {'poly': [5]}}, {'SVM': {'poly': [6]}},
+                                             {'NuSVM': {'rbf': []}}, {'NuSVM': {'linear': []}},
+                                             {'NuSVM': {'sigmoid': []}}, {'SVM': {'rbf': []}}, {'SVM': {'linear': []}},
+                                             {'SVM': {'sigmoid': []}},
+                                             {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}}]
+classifier_combos = classifier_combos_c_vs_w_combined_dataset
+
+#######################################################
+
+def create_dataset(type='raw'):
+    '''
+    creates either  a deep learning dataset or the specified dataset for detection methods
+    :param type: which type of detection methods dataset is needed? Options: raw, pca, combined
+    :return: dataset object of desired dataset type
+    '''
+
+    if config.deeplearning:
+        dataset = Deep_learning_dataset(config=config)
+    if config.detection_methods:
+        dataset = type
+
+    dataset.create_dataset()
+    dataset.dataset_info()
+    scaler = dataset.save_dataset(dataset.train_set, 'train')
+    dataset.save_dataset(dataset.test_set, 'test', scaler=scaler)
+
+    return dataset
 
 if __name__ == '__main__':  # see config file for settings
 
     if config.raw_data_available == False:
-        generate_raw_data()
+        if config.deeplearning:
+            generate_deeplearning_raw_data()
+        if config.detection_methods:
+            generate_detectionmethods_raw_data()
 
     if config.dataset_available == False:
-        train_set, test_set = create_dataset()
-        print(f'Dataset containing {len(train_set.columns)+len(test_set.columns)} samples, {sum(train_set.loc["label"])+sum(test_set.loc["label"])} of which positive, created')
-        print(f'Test set: {len(test_set.columns)} samples, of which {sum(test_set.loc["label"])} positive')
-        print(f'Training set: {len(train_set.columns)} samples, of which {sum(train_set.loc["label"])} positive')
-        scaler = save_dataset(train_set, 'train')
-        save_dataset(test_set, 'test', scaler=scaler)
+        dataset = create_dataset()
 
+    #in config file do as: if deeplearning: learning_config = ... elif ...: learning_config = ....
     print("\n########## Configuration ##########")
     for key, value in learning_config.items():
         print(key, ' : ', value)
     print("number of samples : %d" % config.number_of_samples)
 
-    logger, device = init()
+    if config.deeplearning:
+        #put in function or class deeplearning > class might be better for subfunctions (crossval etc)
+        logger, device = init()
 
-    # Load data
-    logger.info("Loading Data ...")
-    if learning_config["mode"] == 'train':
-        train_loader = load_data('train')
-    test_loader = load_data('test')
-    logger.info(f"Loaded data.")
+        # Load data
+        logger.info("Loading Data ...")
+        if learning_config["mode"] == 'train':
+            train_loader = load_data('train')
+        test_loader = load_data('test')
+        logger.info(f"Loaded data.")
 
-    # dataset, X, y = load_dataset()
-    if learning_config["plot samples"] and learning_config["mode"] == 'train':
-        for i, (X, y, X_raw) in enumerate(train_loader):
-            plot_samples(X_raw, y, X)
-            break
+        # dataset, X, y = load_dataset()
+        if learning_config["plot samples"] and learning_config["mode"] == 'train':
+            for i, (X, y, X_raw) in enumerate(train_loader):
+                plot_samples(X_raw, y, X)
+                break
 
-    # if learning_config['baseline']:
-    # baseline(X, y)
+        # if learning_config['baseline']:
+        # baseline(X, y)
 
-    print('X data with zero mean per sample and scaled between -1 and 1 based on training samples used')
+        print('X data with zero mean per sample and scaled between -1 and 1 based on training samples used')
 
-    path = os.path.join(config.models_folder, learning_config['classifier'])
-    model, epoch, loss = load_model(learning_config)
+        path = os.path.join(config.models_folder, learning_config['classifier'])
+        model, epoch, loss = load_model(learning_config)
 
-    if not learning_config["cross_validation"]:
+        if not learning_config["cross_validation"]:
 
-        # X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, test_size=learning_config['train test split'])
-        # X_train, X_test = model.preprocess(X_train, X_test)
+            # X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, test_size=learning_config['train test split'])
+            # X_train, X_test = model.preprocess(X_train, X_test)
 
-        print("\n########## Training ##########")
-        if learning_config["do grid search"]:
-            runs = len(learning_config["grid search"][1])
-        else:
-            runs = 1
-        for i in range(runs):
-            if learning_config["mode"] == 'train':
-                logger.info("Training classifier ..")
-                if learning_config["do grid search"]: logger.info(
-                    "Value of {}: {}".format(learning_config["grid search"][0], learning_config["grid search"][1][i]))
-
-                clfs, losses, lrs = model.fit(train_loader, test_loader,
-                                              early_stopping=learning_config['early stopping'],
-                                              control_lr=learning_config['LR adjustment'], prev_epoch=epoch,
-                                              prev_loss=loss, grid_search_parameter = learning_config["grid search"][1][i])
-
-                logger.info("Training finished!")
-                logger.info('Finished Training')
-                plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'],
-                                 title='Losses after each epoch', x_label='Epoch',
-                                 y_label='Loss')  # plot training loss for each epoch
-                plotting.plot_2D(lrs, labels='learning rate', title='Learning rate for each epoch', x_label='Epoch',
-                                 y_label='Learning rate')
-                clf, epoch = choose_best(clfs)
-                model.state_dict = clf[0]  # pick weights of best model found
-
-            y_pred, outputs, y_test = model.predict(test_loader=test_loader)
-            if learning_config["mode"] == 'eval':
-                clf = model
-                score = model.score(y_test, y_pred)
-                print("\n########## Metrics ##########")
-                print(
-                    "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}".format(score[0],
-                                                                                     score[1][
-                                                                                         0],
-                                                                                     score[1][
-                                                                                         1],
-                                                                                     score[1][
-                                                                                         2], ))
+            print("\n########## Training ##########")
+            if learning_config["do grid search"]:
+                runs = len(learning_config["grid search"][1])
             else:
-                score = model.score(y_test, y_pred) + [clf[1]]
-                print("\n########## Metrics ##########")
-                print(
-                    "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nLowest validation loss: {4}".format(score[0],
-                                                                                                                  score[1][
-                                                                                                                      0],
-                                                                                                                  score[1][
-                                                                                                                      1],
-                                                                                                                  score[1][
-                                                                                                                      2],
-                                                                                                                  score[2]))
+                runs = 1
+            for i in range(runs):
+                if learning_config["mode"] == 'train':
+                    logger.info("Training classifier ..")
+                    if learning_config["do grid search"]: logger.info(
+                        "Value of {}: {}".format(learning_config["grid search"][0], learning_config["grid search"][1][i]))
+
+                    clfs, losses, lrs = model.fit(train_loader, test_loader,
+                                                  early_stopping=learning_config['early stopping'],
+                                                  control_lr=learning_config['LR adjustment'], prev_epoch=epoch,
+                                                  prev_loss=loss, grid_search_parameter = learning_config["grid search"][1][i])
+
+                    logger.info("Training finished!")
+                    logger.info('Finished Training')
+                    plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'],
+                                     title='Losses after each epoch', x_label='Epoch',
+                                     y_label='Loss')  # plot training loss for each epoch
+                    plotting.plot_2D(lrs, labels='learning rate', title='Learning rate for each epoch', x_label='Epoch',
+                                     y_label='Learning rate')
+                    clf, epoch = choose_best(clfs)
+                    model.state_dict = clf[0]  # pick weights of best model found
+
+                y_pred, outputs, y_test = model.predict(test_loader=test_loader)
+                if learning_config["mode"] == 'eval':
+                    clf = model
+                    score = model.score(y_test, y_pred)
+                    print("\n########## Metrics ##########")
+                    print(
+                        "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}".format(score[0],
+                                                                                         score[1][
+                                                                                             0],
+                                                                                         score[1][
+                                                                                             1],
+                                                                                         score[1][
+                                                                                             2], ))
+                else:
+                    score = model.score(y_test, y_pred) + [clf[1]]
+                    print("\n########## Metrics ##########")
+                    print(
+                        "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nLowest validation loss: {4}".format(score[0],
+                                                                                                                      score[1][
+                                                                                                                          0],
+                                                                                                                      score[1][
+                                                                                                                          1],
+                                                                                                                      score[1][
+                                                                                                                          2],
+                                                                                                                      score[2]))
+                if learning_config["save_model"] and learning_config["mode"] == 'train':
+                    save_model(model, epoch, clf[1], i)
+
+                if learning_config["save_result"]:
+                    save_result(score, i)
+
+                if learning_config["export_model"]:
+                    export_model(model, learning_config, i)
+
+            if learning_config['do grid search']:
+                plotting.plot_grid_search()
+
+        if learning_config["cross_validation"]:
+            print("\n########## k-fold Cross-validation ##########")
+            model, scores = cross_val(X, y, model)
+            print("########## Metrics ##########")
+            for score in scores:
+                print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
+
             if learning_config["save_model"] and learning_config["mode"] == 'train':
-                save_model(model, epoch, clf[1], i)
+                save_model(model, epoch, clf[1], learning_config)
 
             if learning_config["save_result"]:
-                save_result(score, i)
+                save_result(scores, learning_config)
 
             if learning_config["export_model"]:
-                export_model(model, learning_config, i)
+                export_model(model, learning_config)
 
-        if learning_config['do grid search']:
-            plotting.plot_grid_search()
+    elif config.detection_methods:
+        '''
+        TODO: pack into classes, also functions defined above, pack modules in folders... 
+        '''
+        data_path = os.path.join(os.getcwd(), config.raw_data_folder, 'ERIGrid-Test-Results-26-11-2021-phase1_final')
+        test_bays = ['B1', 'F1', 'F2']
+        scenario = 1  # 1 to 15 as there is 15 scenarios (profiles)
+        plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
+                              'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
+        variables = {'B1': [variables_B1, pca_variables_B1], 'F1': [variables_F1, pca_variables_F1],
+                     'F2': [variables_F2, pca_variables_F2]}
+        sampling_step_size_in_seconds = None  # None or 0 to use all data, 1, 20 to sample once every n seconds ....
 
-    if learning_config["cross_validation"]:
-        print("\n########## k-fold Cross-validation ##########")
-        model, scores = cross_val(X, y, model)
-        print("########## Metrics ##########")
-        for score in scores:
-            print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
+        setups = {'Setup_A_F2_data': ['correct', 'wrong'], 'Setup_B_F2_data1_3c': ['correct', 'wrong', 'inversed'],
+                  'Setup_B_F2_data2_2c': ['correct', 'wrong'], 'Setup_B_F2_data3_2c': ['correct', 'inversed']}
+        setup_chosen = 'Setup_A_F2_data'  # for assembly or clustering
+        mode = 'detection'  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
+        data_mode = 'combined_data'  # 'measurement_wise', 'combined_data'
 
-        if learning_config["save_model"] and learning_config["mode"] == 'train':
-            save_model(model, epoch, clf[1], learning_config)
+        approach = 'PCA+clf'  # 'PCA+clf', 'clustering'
 
-        if learning_config["save_result"]:
-            save_result(scores, learning_config)
+        if plot_data:
+            fgs_test_bay, axs_test_bay = scenario_plotting_test_bay(variables, plot_all=False, vars=plotting_variables,
+                                                                    sampling=sampling_step_size_in_seconds)
+            fgs_case, axs_case = scenario_plotting_case(variables, plot_all=False, vars=plotting_variables,
+                                                        sampling=sampling_step_size_in_seconds)
 
-        if learning_config["export_model"]:
-            export_model(model, learning_config)
+        if approach == 'clustering':
+            data = load_data(sampling=sampling_step_size_in_seconds)
+            dataset = Raw_Dataset(data, name=setup_chosen, classes=setups[setup_chosen], bay=setup_chosen.split('_')[2],
+                                  Setup=setup_chosen.split('_')[1], labelling=mode)
+
+            Clustering_ward = Clustering(data=dataset, variables=variables[setup_chosen.split('_')[2]][1],
+                                         metric='euclidean', method='ward', num_of_clusters=len(setups[setup_chosen]))
+            cluster_assignments = Clustering_ward.cluster()
+            score = Clustering_ward.rand_score()
+            print(f'Score reached: {score}')
+
+        if approach == 'PCA+clf':
+
+            if data_mode == 'measurement_wise':
+                results_pca = pca(variables=variables, PCA_type='PCA', analysis=True,
+                                  sampling=sampling_step_size_in_seconds)
+                variable_selection = find_most_common_PCs(
+                    results_pca)  # , number_of_variables = 15)   #returns the most important variables for the PCA per measurement point > use to to do PCA and then SVM
+                if plot_data:
+                    fgs_pca, axs_pca = pca_plotting(results_pca, type='PCA', number_of_vars=len(variables['B1'][1]))
+
+                selection = 'most important'  # most impotant, least important variables picked after assessment by PCA
+
+                if selection == 'most important':
+                    variable_selection = {'B1': [variables_B1, [i[0] for i in variable_selection[0]]],
+                                          'F1': [variables_F1, [i[0] for i in variable_selection[1]]],
+                                          'F2': [variables_F2, [i[0] for i in variable_selection[2]]]}
+                if selection == 'least important':
+                    pca_variables_B1 = remove_objects_in_list_from_list(pca_variables_B1, variable_selection[0])
+                    pca_variables_F1 = remove_objects_in_list_from_list(pca_variables_F1, variable_selection[1])
+                    pca_variables_F2 = remove_objects_in_list_from_list(pca_variables_F2, variable_selection[2])
+                    variable_selection = {'B1': [variables_B1, pca_variables_B1],
+                                          'F1': [variables_F1, pca_variables_F1],
+                                          'F2': [variables_F2, pca_variables_F2]}
+
+                if plot_data:
+                    results_pca = pca(variables=variable_selection, PCA_type='PCA',
+                                      sampling=sampling_step_size_in_seconds)
+                    fgs_pca, axs_pca = pca_plotting(results_pca, type='PCA', number_of_vars=max(
+                        [len(variable_selection['B1'][1]), len(variable_selection['F1'][1]),
+                         len(variable_selection['F2'][1])]))
+
+            # results_pca = pca(variables=variable_selection, type='PCA', n_components=len(variable_selection['B1'][1]))
+            scores_by_n = {}
+
+            # learning settings
+            clf = 'Assembly'  # SVM, NuSVM, kNN, Assembly
+            kernels = ['linear', 'poly', 'rbf', 'sigmoid']
+            # kernels = ['poly']
+            if kernels[0] == 'poly' and len(kernels) == 1:
+                degrees = list(range(1, 7))
+            else:
+                degrees = [3]
+            gammas = ['scale']  # , 'auto']#[1/(i+1) for i in range(15)] #['scale', 'auto']
+            neighbours = [i + 1 for i in range(5)]
+            weights = ['uniform', 'distance']
+            # max_number_of_components = 2    #means 1
+            # classifiers = {'SVM': {'poly': [8]}, 'NuSVM': {'linear': [9], 'poly': [11], 'rbf': [2]}, 'kNN': {3: [18,'uniform']}}
+            # classifiers = {'NuSVM': {'linear': [11], 'poly': [3], 'rbf': [10]}}
+            # classifiers = {'NuSVM': {'poly': [2]}}
+
+            if clf != 'Assembly' and data_mode != 'combined_data':
+                max_number_of_components = len(variable_selection['F2'][1])  # one less than variables due to range
+                for n in range(1, max_number_of_components):
+
+                    print(f'\nPCA done with {n} components\n')
+                    results_pca = pca(variables=variable_selection, PCA_type='PCA', n_components=n,
+                                      sampling=sampling_step_size_in_seconds)
+
+                    Setup_A_F2_Data = PCA_Dataset(results_pca, name='Setup_A_F2_data',
+                                                  classes=setups['Setup_A_F2_data'],
+                                                  bay='F2', Setup='A')
+                    Setup_B_F2_Data1_3c = PCA_Dataset(results_pca, name='Setup_B_F2_data1_3c',
+                                                      classes=setups['Setup_B_F2_data1_3c'], bay='F2', Setup='B',
+                                                      labelling=mode)  # ['correct', 'wrong', 'inversed']
+                    Setup_B_F2_Data2_2c = PCA_Dataset(results_pca, name='Setup_B_F2_data2_2c',
+                                                      classes=setups['Setup_B_F2_data2_2c'],
+                                                      bay='F2', Setup='B')
+                    Setup_B_F2_Data3_2c = PCA_Dataset(results_pca, name='Setup_B_F2_data3_2c',
+                                                      classes=setups['Setup_B_F2_data3_2c'],
+                                                      bay='F2', Setup='B')
+
+                    datasets = []
+                    datasets.append(Setup_A_F2_Data)
+                    datasets.append(Setup_B_F2_Data1_3c)
+                    datasets.append(Setup_B_F2_Data2_2c)
+                    datasets.append(Setup_B_F2_Data3_2c)
+
+                    scores_by_dataset = {}
+
+                    for dataset in datasets:
+
+                        # SVM
+                        results_svm = svm_algorithm(dataset)
+                        # kNN
+                        results_kNN = kNN_algorithm(dataset)
+
+                        print("\n########## k-fold Cross-validation ##########")
+                        if clf in ['SVM', 'NuSVM']:
+                            scores_by_kernel = {}
+                            for kernel in kernels:
+                                scores_by_degree = {}
+                                for degree in degrees:
+                                    scores = cross_val(dataset, clf=clf, kernel=kernel, degree=degree,
+                                                       sampling=sampling_step_size_in_seconds)
+                                    if dataset.labelling == 'classification':
+                                        print(
+                                            f"\n########## Metrics for {clf} classifier applied on {dataset.name} using a {kernel} kernel of degree {degree} with classes {dataset.classes} ##########")
+                                    elif dataset.labelling == 'detection':
+                                        print(
+                                            f"\n########## Metrics for {clf} classifier applied on {dataset.name} using a {kernel} kernel of degree {degree} with classes normal and abnormal ##########")
+                                    for score in scores:
+                                        print("%s: %0.2f (+/- %0.2f)" % (
+                                            score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
+                                    scores_by_degree[degree] = scores
+                                scores_by_kernel[kernel] = scores_by_degree
+                            scores_by_dataset[dataset.name] = scores_by_kernel
+                        if clf in ['kNN']:
+                            scores_by_neighbours = {}
+                            for number in neighbours:
+                                scores_by_weights = {}
+                                for weight in weights:
+                                    scores = cross_val(dataset, neighbours=number, weights=weight,
+                                                       sampling=sampling_step_size_in_seconds)
+                                    if dataset.labelling == 'classification':
+                                        print(
+                                            f"\n########## Metrics for {clf} classifier applied on {dataset.name} using {number} neigbours and {weight} weights with classes {dataset.classes} ##########")
+                                    elif dataset.labelling == 'detection':
+                                        print(
+                                            f"\n########## Metrics for {clf} classifier applied on {dataset.name} using {number} neigbours with and {weight} weights classes normal and abnormal ##########")
+                                    for score in scores:
+                                        print("%s: %0.2f (+/- %0.2f)" % (
+                                            score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
+                                        scores_by_weights[weight] = scores
+                                scores_by_neighbours[number] = scores_by_weights
+                            scores_by_dataset[dataset.name] = scores_by_neighbours
+                    scores_by_n[str(n)] = scores_by_dataset
+
+                for dataset in setups.keys():
+                    if clf in ['SVM', 'NuSVM']:
+                        for kernel in kernels:
+                            for degree in degrees:
+                                if kernel == 'poly':
+                                    poly_message = f'of degree {degree}'
+                                else:
+                                    poly_message = ''
+                                if mode == 'classification' or dataset.split('_')[-1] != '3c':
+                                    title = f'{clf} on {" ".join(dataset.split("_")[:4])} using a {kernel} kernel {poly_message} with classes {setups[dataset]}'
+                                elif mode == 'detection' and dataset.split('_')[-1] == '3c':
+                                    title = f'{clf} on {" ".join(dataset.split("_")[:4])} using a {kernel} kernel {poly_message} with classes normal and abnormal'
+                                fig_svm, ax_svm = plot_grid_search(list(range(1, max_number_of_components)),
+                                                                   [scores_by_n[i][dataset][kernel][degree] for i in
+                                                                    scores_by_n],
+                                                                   title=title)
+                    if clf in ['kNN']:
+                        for number in neighbours:
+                            for weight in weights:
+                                if mode == 'classification' or dataset.split('_')[-1] != '3c':
+                                    title = f'{clf} on {" ".join(dataset.split("_")[:4])} using {number} neigbours and {weight} weights with classes {setups[dataset]}'
+                                elif mode == 'detection' and dataset.split('_')[-1] == '3c':
+                                    title = f'{clf} on {" ".join(dataset.split("_")[:4])} using {number} neigbours and {weight} weights with classes normal and abnormal'
+                                fig_svm, ax_svm = plot_grid_search(list(range(1, max_number_of_components)),
+                                                                   [scores_by_n[i][dataset][number][weight] for i in
+                                                                    scores_by_n],
+                                                                   title=title)
+
+            if clf == 'Assembly' and data_mode != 'combined_data':
+                for classifiers in classifier_combos:
+                    scores = cross_val(variable_selection, clf=clf, classifiers_and_parameters=classifiers,
+                                       setup=setup_chosen,
+                                       mode=mode, sampling=sampling_step_size_in_seconds)
+                    if mode == 'classification':
+                        print(
+                            f"\n########## Metrics for {clf} classifier on Setup_B_F2_data1_3c using {[(i, classifiers[i]) for i in classifiers.keys()]} classifiers with classes {setups[setup_chosen]} ##########")
+                    elif mode == 'detection':
+                        print(
+                            f"\n########## Metrics for {clf} classifier on Setup_B_F2_data1_3c using {[(i, classifiers[i]) for i in classifiers.keys()]} classifiers with classes normal and abnormal ##########")
+                    for score in scores:
+                        print("%s: %0.2f (+/- %0.2f)" % (
+                            score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
+
+            if data_mode == 'combined_data':
+                '''
+                uses principal components instead of explained variances!!!
+                '''
+                data = load_data(sampling=sampling_step_size_in_seconds)
+                data = Datasets.Combined_Dataset(data, pca_variables_F2, name=setup_chosen,
+                                                 classes=setups[setup_chosen],
+                                                 bay=setup_chosen.split('_')[2], setup=setup_chosen.split('_')[1],
+                                                 labelling=mode)
+                scaled_data = data.scale()
+                pca_data = data.PCA()
+                labelled_data = data.label()
+
+                for classifiers in classifier_combos:
+                    scores = cross_val(data, clf=clf, classifiers_and_parameters=classifiers, setup=setup_chosen,
+                                       mode=mode, sampling=sampling_step_size_in_seconds, data_mode=data_mode)
+                    if mode == 'classification':
+                        print(
+                            f"\n########## Metrics for {clf} classifier on {setup_chosen} using {[(i, classifiers[i]) for i in classifiers.keys()]} classifiers with classes {setups[setup_chosen]} ##########")
+                    elif mode == 'detection':
+                        print(
+                            f"\n########## Metrics for {clf} classifier on {setup_chosen} using {[(i, classifiers[i]) for i in classifiers.keys()]} classifiers with classes normal and abnormal ##########")
+                    for score in scores:
+                        print("%s: %0.2f (+/- %0.2f)" % (
+                            score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
+
+            ##########
+
+            # results_kpca = pca(variables=variables, PCA_type='kPCA', sampling=sampling_step_size_in_seconds)
+            # fgs_kpca, axs_kpca = pca_plotting(results_kpca, type='kPCA')
+
+        # results_ssa = ssa()
+
+        plt.show()
+        a = 1

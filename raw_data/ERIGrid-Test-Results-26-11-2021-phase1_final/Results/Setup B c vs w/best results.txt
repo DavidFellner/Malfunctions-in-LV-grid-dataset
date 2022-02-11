@@ -1,0 +1,50 @@
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'linear': [8], 'rbf': [11]})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.76 (+/- 0.27)
+Precision: 0.77 (+/- 0.44)
+Recall: 0.76 (+/- 0.27)
+FScore: 0.72 (+/- 0.37)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [8, 3]}), ('NuSVM', {'linear': [8], 'poly': [8, 2]})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.79 (+/- 0.56)
+Precision: 0.79 (+/- 0.61)
+Recall: 0.79 (+/- 0.56)
+FScore: 0.78 (+/- 0.59)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [8, 3]}), ('NuSVM', {'linear': [8], 'rbf': [11]})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.84 (+/- 0.42)
+Precision: 0.87 (+/- 0.40)
+Recall: 0.85 (+/- 0.41)
+FScore: 0.84 (+/- 0.43)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [8, 3]}), ('NuSVM', {'poly': [8, 2]})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.82 (+/- 0.35)
+Precision: 0.86 (+/- 0.33)
+Recall: 0.82 (+/- 0.35)
+FScore: 0.81 (+/- 0.36)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'linear': [8], 'poly': [8, 2]})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.80 (+/- 0.32)
+Precision: 0.80 (+/- 0.47)
+Recall: 0.80 (+/- 0.32)
+FScore: 0.77 (+/- 0.41)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'poly': [8, 2], 'rbf': [11]})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.79 (+/- 0.56)
+Precision: 0.79 (+/- 0.61)
+Recall: 0.79 (+/- 0.56)
+FScore: 0.78 (+/- 0.59)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'linear': [11], 'poly': [8, 2], 'rbf': [11]})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.82 (+/- 0.52)
+Precision: 0.83 (+/- 0.56)
+Recall: 0.82 (+/- 0.52)
+FScore: 0.81 (+/- 0.55)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [8, 3]}), ('NuSVM', {'linear': [8], 'poly': [8, 2], 'rbf': [11]})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.85 (+/- 0.36)
+Precision: 0.88 (+/- 0.31)
+Recall: 0.86 (+/- 0.34)
+FScore: 0.84 (+/- 0.37)
+Data loaded with sampling of None
+
+Backend Qt5Agg is interactive backend. Turning interactive mode on.

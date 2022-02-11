@@ -1,0 +1,98 @@
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'linear': [8], 'rbf': [11]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.62 (+/- 0.29)
+Precision: 0.61 (+/- 0.38)
+Recall: 0.61 (+/- 0.32)
+FScore: 0.57 (+/- 0.32)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [7, 2]}), ('NuSVM', {'linear': [8], 'poly': [9, 3]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.74 (+/- 0.34)
+Precision: 0.71 (+/- 0.43)
+Recall: 0.72 (+/- 0.40)
+FScore: 0.70 (+/- 0.43)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [7, 2]}), ('NuSVM', {'linear': [8], 'rbf': [11]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.80 (+/- 0.34)
+Precision: 0.76 (+/- 0.47)
+Recall: 0.76 (+/- 0.42)
+FScore: 0.75 (+/- 0.44)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [7, 2]}), ('NuSVM', {'poly': [9, 3]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.76 (+/- 0.26)
+Precision: 0.76 (+/- 0.30)
+Recall: 0.75 (+/- 0.29)
+FScore: 0.73 (+/- 0.28)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'linear': [8], 'poly': [9, 3]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.75 (+/- 0.30)
+Precision: 0.77 (+/- 0.30)
+Recall: 0.76 (+/- 0.33)
+FScore: 0.73 (+/- 0.32)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'poly': [9, 3], 'rbf': [11]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.71 (+/- 0.23)
+Precision: 0.70 (+/- 0.38)
+Recall: 0.68 (+/- 0.23)
+FScore: 0.65 (+/- 0.29)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'linear': [11], 'poly': [9, 3], 'rbf': [11]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.73 (+/- 0.24)
+Precision: 0.69 (+/- 0.39)
+Recall: 0.68 (+/- 0.32)
+FScore: 0.67 (+/- 0.33)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [7, 2]}), ('NuSVM', {'linear': [8], 'poly': [9, 3], 'rbf': [11]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.74 (+/- 0.23)
+Precision: 0.74 (+/- 0.29)
+Recall: 0.71 (+/- 0.26)
+FScore: 0.70 (+/- 0.24)
+
+2nd run:
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'linear': [8], 'rbf': [11]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.76 (+/- 0.31)
+Precision: 0.72 (+/- 0.44)
+Recall: 0.76 (+/- 0.37)
+FScore: 0.72 (+/- 0.41)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [7, 2]}), ('NuSVM', {'linear': [8], 'poly': [9, 3]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.76 (+/- 0.27)
+Precision: 0.73 (+/- 0.41)
+Recall: 0.72 (+/- 0.32)
+FScore: 0.69 (+/- 0.37)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [7, 2]}), ('NuSVM', {'linear': [8], 'rbf': [11]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.67 (+/- 0.39)
+Precision: 0.64 (+/- 0.44)
+Recall: 0.64 (+/- 0.45)
+FScore: 0.63 (+/- 0.44)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [7, 2]}), ('NuSVM', {'poly': [9, 3]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.71 (+/- 0.26)
+Precision: 0.73 (+/- 0.40)
+Recall: 0.68 (+/- 0.29)
+FScore: 0.65 (+/- 0.32)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'linear': [8], 'poly': [9, 3]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.71 (+/- 0.34)
+Precision: 0.72 (+/- 0.33)
+Recall: 0.73 (+/- 0.36)
+FScore: 0.70 (+/- 0.36)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'poly': [9, 3], 'rbf': [11]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.78 (+/- 0.29)
+Precision: 0.78 (+/- 0.30)
+Recall: 0.78 (+/- 0.33)
+FScore: 0.76 (+/- 0.31)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'linear': [11], 'poly': [9, 3], 'rbf': [11]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.69 (+/- 0.20)
+Precision: 0.70 (+/- 0.28)
+Recall: 0.66 (+/- 0.17)
+FScore: 0.65 (+/- 0.19)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [7, 2]}), ('NuSVM', {'linear': [8], 'poly': [9, 3], 'rbf': [11]})] classifiers with classes normal and abnormal ##########
+Accuracy: 0.76 (+/- 0.26)
+Precision: 0.70 (+/- 0.41)
+Recall: 0.74 (+/- 0.34)
+FScore: 0.71 (+/- 0.37)
+
+

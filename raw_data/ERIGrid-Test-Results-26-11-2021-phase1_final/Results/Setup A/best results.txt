@@ -1,0 +1,43 @@
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'poly': [3, 4], 'linear': [3]})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.46 (+/- 0.34)
+Precision: 0.38 (+/- 0.53)
+Recall: 0.46 (+/- 0.37)
+FScore: 0.38 (+/- 0.37)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [3, 3]}), ('NuSVM', {'linear': [3]})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.51 (+/- 0.66)
+Precision: 0.54 (+/- 0.76)
+Recall: 0.52 (+/- 0.66)
+FScore: 0.49 (+/- 0.67)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [3, 3]}), ('NuSVM', {'linear': [3]}), ('kNN', {2: [3, 'distance']})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.60 (+/- 0.43)
+Precision: 0.58 (+/- 0.56)
+Recall: 0.61 (+/- 0.43)
+FScore: 0.56 (+/- 0.48)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [3, 3]}), ('kNN', {2: [3, 'distance']})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.61 (+/- 0.46)
+Precision: 0.58 (+/- 0.58)
+Recall: 0.62 (+/- 0.47)
+FScore: 0.58 (+/- 0.52)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'poly': [3, 4]}), ('kNN', {2: [3, 'distance']})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.67 (+/- 0.33)
+Precision: 0.57 (+/- 0.57)
+Recall: 0.64 (+/- 0.36)
+FScore: 0.58 (+/- 0.46)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('NuSVM', {'linear': [3]}), ('kNN', {2: [3, 'distance']})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.56 (+/- 0.45)
+Precision: 0.46 (+/- 0.61)
+Recall: 0.55 (+/- 0.47)
+FScore: 0.48 (+/- 0.53)
+Data loaded with sampling of None
+########## Metrics for Assembly classifier on Setup_B_F2_data1_3c using [('SVM', {'poly': [3, 3]}), ('NuSVM', {'poly': [3, 4], 'linear': [3]}), ('kNN', {2: [3, 'distance']})] classifiers with classes ['correct', 'wrong'] ##########
+Accuracy: 0.68 (+/- 0.37)
+Precision: 0.65 (+/- 0.58)
+Recall: 0.69 (+/- 0.33)
+FScore: 0.63 (+/- 0.46)
+Backend Qt5Agg is interactive backend. Turning interactive mode on.
+
