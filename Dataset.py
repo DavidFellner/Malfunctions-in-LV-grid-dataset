@@ -124,26 +124,45 @@ class PCA_Dataset:
         self.name = name
         self.data = data
         self.labelling = labelling
+        self.bay = bay
+        self.Setup = Setup
 
         if classes is not None:
             self.classes = classes
         else:
             self.classes = ['correct', 'wrong']
 
-        self.X = np.array([data[key][1] for key in data if key[-2:] == name.split('_')[2] and key.split(' ')[3] == name.split('_')[1] and key.split(' ')[0] in self.classes])
+
+    def create_dataset(self):
+
+        self.X = np.array([self.data[key][1] for key in self.data if
+                           key[-2:] == self.name.split('_')[2] and key.split(' ')[3] == self.name.split('_')[1] and
+                           key.split(' ')[0] in self.classes])
         self.y = []
-        for key in data:
-            if key[-2:] == bay and key.split(' ')[3] == Setup:
-                if key.split(' ')[0] in classes and self.labelling=='classification':
-                    self.y = self.y + [classes.index(key.split(' ')[0])]
+        self.labels = {'correct': 0, 'wrong': 0, 'inversed': 0}
+        for key in self.data:
+            if key[-2:] == self.bay and key.split(' ')[3] == self.Setup:
+                if key.split(' ')[0] in self.classes and self.labelling == 'classification':
+                    self.y = self.y + [self.classes.index(key.split(' ')[0])]
+                    self.labels['correct'] = self.y.count(0)
+                    self.labels['wrong'] = self.y.count(1)
+                    self.labels['inversed'] = self.y.count(2)
                 elif self.labelling == 'detection':
                     if key.split(' ')[0] == 'correct':
                         self.y = self.y + [0]
+                        self.labels['correct'] = self.labels['correct'] + 1
                     elif key.split(' ')[0] == 'wrong':
                         self.y = self.y + [1]
+                        self.labels['wrong'] = self.labels['wrong'] + 1
                     elif key.split(' ')[0] == 'inversed':
                         self.y = self.y + [1]
+                        self.labels['wrong'] = self.labels['wrong'] + 1
         self.y = np.array(self.y)
+
+    def dataset_info(self):
+        print(
+            f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created')
+
 
 class Raw_Dataset:
     '''
@@ -155,26 +174,43 @@ class Raw_Dataset:
         self.name = name
         self.data = data
         self.labelling = labelling
+        self.bay = bay
+        self.Setup = Setup
 
         if classes is not None:
             self.classes = classes
         else:
             self.classes = ['correct', 'wrong']
 
-        self.X = np.array([data[measurement] for measurement in data if measurement[-2:] == name.split('_')[2] and measurement.split(' ')[3] == name.split('_')[1] and measurement.split(' ')[0] in self.classes])
+    def create_dataset(self):
+
+        self.X = np.array([self.data[measurement] for measurement in self.data if
+                           measurement[-2:] == self.name.split('_')[2] and measurement.split(' ')[3] == self.name.split('_')[
+                               1] and measurement.split(' ')[0] in self.classes])
         self.y = []
+        self.labels = {'correct': 0, 'wrong': 0, 'inversed': 0}
         for measurement in self.X:
-            if measurement.name[-2:] == bay and measurement.name.split(' ')[3] == Setup:
-                if measurement.name.split(' ')[0] in classes and self.labelling=='classification':
-                    self.y = self.y + [classes.index(measurement.name.split(' ')[0])]
+            if measurement.name[-2:] == self.bay and measurement.name.split(' ')[3] == self.Setup:
+                if measurement.name.split(' ')[0] in self.classes and self.labelling == 'classification':
+                    self.y = self.y + [self.classes.index(measurement.name.split(' ')[0])]
+                    self.labels['correct'] = self.y.count(0)
+                    self.labels['wrong'] = self.y.count(1)
+                    self.labels['inversed'] = self.y.count(2)
                 elif self.labelling == 'detection':
                     if measurement.name.split(' ')[0] == 'correct':
                         self.y = self.y + [0]
+                        self.labels['correct'] = self.labels['correct'] + 1
                     elif measurement.name.split(' ')[0] == 'wrong':
                         self.y = self.y + [1]
+                        self.labels['wrong'] = self.labels['wrong'] + 1
                     elif measurement.name.split(' ')[0] == 'inversed':
                         self.y = self.y + [1]
+                        self.labels['wrong'] = self.labels['wrong'] + 1
         self.y = np.array(self.y)
+
+    def dataset_info(self):
+        print(
+            f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created')
 
 class Combined_Dataset:
     '''
@@ -211,7 +247,16 @@ class Combined_Dataset:
         self.combined_data = pd.DataFrame(index=[self.data[measurement].name for measurement in self.data], data=[measurements[measurement].values[0] for measurement in measurements], columns=measurements[list(measurements.keys())[0]].columns)
 
 
+    def create_dataset(self):
 
+        scaled_data = Combined_Dataset.scale(self)
+        pca_data = Combined_Dataset.PCA(self)
+        labelled_data = Combined_Dataset.label(self)
+
+
+    def dataset_info(self):
+        print(
+            f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created')
 
     def label(self):
 
@@ -221,17 +266,24 @@ class Combined_Dataset:
                            measurement[-2:] == self.name.split('_')[2] and measurement.split(' ')[3] == self.name.split('_')[
                                1] and measurement.split(' ')[0] in self.classes])"""
         self.y = []
+        self.labels = {'correct': 0, 'wrong': 0, 'inversed': 0}
         for measurement in self.data:
             if measurement[-2:] == self.bay and measurement.split(' ')[3] == self.setup:
                 if measurement.split(' ')[0] in self.classes and self.labelling == 'classification':
                     self.y = self.y + [self.classes.index(measurement.split(' ')[0])]
+                    self.labels['correct'] = self.y.count(0)
+                    self.labels['wrong'] = self.y.count(1)
+                    self.labels['inversed'] = self.y.count(2)
                 elif self.labelling == 'detection':
-                    if measurement.split(' ')[0] == 'correct':
+                    if measurement.name.split(' ')[0] == 'correct':
                         self.y = self.y + [0]
-                    elif measurement.split(' ')[0] == 'wrong':
+                        self.labels['correct'] = self.labels['correct'] + 1
+                    elif measurement.name.split(' ')[0] == 'wrong':
                         self.y = self.y + [1]
-                    elif measurement.split(' ')[0] == 'inversed':
+                        self.labels['wrong'] = self.labels['wrong'] + 1
+                    elif measurement.name.split(' ')[0] == 'inversed':
                         self.y = self.y + [1]
+                        self.labels['wrong'] = self.labels['wrong'] + 1
         self.y = np.array(self.y)
 
         return self.X, self.y

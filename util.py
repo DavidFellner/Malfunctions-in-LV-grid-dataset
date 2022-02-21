@@ -5,6 +5,7 @@ from algorithms.GRU import GRU
 from algorithms.Transformer import Transformer
 from algorithms.RTransformer import RT
 from HDF5Dataset import HDF5Dataset
+from Dataset import Deep_learning_dataset, Raw_Dataset, PCA_Dataset, Combined_Dataset
 import plotting
 import torch
 from torch.utils import data
@@ -279,6 +280,36 @@ def get_weights_copy(model):
     torch.save(model.state_dict, weights_path)
     return torch.load(weights_path)
 
+
+def create_dataset(type='raw', data=None, variables=None, name=None, classes=None, bay='F2', Setup='A', labelling='classification'):
+    '''
+    creates either  a deep learning dataset or the specified dataset for detection methods
+    :param type: which type of detection methods dataset is needed? Options: raw, pca, combined
+    :return: dataset object of desired dataset type
+    '''
+
+    if config.deeplearning:
+        dataset = Deep_learning_dataset(config=config)
+    elif config.detection_methods:
+        if type=='raw':
+            dataset = Raw_Dataset(data, name, classes=classes, bay=bay, Setup=Setup, labelling=labelling)
+        if type=='pca':
+            dataset =PCA_Dataset(data, name, classes=classes, bay=bay, Setup=Setup, labelling=labelling)
+        if type=='combined':
+            dataset = Combined_Dataset(data, variables, name, classes=classes, bay=bay, setup=Setup, labelling=labelling)
+    else:
+        print('Dataset in config: either deeplearning or detection_methods')
+        dataset = None
+        return dataset
+
+    dataset.create_dataset()
+    dataset.dataset_info()
+
+    if config.deeplearning:
+        scaler = dataset.save_dataset(dataset.train_set, 'train')
+        dataset.save_dataset(dataset.test_set, 'test', scaler=scaler)
+
+    return dataset
 
 '''def load_test_data(config):
 

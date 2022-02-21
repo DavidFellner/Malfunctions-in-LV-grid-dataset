@@ -50,30 +50,20 @@ if not config.raw_data_available:
     from raw_data_generation.grid_preparation import prepare_grid
     from raw_data_generation.data_creation import create_data
 
-from Dataset import Deep_learning_dataset
 from dataset_creation.create_instances import create_samples
 from malfunctions_in_LV_grid_dataset import MlfctinLVdataset
 from PV_noPV_dataset import PVnoPVdataset
 from dummy_dataset import Dummydataset
-from util import load_model, export_model, save_model, load_data, plot_samples, choose_best, save_result
-
-import numpy as np
-from sklearn.model_selection import cross_validate
-from sklearn.linear_model import SGDClassifier
-from sklearn.model_selection import KFold
-import logging, sys
-import torch
-import h5py
+from util import load_model, export_model, save_model, plot_samples, choose_best, save_result, create_dataset
+from deeplearning import Deeplearning
 
 import pandas as pd
 import os
 
 #muss noch überarbeitet werden
-import Datasets
 from extract_measurements import extract_data
 from plot_measurements import plot_scenario_test_bay, plot_scenario_case, plot_pca, plot_grid_search
 from Measurement import Measurement
-from Datasets import PCA_Dataset, Raw_Dataset
 from Clustering import Clustering
 from detection_method_settings import Variables
 v = Variables()
@@ -116,62 +106,6 @@ def generate_detectionmethods_raw_data():
 
     return
 
-def cross_val(X, y, model):
-    kf = KFold(n_splits=learning_config['k folds'])
-    best_clfs = []
-    scores = []
-
-    for train_index, test_index in kf.split(X):
-        print('Split #%d' % (len(scores) + 1))
-        X_train, X_test = X[train_index], X[test_index]
-        y_train, y_test = list(np.array(y)[train_index]), list(np.array(y)[test_index])
-
-        X_train, X_test = model.preprocess(X_train, X_test)
-
-        clfs, losses, lrs = model.fit(X_train, y_train, X_test, y_test,
-                                      early_stopping=learning_config['early stopping'],
-                                      control_lr=learning_config['LR adjustment'])
-        best_model = choose_best(clfs)
-        best_clfs.append(best_model)
-        model.state_dict = best_model[0]
-        y_pred, outputs = model.predict(X_test)
-        scores.append(model.score(y_test, y_pred) + [best_model[1]])
-
-    very_best_model = choose_best(best_clfs)
-    model.state_dict = very_best_model[0]
-
-    scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores],
-                   'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores],
-                   'Lowest validation loss': [i[2] for i in scores]}
-
-    return model, scores_dict
-
-
-def baseline(X, y):
-    clf_baseline = SGDClassifier()
-    scores = cross_validate(clf_baseline, X, y, scoring=learning_config["metrics"], cv=10, n_jobs=1)
-    print("########## Linear Baseline: 10-fold Cross-validation ##########")
-    for metric in learning_config["cross_val_metrics"]:
-        print("%s: %0.2f (+/- %0.2f)" % (metric, scores[metric].mean(), scores[metric].std() * 2))
-
-    return
-
-
-def init():
-    level = 'INFO'
-    logger = logging.getLogger('main')
-    logger.setLevel(level)
-
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(level)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    logger.info(f"Using {device}.")
-
-    return logger, device
 
 ############################
 def sample(data, sampling):
@@ -711,26 +645,6 @@ plot_data = True
 
 classifier_combos = c.classifier_combos[config.classifier_combos]   #detection, c_vs_w ...
 
-#######################################################
-
-def create_dataset(type='raw'):
-    '''
-    creates either  a deep learning dataset or the specified dataset for detection methods
-    :param type: which type of detection methods dataset is needed? Options: raw, pca, combined
-    :return: dataset object of desired dataset type
-    '''
-
-    if config.deeplearning:
-        dataset = Deep_learning_dataset(config=config)
-    if config.detection_methods:
-        dataset = type
-
-    dataset.create_dataset()
-    dataset.dataset_info()
-    scaler = dataset.save_dataset(dataset.train_set, 'train')
-    dataset.save_dataset(dataset.test_set, 'test', scaler=scaler)
-
-    return dataset
 
 if __name__ == '__main__':  # see config file for settings
 
@@ -740,123 +654,18 @@ if __name__ == '__main__':  # see config file for settings
         if config.detection_methods:
             generate_detectionmethods_raw_data()
 
-    if config.dataset_available == False:
+    if config.dataset_available == False or config.detection_methods:
         dataset = create_dataset()
 
     #in config file do as: if deeplearning: learning_config = ... elif ...: learning_config = ....
     print("\n########## Configuration ##########")
     for key, value in learning_config.items():
         print(key, ' : ', value)
-    print("number of samples : %d" % config.number_of_samples)
+    if config.deeplearning: print("number of samples : %d" % config.number_of_samples)
 
     if config.deeplearning:
-        #put in function or class deeplearning > class might be better for subfunctions (crossval etc)
-        logger, device = init()
-
-        # Load data
-        logger.info("Loading Data ...")
-        if learning_config["mode"] == 'train':
-            train_loader = load_data('train')
-        test_loader = load_data('test')
-        logger.info(f"Loaded data.")
-
-        # dataset, X, y = load_dataset()
-        if learning_config["plot samples"] and learning_config["mode"] == 'train':
-            for i, (X, y, X_raw) in enumerate(train_loader):
-                plot_samples(X_raw, y, X)
-                break
-
-        # if learning_config['baseline']:
-        # baseline(X, y)
-
-        print('X data with zero mean per sample and scaled between -1 and 1 based on training samples used')
-
-        path = os.path.join(config.models_folder, learning_config['classifier'])
-        model, epoch, loss = load_model(learning_config)
-
-        if not learning_config["cross_validation"]:
-
-            # X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, test_size=learning_config['train test split'])
-            # X_train, X_test = model.preprocess(X_train, X_test)
-
-            print("\n########## Training ##########")
-            if learning_config["do grid search"]:
-                runs = len(learning_config["grid search"][1])
-            else:
-                runs = 1
-            for i in range(runs):
-                if learning_config["mode"] == 'train':
-                    logger.info("Training classifier ..")
-                    if learning_config["do grid search"]: logger.info(
-                        "Value of {}: {}".format(learning_config["grid search"][0], learning_config["grid search"][1][i]))
-
-                    clfs, losses, lrs = model.fit(train_loader, test_loader,
-                                                  early_stopping=learning_config['early stopping'],
-                                                  control_lr=learning_config['LR adjustment'], prev_epoch=epoch,
-                                                  prev_loss=loss, grid_search_parameter = learning_config["grid search"][1][i])
-
-                    logger.info("Training finished!")
-                    logger.info('Finished Training')
-                    plotting.plot_2D([losses, [i[1] for i in clfs]], labels=['Training loss', 'Validation loss'],
-                                     title='Losses after each epoch', x_label='Epoch',
-                                     y_label='Loss')  # plot training loss for each epoch
-                    plotting.plot_2D(lrs, labels='learning rate', title='Learning rate for each epoch', x_label='Epoch',
-                                     y_label='Learning rate')
-                    clf, epoch = choose_best(clfs)
-                    model.state_dict = clf[0]  # pick weights of best model found
-
-                y_pred, outputs, y_test = model.predict(test_loader=test_loader)
-                if learning_config["mode"] == 'eval':
-                    clf = model
-                    score = model.score(y_test, y_pred)
-                    print("\n########## Metrics ##########")
-                    print(
-                        "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}".format(score[0],
-                                                                                         score[1][
-                                                                                             0],
-                                                                                         score[1][
-                                                                                             1],
-                                                                                         score[1][
-                                                                                             2], ))
-                else:
-                    score = model.score(y_test, y_pred) + [clf[1]]
-                    print("\n########## Metrics ##########")
-                    print(
-                        "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\nLowest validation loss: {4}".format(score[0],
-                                                                                                                      score[1][
-                                                                                                                          0],
-                                                                                                                      score[1][
-                                                                                                                          1],
-                                                                                                                      score[1][
-                                                                                                                          2],
-                                                                                                                      score[2]))
-                if learning_config["save_model"] and learning_config["mode"] == 'train':
-                    save_model(model, epoch, clf[1], i)
-
-                if learning_config["save_result"]:
-                    save_result(score, i)
-
-                if learning_config["export_model"]:
-                    export_model(model, learning_config, i)
-
-            if learning_config['do grid search']:
-                plotting.plot_grid_search()
-
-        if learning_config["cross_validation"]:
-            print("\n########## k-fold Cross-validation ##########")
-            model, scores = cross_val(X, y, model)
-            print("########## Metrics ##########")
-            for score in scores:
-                print("%s: %0.2f (+/- %0.2f)" % (score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
-
-            if learning_config["save_model"] and learning_config["mode"] == 'train':
-                save_model(model, epoch, clf[1], learning_config)
-
-            if learning_config["save_result"]:
-                save_result(scores, learning_config)
-
-            if learning_config["export_model"]:
-                export_model(model, learning_config)
+        deep_learning = Deeplearning(config, learning_config)
+        deep_learning.training_or_testing()
 
     elif config.detection_methods:
         '''
@@ -1071,13 +880,13 @@ if __name__ == '__main__':  # see config file for settings
                 uses principal components instead of explained variances!!!
                 '''
                 data = load_data(sampling=sampling_step_size_in_seconds)
-                data = Datasets.Combined_Dataset(data, pca_variables_F2, name=setup_chosen,
+                data = Combined_Dataset(data, pca_variables_F2, name=setup_chosen,
                                                  classes=setups[setup_chosen],
                                                  bay=setup_chosen.split('_')[2], setup=setup_chosen.split('_')[1],
                                                  labelling=mode)
-                scaled_data = data.scale()
+                '''scaled_data = data.scale()
                 pca_data = data.PCA()
-                labelled_data = data.label()
+                labelled_data = data.label()'''
 
                 for classifiers in classifier_combos:
                     scores = cross_val(data, clf=clf, classifiers_and_parameters=classifiers, setup=setup_chosen,
