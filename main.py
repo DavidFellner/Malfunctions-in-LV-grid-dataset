@@ -56,15 +56,13 @@ from PV_noPV_dataset import PVnoPVdataset
 from dummy_dataset import Dummydataset
 from util import load_model, export_model, save_model, plot_samples, choose_best, save_result, create_dataset
 from deeplearning import Deeplearning
+from transformer_detection import Transformer_detection
 
 import pandas as pd
-import os
 
 #muss noch überarbeitet werden
 from extract_measurements import extract_data
 from plot_measurements import plot_scenario_test_bay, plot_scenario_case, plot_pca, plot_grid_search
-from Measurement import Measurement
-from Clustering import Clustering
 from detection_method_settings import Variables
 v = Variables()
 from detection_method_settings import Classifier_Combos
@@ -108,122 +106,6 @@ def generate_detectionmethods_raw_data():
 
 
 ############################
-def sample(data, sampling):
-    datetimeindex = pd.DataFrame(columns=['Datetime'], data=pd.to_datetime(data['Datum'] + ' ' + data['Zeit']))
-    data = pd.concat((data, datetimeindex), axis=1)
-    data = data.set_index('Datetime')
-    # data = data.drop(['Datum', 'Zeit'], axis=1)
-    data.resample(str(sampling) + 'S')
-    index = pd.DataFrame(index=datetimeindex['Datetime'], columns=['new_index'], data=range(len(data)))
-    data = pd.concat((data, index), axis=1)
-    sampled_data = data.set_index('new_index')
-
-    return sampled_data
-
-
-def load_data(scenario=None, sampling=None):
-    print('Data loaded with sampling of ' + str(sampling))
-    relevant_measurements = {}
-    if scenario:
-        # to get data of entire scenario
-        for measurement in measurements:
-            for test_bay in test_bays:
-                full_path = os.path.join(data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
-                data = pd.read_csv(os.path.join(full_path, measurements[measurement][scenario - 1] + '.csv'), sep=',',
-                                   decimal=',', low_memory=False)
-                data = data[
-                       2 * 60 * 4:]  # cut off the first 2 minutes because this is where laods / PV where started up
-                data = data[
-                       :6000]  # cut off after 25 minutes (25*60*4 bc 4 samples per second) because measurements were not turned off at same time
-                data['new_index'] = range(len(data))
-                data = data.set_index('new_index')
-
-                if sampling:
-                    data = sample(data, sampling)
-
-                name = str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(test_bay)
-                relevant_measurements[
-                    str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(test_bay)] = Measurement(
-                    data, name)
-    else:
-        # get all data
-        for measurement in measurements:
-            for scenario in measurements[measurement]:
-                for test_bay in test_bays:
-                    full_path = os.path.join(data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
-                    data = pd.read_csv(os.path.join(full_path, scenario + '.csv'),
-                                       sep=',',
-                                       decimal=',', low_memory=False)
-                    data = data[
-                           2 * 60 * 4:]  # cut off the first 2 minutes because this is where laods / PV where started up
-                    data = data[
-                           :6000]  # cut off after 25 minutes (25*60*4 bc 4 samples per second) because measurements were not turned off at same time
-                    data['new_index'] = range(len(data))
-                    data = data.set_index('new_index')
-
-                    if sampling:
-                        data = sample(data, sampling)
-
-                    name = str(measurement)[13:] + ' Scenario ' + str(
-                        measurements[measurement].index(scenario) + 1) + ': Test Bay ' + str(test_bay)
-                    relevant_measurements[
-                        str(measurement)[13:] + ' Scenario ' + str(
-                            measurements[measurement].index(scenario) + 1) + ': Test Bay ' + str(
-                            test_bay)] = Measurement(
-                        data, name)
-
-    return relevant_measurements
-
-
-def scenario_plotting_test_bay(variables, plot_all=True, scenario=1, vars=None, sampling=None):
-    if vars is None:
-        vars = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg', 'F2': 'Vrms ph-n L1N Avg'}
-    fgs = {}
-    axs = {}
-
-    try:
-        var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
-                       vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
-    except ValueError:
-        print(f"The variable  defined is not available")
-        return fgs, axs
-
-    vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]), 'F2': (vars['F2'], var_numbers[2])}
-    if plot_all:
-        for scenario in range(1, 16):
-            relevant_measurements = load_data(scenario, sampling=sampling)
-            fgs, axs = plot_scenario_test_bay(relevant_measurements, fgs, axs, vars)
-    else:
-        relevant_measurements = load_data(scenario, sampling=sampling)
-        fgs, axs = plot_scenario_test_bay(relevant_measurements, fgs, axs, vars)
-
-    return fgs, axs
-
-
-def scenario_plotting_case(variables, plot_all=True, scenario=1, vars=None, sampling=None):
-    if vars is None:
-        vars = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg', 'F2': 'Vrms ph-n AN Avg'}
-    fgs = {}
-    axs = {}
-
-    try:
-        var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
-                       vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
-    except ValueError:
-        print(f"The variable  defined is not available")
-        return fgs, axs
-
-    vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]), 'F2': (vars['F2'], var_numbers[2])}
-    if plot_all:
-        for scenario in range(1, 16):
-            relevant_measurements = load_data(scenario, sampling=sampling)
-            fgs, axs = plot_scenario_case(relevant_measurements, fgs, axs, vars)
-    else:
-        relevant_measurements = load_data(scenario, sampling=sampling)
-        fgs, axs = plot_scenario_case(relevant_measurements, fgs, axs, vars)
-
-    return fgs, axs
-
 
 def pca(variables=None, PCA_type='PCA', analysis=False, n_components=2, data=None, sampling=None):
     if variables is None:
@@ -668,42 +550,10 @@ if __name__ == '__main__':  # see config file for settings
         deep_learning.training_or_testing()
 
     elif config.detection_methods:
-        '''
-        TODO: pack into classes, also functions defined above, pack modules in folders... 
-        '''
-        data_path = os.path.join(os.getcwd(), config.raw_data_folder, 'ERIGrid-Test-Results-26-11-2021-phase1_final')
-        test_bays = ['B1', 'F1', 'F2']
-        scenario = 1  # 1 to 15 as there is 15 scenarios (profiles)
-        plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
-                              'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
-        variables = {'B1': [v.variables_B1, v.pca_variables_B1], 'F1': [v.variables_F1, v.pca_variables_F1],
-                     'F2': [v.variables_F2, v.pca_variables_F2]}
-        sampling_step_size_in_seconds = None  # None or 0 to use all data, 1, 20 to sample once every n seconds ....
+        detection = Transformer_detection(config, learning_config)
+        if detection.plot_data: detection.plotting_data()
+        if detection.approach == 'clustering': detection.clustering()
 
-        setups = {'Setup_A_F2_data': ['correct', 'wrong'], 'Setup_B_F2_data1_3c': ['correct', 'wrong', 'inversed'],
-                  'Setup_B_F2_data2_2c': ['correct', 'wrong'], 'Setup_B_F2_data3_2c': ['correct', 'inversed']}
-        setup_chosen = 'Setup_A_F2_data'  # for assembly or clustering
-        mode = 'detection'  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
-        data_mode = 'combined_data'  # 'measurement_wise', 'combined_data'
-
-        approach = 'PCA+clf'  # 'PCA+clf', 'clustering'
-
-        if plot_data:
-            fgs_test_bay, axs_test_bay = scenario_plotting_test_bay(variables, plot_all=False, vars=plotting_variables,
-                                                                    sampling=sampling_step_size_in_seconds)
-            fgs_case, axs_case = scenario_plotting_case(variables, plot_all=False, vars=plotting_variables,
-                                                        sampling=sampling_step_size_in_seconds)
-
-        if approach == 'clustering':
-            data = load_data(sampling=sampling_step_size_in_seconds)
-            dataset = Raw_Dataset(data, name=setup_chosen, classes=setups[setup_chosen], bay=setup_chosen.split('_')[2],
-                                  Setup=setup_chosen.split('_')[1], labelling=mode)
-
-            Clustering_ward = Clustering(data=dataset, variables=variables[setup_chosen.split('_')[2]][1],
-                                         metric='euclidean', method='ward', num_of_clusters=len(setups[setup_chosen]))
-            cluster_assignments = Clustering_ward.cluster()
-            score = Clustering_ward.rand_score()
-            print(f'Score reached: {score}')
 
         if approach == 'PCA+clf':
 
