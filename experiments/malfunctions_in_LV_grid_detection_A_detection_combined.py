@@ -40,7 +40,10 @@ learning_config = {
 #########################################################################
 
 # Dataset settings
+raw_data_available = True  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
+#dataset_available = True  # set to False to recreate instances from raw data
 detection_methods = True
+deeplearning = False
 plot_data = True
 test_bays = ['B1', 'F1', 'F2']
 scenario = 1  # 1 to 15 as there is 15 scenarios (profiles)
@@ -74,7 +77,7 @@ sim_length = 365  # simulation length in days (has to be equal or bigger than sa
 if sim_length < sample_length / 96: print(
     'Choose different simulation length or sample length (sim_length >= sample_length')
 
-if raw_data_set_name == 'PV_noPV':
+"""if raw_data_set_name == 'PV_noPV':
     positive_samples_per_simrun = 5  # data from how many terminals are there in the grid minimally > determines how many yearly simulations have to be run and used for dataset creation
     simruns = math.ceil(
         (number_of_samples * share_of_positive_samples) / (positive_samples_per_simrun * number_of_grids) / (
@@ -98,6 +101,6 @@ load_scaling = 100  # general load scaling for all loads in simulation (does not
 generation_scaling = 100  # general generation scaling for all generation units in simulation (does not apply to setup)
 whole_year = True  # if True malfunction is present from start of simulation on; if False malfunction is at random point
 t_start = None  # default(None): times inferred from profiles in data
-t_end = None
+t_end = None"""
 # t_start = pd.Timestamp('2017-01-01 00:00:00', tz='utc')                                 # example for custom sim time
 # t_end = pd.Timestamp('2018-01-01 00:00:00', tz='utc') - pd.Timedelta(step_size + 'T')

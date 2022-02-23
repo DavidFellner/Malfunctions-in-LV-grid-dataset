@@ -109,15 +109,14 @@ if __name__ == '__main__':  # see config file for settings
         if config.detection_methods:
             generate_detectionmethods_raw_data()
 
-    if config.dataset_available is False or config.detection_methods:
-        dataset = create_dataset()
-
     print("\n########## Configuration ##########")
     for key, value in learning_config.items():
         print(key, ' : ', value)
     if config.deeplearning: print("number of samples : %d" % config.number_of_samples)
 
     if config.deeplearning:
+        if config.dataset_available is False:
+            dataset = create_dataset()
         deep_learning = Deeplearning(config, learning_config)
         deep_learning.training_or_testing()
 

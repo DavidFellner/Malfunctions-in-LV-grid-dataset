@@ -197,13 +197,13 @@ class Raw_Dataset:
                     self.labels['wrong'] = self.y.count(1)
                     self.labels['inversed'] = self.y.count(2)
                 elif self.labelling == 'detection':
-                    if measurement.name.split(' ')[0] == 'correct':
+                    if self.data[measurement].name.split(' ')[0] == 'correct':
                         self.y = self.y + [0]
                         self.labels['correct'] = self.labels['correct'] + 1
-                    elif measurement.name.split(' ')[0] == 'wrong':
+                    elif self.data[measurement].name.split(' ')[0] == 'wrong':
                         self.y = self.y + [1]
                         self.labels['wrong'] = self.labels['wrong'] + 1
-                    elif measurement.name.split(' ')[0] == 'inversed':
+                    elif self.data[measurement].name.split(' ')[0] == 'inversed':
                         self.y = self.y + [1]
                         self.labels['wrong'] = self.labels['wrong'] + 1
         self.y = np.array(self.y)
@@ -275,13 +275,13 @@ class Combined_Dataset:
                     self.labels['wrong'] = self.y.count(1)
                     self.labels['inversed'] = self.y.count(2)
                 elif self.labelling == 'detection':
-                    if measurement.name.split(' ')[0] == 'correct':
+                    if self.data[measurement].name.split(' ')[0] == 'correct':
                         self.y = self.y + [0]
                         self.labels['correct'] = self.labels['correct'] + 1
-                    elif measurement.name.split(' ')[0] == 'wrong':
+                    elif self.data[measurement].name.split(' ')[0] == 'wrong':
                         self.y = self.y + [1]
                         self.labels['wrong'] = self.labels['wrong'] + 1
-                    elif measurement.name.split(' ')[0] == 'inversed':
+                    elif self.data[measurement].name.split(' ')[0] == 'inversed':
                         self.y = self.y + [1]
                         self.labels['wrong'] = self.labels['wrong'] + 1
         self.y = np.array(self.y)

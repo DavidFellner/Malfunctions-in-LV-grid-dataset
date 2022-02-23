@@ -7,7 +7,7 @@ import sys
 #chosen_experiment = 'dummy_1day_5k'
 
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_200k'
-chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_20k'
+#chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_20k'
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_10k'
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_5k'
 #chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_1k'
@@ -28,7 +28,7 @@ chosen_experiment = 'malfunctions_in_LV_grid_dataset_7day_20k'
 #chosen_experiment = 'PV_noPV_1day_1k'
 
 #Transformer Detection:
-#chosen_experiment = 'malfunctions_in_LV_grid_detection_A_detection_combined'
+chosen_experiment = 'malfunctions_in_LV_grid_detection_A_detection_combined'
 
 
 experiments_folder = os.path.join(os.getcwd(), 'experiments')

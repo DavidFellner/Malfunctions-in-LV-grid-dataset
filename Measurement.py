@@ -10,7 +10,7 @@ class Measurement:
         self.name = name
         self.data = data
 
-    def pca(self, vars, var_numbers, analysis=False, n_components=2):
+    def pca(self, vars, var_numbers, analyse=False, n_components=2):
 
         try:
             selected_data = self.data.loc[:, self.data.columns[var_numbers]].values
@@ -21,27 +21,8 @@ class Measurement:
 
         selected_data_normalised = pd.DataFrame(selected_data, columns=vars)
 
-        if analysis:
-            #to do analysis on the dimension reduction done on data to find most important features
-            pca = PCA()     #to find out how many components needed
-            X_pca = pca.fit(selected_data_normalised)
-            dimensions_cut_off_value = np.where(np.around(np.cumsum(pca.explained_variance_ratio_), decimals=2) == 0.99)[0][0]
-            #fig, ax = plt.subplots()
-            #ax.plot(np.cumsum(pca.explained_variance_ratio_))
-            #ax.set_xlabel('number of components')
-            #ax.set_ylabel('cumulative explained variance');
-
-            pca = PCA(n_components=0.99)
-            X_pca = pca.fit_transform(selected_data_normalised)  # this will fit and reduce dimensions
-            #print(pca.n_components_)  # one can print and see how many components are selected.
-
-            contribution_to_component = pd.DataFrame(pca.components_, columns=selected_data_normalised.columns)
-
-            n_pcs = pca.n_components_  # get number of component# get the index of the most important feature on EACH component
-            most_important = [np.abs(pca.components_[i]).argmax() for i in range(n_pcs)]
-            initial_feature_names = selected_data_normalised.columns
-            # get the most important feature names
-            most_important_names = [initial_feature_names[most_important[i]] for i in range(n_pcs)]
+        if analyse:
+            dimensions_cut_off_value, most_important_names = self.analysis(selected_data_normalised)
         else:
             dimensions_cut_off_value = None
             most_important_names = None
@@ -52,6 +33,31 @@ class Measurement:
         explained_variance = pca.explained_variance_ratio_
 
         return (principalComponents_selection, explained_variance, dimensions_cut_off_value, most_important_names)
+
+    def analysis(self, data):
+        # to do analysis on the dimension reduction done on data to find most important features
+        pca = PCA()  # to find out how many components needed
+        X_pca = pca.fit(data)
+        dimensions_cut_off_value = np.where(np.around(np.cumsum(pca.explained_variance_ratio_), decimals=2) == 0.99)[0][
+            0]
+        # fig, ax = plt.subplots()
+        # ax.plot(np.cumsum(pca.explained_variance_ratio_))
+        # ax.set_xlabel('number of components')
+        # ax.set_ylabel('cumulative explained variance');
+
+        pca = PCA(n_components=0.99)
+        X_pca = pca.fit_transform(data)  # this will fit and reduce dimensions
+        # print(pca.n_components_)  # one can print and see how many components are selected.
+
+        contribution_to_component = pd.DataFrame(pca.components_, columns=data.columns)
+
+        n_pcs = pca.n_components_  # get number of component# get the index of the most important feature on EACH component
+        most_important = [np.abs(pca.components_[i]).argmax() for i in range(n_pcs)]
+        initial_feature_names = data.columns
+        # get the most important feature names
+        most_important_names = [initial_feature_names[most_important[i]] for i in range(n_pcs)]
+
+        return dimensions_cut_off_value, most_important_names
 
     def kpca(self, vars, var_numbers):
 

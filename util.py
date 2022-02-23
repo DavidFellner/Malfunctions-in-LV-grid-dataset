@@ -1,9 +1,4 @@
 import os
-from algorithms.RNN import RNN
-from algorithms.LSTM import LSTM
-from algorithms.GRU import GRU
-from algorithms.Transformer import Transformer
-from algorithms.RTransformer import RT
 from HDF5Dataset import HDF5Dataset
 from Dataset import Deep_learning_dataset, Raw_Dataset, PCA_Dataset, Combined_Dataset
 import plotting
@@ -23,6 +18,13 @@ spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 learning_config = config.learning_config
+
+if config.deeplearning:
+    from algorithms.RNN import RNN
+    from algorithms.LSTM import LSTM
+    from algorithms.GRU import GRU
+    from algorithms.Transformer import Transformer
+    from algorithms.RTransformer import RT
 
 
 def model_exists(full_path):

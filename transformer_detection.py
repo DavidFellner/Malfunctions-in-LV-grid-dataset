@@ -34,8 +34,8 @@ class Transformer_detection:
         self.classifier_combos = c.classifier_combos[learning_config['classifier_combos']]
 
         self.setup_chosen = learning_config['setup_chosen']
-        self.mode = learning_config['detection']
-        self.data_mode = learning_config['combined_data']
+        self.mode = learning_config['mode']
+        self.data_mode = learning_config['data_mode']
         self.selection = learning_config['selection']
         self.clf = learning_config['clf']
         self.kernels = learning_config['kernels']
@@ -44,7 +44,7 @@ class Transformer_detection:
         self.neighbours = learning_config['neighbours']
         self.weights = learning_config['weights']
 
-        self.approach = learning_config['PCA+clf']
+        self.approach = learning_config['approach']
 
     def plotting_data(self):
         fgs_test_bay, axs_test_bay = self.scenario_plotting_test_bay(self.variables, plot_all=False,
@@ -356,7 +356,7 @@ class Transformer_detection:
             uses principal components instead of explained variances!
             '''
             data = self.load_data(sampling=self.sampling_step_size_in_seconds)
-            data = create_dataset(type='combined', data=data, variables=pca_variables_F2, name=self.setup_chosen,
+            data = create_dataset(type='combined', data=data, variables=v.pca_variables_F2, name=self.setup_chosen,
                                   classes=self.setups[self.setup_chosen],
                                   bay=self.setup_chosen.split('_')[2], Setup=self.setup_chosen.split('_')[1],
                                   labelling=self.mode)
@@ -412,7 +412,7 @@ class Transformer_detection:
                 if PCA_type == 'PCA':
                     results[f"{data[measurement].name}"] = data[measurement].pca(
                         variables[data[measurement].name[-2:]][1],
-                        var_numbers, analysis=analysis,
+                        var_numbers, analyse=analysis,
                         n_components=n_components)
                 elif PCA_type == 'kPCA':
                     results[f"{data[measurement].name}"] = data[measurement].kpca(
