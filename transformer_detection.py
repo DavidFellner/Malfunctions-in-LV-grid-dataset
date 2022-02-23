@@ -186,7 +186,7 @@ class Transformer_detection:
     def detection(self):
 
         if self.data_mode == 'measurement_wise':
-            results_pca = self.pca(variables=self.variables, PCA_type='PCA', analysis=True,
+            results_pca = self.pca(variables=self.variables, PCA_type='PCA', analyse=True,
                                    sampling=self.sampling_step_size_in_seconds)
             variable_selection = self.find_most_common_PCs(
                 results_pca)  # , number_of_variables = 15)   #returns the most important variables for the PCA per measurement point > use to to do PCA and then SVM
@@ -384,7 +384,7 @@ class Transformer_detection:
 
     # results_ssa = ssa()
 
-    def pca(self, variables=None, PCA_type='PCA', analysis=False, n_components=2, data=None, sampling=None):
+    def pca(self, variables=None, PCA_type='PCA', analyse=False, n_components=2, data=None, sampling=None):
         if variables is None:
             variables = {'B1': [v.variables_B1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
                          'F1': [v.variables_F1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
@@ -412,7 +412,7 @@ class Transformer_detection:
                 if PCA_type == 'PCA':
                     results[f"{data[measurement].name}"] = data[measurement].pca(
                         variables[data[measurement].name[-2:]][1],
-                        var_numbers, analyse=analysis,
+                        var_numbers, analyse=analyse,
                         n_components=n_components)
                 elif PCA_type == 'kPCA':
                     results[f"{data[measurement].name}"] = data[measurement].kpca(
@@ -422,7 +422,7 @@ class Transformer_detection:
                     print('Unknown type of PCA enterered (enter either PCA or kPCA)')
             else:
                 if PCA_type == 'PCA':
-                    results.append(measurement.pca(variables[measurement.name[-2:]][1], var_numbers, analysis=analysis,
+                    results.append(measurement.pca(variables[measurement.name[-2:]][1], var_numbers, analyse=analyse,
                                                    n_components=n_components)[1])
                 elif PCA_type == 'kPCA':
                     results.append(measurement.kpca(variables[measurement.name[-2:]][1],

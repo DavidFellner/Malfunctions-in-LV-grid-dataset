@@ -59,10 +59,12 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end):
         }
 
     if config.system_language == 0:
-        result = pf._resolve_result_object('Quasi-Dynamic Simulation AC')  # get result file
+        #result = pf._resolve_result_object('Quasi-Dynamic Simulation AC')  # get result file
+        result = pf.app.GetFromStudyCase('ComStatsim').presults #should be language independent
     else:
         if config.system_language == 1:
-            result = pf._resolve_result_object('Quasi-Dynamische Simulation AC')  # get result file
+            result = pf.app.GetFromStudyCase('ComStatsim').presults #should be language independent
+            #result = pf._resolve_result_object('Quasi-Dynamische Simulation AC')  # get result file
 
     pf.set_vars_of_result_obj(result,
                               result_variables=result_variables)

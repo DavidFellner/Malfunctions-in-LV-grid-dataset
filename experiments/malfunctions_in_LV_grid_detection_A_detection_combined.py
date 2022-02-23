@@ -20,8 +20,8 @@ local_machine_tz = 'Europe/Berlin'  # timezone; it's important for Powerfactory
 
 # Deep learning settings
 learning_config = {
-    'setup_chosen' : 'Setup_A_F2_data',  # for assembly or clustering
-    'mode' : 'detection',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
+    'setup_chosen' : 'Setup_B_F2_data2_2c',  # for assembly or clustering
+    'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
 
@@ -32,7 +32,7 @@ learning_config = {
     'degrees' : list(range(1, 7)),              #degrees for poly kernels
     'neighbours' : [i + 1 for i in range(5)],   #for kNN
     'weights' : ['uniform', 'distance'],        #for kNN
-    'classifier_combos' : 'c_vs_w_combined_dataset' # detection, c_vs_w, c_vs_inv, A, c_vs_w_combined_dataset
+    'classifier_combos' : 'c_vs_w_combined_dataset' # detection, c_vs_w, c_vs_inv, A, c_vs_w_combined_dataset not all work for all!
 }
 
 #########################################################################
