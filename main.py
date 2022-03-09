@@ -49,7 +49,8 @@ learning_config = config.learning_config
 if not config.raw_data_available:
     from start_powerfactory import start_powerfactory
     from raw_data_generation.grid_preparation import prepare_grid
-    from raw_data_generation.data_creation import create_data
+    from raw_data_generation.data_creation import create_deeplearning_data
+    from raw_data_generation.data_creation import create_detectionmethods_data
 
 from util import create_dataset
 from deeplearning import Deeplearning
@@ -64,7 +65,7 @@ def generate_deeplearning_raw_data():
             app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
             grid_data = prepare_grid(app, file, o_ElmNet)
 
-            create_data(app, o_ElmNet, grid_data, study_case_obj, file)
+            create_deeplearning_data(app, o_ElmNet, grid_data, study_case_obj, file)
             print('Done with grid %s' % file)
 
     print('Done with all grids')
@@ -76,8 +77,13 @@ def generate_detectionmethods_raw_data():
     USE PNDC GRID MODEL HERE
     :return:
     '''
+    file = config.pf_file
+    print('Creating data using the grid %s' % file)
+    app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
+    grid_data = prepare_grid(app, study_case_obj, o_ElmNet)
+    create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
 
-    print('Done with all grids')
+    print('Done with all simulations')
 
     return
 

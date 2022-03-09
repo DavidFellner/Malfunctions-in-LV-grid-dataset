@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import os
 import importlib
+from openpyxl import load_workbook
+import datetime
 from experiment_config import experiment_path, chosen_experiment
 
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
@@ -164,14 +166,16 @@ def place_PVs(app, o_ElmNet, o_ChaTime, loads_by_type, PV_apparent_power=0.005, 
             o_Elm.SetAttribute('Pmax_ucPU', 1)  # set the operational limits for the PV
             o_Elm.SetAttribute('pQlimType', o_IntQlim)
         elif config.QDSL_models_available:
-            o_Elm.pgini = o_Elm.sgn * 0.9 * (o_ElmLod.plini / 0.004)  # scale with yearly consumption of load > is reset later bc of QDSL model usage
+            o_Elm.pgini = o_Elm.sgn * 0.9 * (
+                        o_ElmLod.plini / 0.004)  # scale with yearly consumption of load > is reset later bc of QDSL model usage
             o_Elm.SetAttribute('pQPcurve', curves[config.control_curve_choice])  # Control assigned
-            #insert QDSL model to do convergence loop when control is active
+            # insert QDSL model to do convergence loop when control is active
             o_ElmQDSLmodel = o_ElmNet.CreateObject('ElmQdsl',
-                                              'QDSLmodel_' + o_ElmLod.loc_name.split(' ')[0] + ' PV ' + o_ElmLod.loc_name.split(' ')[
-                                                  2])
+                                                   'QDSLmodel_' + o_ElmLod.loc_name.split(' ')[0] + ' PV ' +
+                                                   o_ElmLod.loc_name.split(' ')[
+                                                       2])
             o_ElmQDSLmodel.typ_id = type_qdsl_model
-            o_ElmQDSLmodel.SetAttribute('e:initVals', [0.0,0.0])
+            o_ElmQDSLmodel.SetAttribute('e:initVals', [0.0, 0.0])
             o_ElmQDSLmodel.SetAttribute('e:objectsLdf', [o_Elm, o_Elm])
             o_Elm.i_scale = 0
 
@@ -201,18 +205,21 @@ def place_home_or_work_EVCS(loads_by_type, loads, type, o_ElmNet, type_QDSL_mode
 
         if not config.QDSL_models_available or config.number_of_broken_devices_and_type[1] == 'PV':
             o_ElmEVCS.SetAttribute('typ_id', parameters[2])
-            pf.set_referenced_characteristics(o_ElmEVCS, 'plini', parameters[0][0])  # set characteristic for inserted EVCS
+            pf.set_referenced_characteristics(o_ElmEVCS, 'plini',
+                                              parameters[0][0])  # set characteristic for inserted EVCS
             o_ElmEVCS.plini = parameters[0][1]
-            pf.set_referenced_characteristics(o_ElmEVCS, 'qlini', parameters[1][0])  # set characteristic for inserted EVCS
+            pf.set_referenced_characteristics(o_ElmEVCS, 'qlini',
+                                              parameters[1][0])  # set characteristic for inserted EVCS
             o_ElmEVCS.qlini = parameters[1][1]
         elif config.QDSL_models_available:
             pf.set_referenced_characteristics(o_ElmEVCS, 'plini',
                                               parameters[0][0])  # set characteristic for inserted EVCS
             o_ElmEVCS.plini = parameters[0][1]
-            #insert QDSL model to do convergence loop when control is active
+            # insert QDSL model to do convergence loop when control is active
             o_ElmQDSLmodel = o_ElmNet.CreateObject('ElmQdsl',
-                                              'QDSLmodel_' + o_ElmLod.loc_name.split(' ')[0] + ' EVCS ' + o_ElmLod.loc_name.split(' ')[
-                                                  2])
+                                                   'QDSLmodel_' + o_ElmLod.loc_name.split(' ')[0] + ' EVCS ' +
+                                                   o_ElmLod.loc_name.split(' ')[
+                                                       2])
             o_ElmQDSLmodel.typ_id = type_QDSL_model
             o_ElmQDSLmodel.SetAttribute('e:initVals', [0.0, 0.0, 1.05, 0.95, 0])
             o_ElmQDSLmodel.SetAttribute('e:objectsLdf', [o_ElmEVCS, o_ElmTerm])
@@ -224,8 +231,8 @@ def place_home_or_work_EVCS(loads_by_type, loads, type, o_ElmNet, type_QDSL_mode
 
     return EV_charging_stations
 
-def import_QDSL_type(control_algorithm):
 
+def import_QDSL_type(control_algorithm):
     target_folder = pf.app.GetProjectFolder('blk')
 
     if control_algorithm == 'p_of_u':
@@ -238,7 +245,6 @@ def import_QDSL_type(control_algorithm):
         type = folder.GetContents('cosphi(P)')[0]
     else:
         type = None
-
 
     return type
 
@@ -254,7 +260,8 @@ def place_EVCS(o_ElmNet, loads_by_type):
     type_qdsl_model = import_QDSL_type('p_of_u')
     EV_charging_stations = place_home_or_work_EVCS(loads_by_type, homes, 'Home', o_ElmNet, type_qdsl_model)
     EV_charging_stations = EV_charging_stations + place_home_or_work_EVCS(loads_by_type, companies, 'Work',
-                                                                          o_ElmNet, type_qdsl_model)  # making sure a work charging station is palced next to a company and a home charging station next to a home
+                                                                          o_ElmNet,
+                                                                          type_qdsl_model)  # making sure a work charging station is palced next to a company and a home charging station next to a home
 
     return EV_charging_stations
 
@@ -286,66 +293,199 @@ def utf8_complaint_naming(o_ElmNet):
     return 0
 
 
+def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, type='load'):
+    if sim_setting == 'ERIGrid_phase_1':
+        folder = 'ERIGrid_Profiles_phase1'
+    else:
+        print('Undefined simulation setting!')
+
+    loads = pd.read_csv(os.path.join(config.raw_data_folder, folder, 'Load.csv'), sep=';', index_col='id')
+    profiles = pd.read_csv(os.path.join(config.raw_data_folder, folder, 'LoadProfile.csv'), sep=';', index_col='time')
+    pv_profiles = load_workbook(os.path.join(config.raw_data_folder, folder, r"PV Profiles.xlsx"))
+
+    chars_dict[element.loc_name] = {}
+
+    if sim_setting == 'ERIGrid_phase_1':
+
+        for id, row in loads.iterrows():
+
+            if id == 'LV4.101 Load 11':
+                break
+
+            p_profile = profiles[row['profile'] + '_pload']
+            q_profile = profiles[row['profile'] + '_qload']
+            p_load = row['pLoad']
+            q_load = row['qLoad']
+
+            i = 1
+            data = pd.DataFrame()
+
+            # for sheet_name in pv_profiles.sheetnames[1:]:
+            profiles_and_scalings = [(['Tabelle' + i for i in ['22', '9', '14', '32', '12', '2', '8']], 10),
+                                     (['Tabelle' + i for i in ['15', '23', '24', '30', '27', '3', '6', '10']], 20)]
+            for item in profiles_and_scalings:
+                for sheet_name in item[0]:
+                    sheet_df = pd.read_excel('PV Profiles.xlsx', sheet_name=sheet_name, header=None)
+
+                    #begin = sheet_df[0][0].strftime("%d.%m.%Y %H:%M")
+                    #end = sheet_df[0][95].strftime("%d.%m.%Y %H:%M")
+
+                    start_index = 36  # 9am
+                    end_index = 61  # 3pm
+
+                    begin = sheet_df[0][start_index].strftime("%d.%m.%Y %H:%M")
+                    end = sheet_df[0][end_index].strftime("%d.%m.%Y %H:%M")
+
+                    data = sheet_df[2][begin:end]
+
+                    if type == 'load':
+
+                        p_slice = p_profile[begin:end]
+                        p_values = p_slice * p_load * 1000  # to have values in kW
+
+                        q_slice = q_profile[begin:end]
+                        q_values = q_slice * q_load * 1000  # to have values in kW
+
+                        # powerfactors = [math.cos(math.atan(i)) for i in q_values / p_values] not necessary here
+
+                        if element.loc_name == 'LB 7 8':
+                            factor = 2
+                        else:
+                            factor = 1
+                        p_values = p_values * item[1] * factor
+                        q_values = q_values * item[1] * factor
+
+                        data = p_values
+
+                    # string_t_start = '2017-01-01 00:00:00'
+                    # t_start = pd.Timestamp(string_t_start, tz='utc')
+                    t_start = pd.Timestamp(begin, tz='utc')
+                    t_end = pd.Timestamp(end, tz='utc')
+
+                    # Objects which control the time scale
+                    utc = datetime.timezone.utc
+                    times = pd.date_range(start=t_start, end=t_end, freq=config.resolution,
+                                          tz='utc')
+
+                    # scale for cyprus profiles (5 minute resolution):
+                    o_TriTime = pf.create_time_scale(
+                        time_scale='times',
+                        time_points=times,
+                        unit="Y",
+                        parent=None,
+                        destination_timezone=utc
+                    )
+
+                    p_char = pf.create_vector_characteristic(
+                        characteristic=f'p_{element.loc_name}_{sheet_name}',
+                        # adds first letter of column name to characteristics name > most commonly P, Q or V
+                        # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                        # i].values / factor, index = config.times_household),
+                        vector_nodes=data,
+                        scale=o_TriTime,
+                        usage=2,  # 0,1,2 ... 2 means absolute
+                        approximation="constant",
+                        parent=None
+                    )
+
+                    chars_dict[element][sheet_name] = {f'p_{sheet_name}': p_char}
+
+                    if type == 'load':
+                        q_char = pf.create_vector_characteristic(
+                            characteristic=f'q_{element.loc_name}_{sheet_name}',
+                            # adds first letter of column name to characteristics name > most commonly P, Q or V
+                            # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                            # i].values / factor, index = config.times_household),
+                            vector_nodes=q_values,
+                            scale=o_TriTime,
+                            usage=2,  # 0,1,2 ... 2 means absolute
+                            approximation="constant",
+                            parent=None
+                        )
+
+                        chars_dict[element][sheet_name] = {f'q_{sheet_name}': q_char}
+
+    return chars_dict
+
+
 def prepare_grid(app, file, o_ElmNet):
     # set path for load and generation profiles
     char_folder = app.GetProjectFolder('chars')
-    chars = list(
-        pd.read_csv(os.path.join(config.grid_data_folder, file, 'LoadProfile.csv'), sep=';', index_col='time').columns) \
-            + list(
-        pd.read_csv(os.path.join(config.grid_data_folder, file, 'RESProfile.csv'), sep=';', index_col='time').columns)
-    for char_name in chars:
-        char = char_folder.SearchObject(char_name + '.ChaTime')
-        if os.name == 'nt':
-            init_f_name_ending = char.f_name.split('\\')[-1]
-        else:
-            init_f_name_ending = char.f_name.split('/')[-1]
-        char.f_name = os.path.join(config.grid_data_folder, file, init_f_name_ending)
+    if config.deeplearning:
+        chars = list(
+            pd.read_csv(os.path.join(config.grid_data_folder, file, 'LoadProfile.csv'), sep=';',
+                        index_col='time').columns) \
+                + list(
+            pd.read_csv(os.path.join(config.grid_data_folder, file, 'RESProfile.csv'), sep=';',
+                        index_col='time').columns)
+        for char_name in chars:
+            char = char_folder.SearchObject(char_name + '.ChaTime')
+            if os.name == 'nt':
+                init_f_name_ending = char.f_name.split('\\')[-1]
+            else:
+                init_f_name_ending = char.f_name.split('/')[-1]
+            char.f_name = os.path.join(config.grid_data_folder, file, init_f_name_ending)
 
-    # loads_df = pd.read_csv(os.path.join(config.grid_data_folder, file, 'Load.csv'), sep=';')
-    loads_by_type = {'regular_loads': [], 'heatpumps': [], 'EV_charging_stations': {'Work': [], 'Home': []}}
+        # loads_df = pd.read_csv(os.path.join(config.grid_data_folder, file, 'Load.csv'), sep=';')
+        loads_by_type = {'regular_loads': [], 'heatpumps': [], 'EV_charging_stations': {'Work': [], 'Home': []}}
+
+    if config.deeplearning:
+        curves = {}
+        EV_charging_stations = None
 
     for o_ElmLod in app.GetCalcRelevantObjects('.ElmLod'):  # has to be done like this to activated profiles
-        o_ChaTime_p = pf.get_referenced_characteristics(o_ElmLod, 'plini')[
-            0]  # get P characteristic (profile) from load
-        o_ChaTime_q = pf.get_referenced_characteristics(o_ElmLod, 'qlini')[  # same for Q (reactive Power)
-            0]
+        if config.deeplearning:
+            o_ChaTime_p = pf.get_referenced_characteristics(o_ElmLod, 'plini')[
+                0]  # get P characteristic (profile) from load
+            o_ChaTime_q = pf.get_referenced_characteristics(o_ElmLod, 'qlini')[  # same for Q (reactive Power)
+                0]
 
-        if o_ChaTime_p.loc_name[0] in ['H', 'G'] and o_ChaTime_p.loc_name[1].isnumeric():
-            loads_by_type['regular_loads'].append((o_ElmLod, o_ChaTime_p, o_ChaTime_q))
-        elif o_ChaTime_p.loc_name.split('_')[0] in ['Air', 'Soil']:
-            loads_by_type['heatpumps'].append((o_ChaTime_p, o_ChaTime_q))
-            o_ElmLod.Delete()  # delete to make space for own setup
-        elif o_ChaTime_p.loc_name.split('_')[0] in ['HLS', 'APLS']:
-            if o_ChaTime_p.loc_name.split('_')[0] == 'HLS':
-                loads_by_type['EV_charging_stations']['Home'].append(
-                    ((o_ChaTime_p, o_ElmLod.plini), (o_ChaTime_q, o_ElmLod.qlini), o_ElmLod.typ_id))
+            if o_ChaTime_p.loc_name[0] in ['H', 'G'] and o_ChaTime_p.loc_name[1].isnumeric():
+                loads_by_type['regular_loads'].append((o_ElmLod, o_ChaTime_p, o_ChaTime_q))
+            elif o_ChaTime_p.loc_name.split('_')[0] in ['Air', 'Soil']:
+                loads_by_type['heatpumps'].append((o_ChaTime_p, o_ChaTime_q))
+                o_ElmLod.Delete()  # delete to make space for own setup
+            elif o_ChaTime_p.loc_name.split('_')[0] in ['HLS', 'APLS']:
+                if o_ChaTime_p.loc_name.split('_')[0] == 'HLS':
+                    loads_by_type['EV_charging_stations']['Home'].append(
+                        ((o_ChaTime_p, o_ElmLod.plini), (o_ChaTime_q, o_ElmLod.qlini), o_ElmLod.typ_id))
+                else:
+                    loads_by_type['EV_charging_stations']['Work'].append(
+                        ((o_ChaTime_p, o_ElmLod.plini), (o_ChaTime_q, o_ElmLod.qlini), o_ElmLod.typ_id))
+
+                o_ElmLod.Delete()  # delete to make space for own setup
             else:
-                loads_by_type['EV_charging_stations']['Work'].append(
-                    ((o_ChaTime_p, o_ElmLod.plini), (o_ChaTime_q, o_ElmLod.qlini), o_ElmLod.typ_id))
+                print('Unknown load type found!')
 
-            o_ElmLod.Delete()  # delete to make space for own setup
-        else:
-            print('Unknown load type found!')
+            pf.set_referenced_characteristics(o_ElmLod, 'plini', o_ChaTime_p)  # set characteristic for load
 
-        pf.set_referenced_characteristics(o_ElmLod, 'plini', o_ChaTime_p)  # set characteristic for load
+            pf.set_referenced_characteristics(o_ElmLod, 'qlini', o_ChaTime_q)
 
-        pf.set_referenced_characteristics(o_ElmLod, 'qlini', o_ChaTime_q)
+        if config.detection_methods:
+            curves = create_characteristics(o_ElmLod, curves, sim_setting=config.sim_setting,
+                                            type='load')  # create charcteristics
 
-    # deactivate storages in grid and count PVs for later use
-    for o_ElmGenstat in app.GetCalcRelevantObjects('.ElmGenstat'):
-        if o_ElmGenstat.cCategory in ['Storage', 'Batterie'] and config.percentage['BESS'] == 0:
-            o_ElmGenstat.Delete()  # first copy properties? then delete BESS in order to make space for own setup
-        elif o_ElmGenstat.cCategory in ['Photovoltaic', 'Fotovoltaik']:
-            o_ChaTime = pf.get_referenced_characteristics(o_ElmGenstat, 'pgini')[
-                0]  # get characteristic (profile) from original PV
-            # PV_apparent_power = o_ElmGenstat.sgn
-            o_ElmGenstat.Delete()  # delete PV in order to make space for own setup; PVs placed are scaled with adjacent load
-            if len(pf.get_referenced_characteristics(o_ElmGenstat, 'pgini')) > 1:
-                print('More than one PV profile found; consider which one to choose (default: first one found chosen)')
+    if config.detection_methods:
+        for o_PV in app.GetCalcRelevantObjects('.ElmPvsys'):
+            curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, type='PV')
 
-    curves = place_PVs(app, o_ElmNet, o_ChaTime, loads_by_type,
-                       PV_apparent_power=0.005)  # PV_apparent_power=0.005 means 5kWp
-    EV_charging_stations = place_EVCS(o_ElmNet, loads_by_type)
+    if config.deeplearning:
+        # deactivate storages in grid and count PVs for later use
+        for o_ElmGenstat in app.GetCalcRelevantObjects('.ElmGenstat'):
+            if o_ElmGenstat.cCategory in ['Storage', 'Batterie'] and config.percentage['BESS'] == 0:
+                o_ElmGenstat.Delete()  # first copy properties? then delete BESS in order to make space for own setup
+            elif o_ElmGenstat.cCategory in ['Photovoltaic', 'Fotovoltaik']:
+                o_ChaTime = pf.get_referenced_characteristics(o_ElmGenstat, 'pgini')[
+                    0]  # get characteristic (profile) from original PV
+                # PV_apparent_power = o_ElmGenstat.sgn
+                o_ElmGenstat.Delete()  # delete PV in order to make space for own setup; PVs placed are scaled with adjacent load
+                if len(pf.get_referenced_characteristics(o_ElmGenstat, 'pgini')) > 1:
+                    print(
+                        'More than one PV profile found; consider which one to choose (default: first one found chosen)')
+
+        curves = place_PVs(app, o_ElmNet, o_ChaTime, loads_by_type,
+                           PV_apparent_power=0.005)  # PV_apparent_power=0.005 means 5kWp
+        EV_charging_stations = place_EVCS(o_ElmNet, loads_by_type)
 
     utf8_complaint_naming(o_ElmNet)  # check if element names are UTF8 compliant and rename if not
 

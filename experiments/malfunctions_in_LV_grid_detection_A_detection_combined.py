@@ -70,9 +70,18 @@ parallel_computing = True
 QDSL_models_available = True
 cores = 12  # cores to be used for parallel computing (when 64 available use 12 - 24)
 reduce_result_file_size = True  # save results as integers to save memory in csv
-just_voltages = True  # if False also P and Q results given
+just_voltages = False  # if variables defined in file are used
 
 # Simulation settings
+sim_setting = 'ERIGrid_phase_1'
+if sim_setting == 'ERIGrid_phase_1': pf_file = 'PNDC_ERIGrid_phase1'
+resolution = '1s'
+t_start = None  # default(None): times inferred from profiles in data
+t_end = None
+step_size = resolution[:-1]
+step_unit = 0 #0...seconds, 1... minutes
+balanced = 1 # 0... AC Load Flow, balanced, positive sequence, 1... imbalanced 3 phase
+
 sim_length = 365  # simulation length in days (has to be equal or bigger than sample length
 if sim_length < sample_length / 96: print(
     'Choose different simulation length or sample length (sim_length >= sample_length')
@@ -100,7 +109,6 @@ number_of_broken_devices_and_type = (1, 'EV')  # define number of devices to exp
 load_scaling = 100  # general load scaling for all loads in simulation (does not apply to setup)
 generation_scaling = 100  # general generation scaling for all generation units in simulation (does not apply to setup)
 whole_year = True  # if True malfunction is present from start of simulation on; if False malfunction is at random point
-t_start = None  # default(None): times inferred from profiles in data
-t_end = None"""
+"""
 # t_start = pd.Timestamp('2017-01-01 00:00:00', tz='utc')                                 # example for custom sim time
 # t_end = pd.Timestamp('2018-01-01 00:00:00', tz='utc') - pd.Timedelta(step_size + 'T')

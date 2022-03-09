@@ -7,15 +7,18 @@ import datetime
 import os
 import importlib
 from experiment_config import experiment_path, chosen_experiment
+from detection_method_settings import Mapping_Fluke_to_PowerFactory
+m = Mapping_Fluke_to_PowerFactory()
 
 from raw_data_generation.Sim.core.run_multiple_simulations import run_simulations
 
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
 config = importlib.util.module_from_spec(spec)
+learning_config = config.learning_config
 spec.loader.exec_module(config)
 
 
-def set_QDS_settings(app, study_case_obj, t_start, t_end):
+def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=0):
     local_machine_tz = config.local_machine_tz
 
     if study_case_obj.SearchObject('*.ComStatsim') is None:
@@ -23,7 +26,7 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end):
         qds.Execute()
 
     qds_com_obj = study_case_obj.SearchObject('*.ComStatsim')
-    qds_com_obj.SetAttribute('iopt_net', 0)  # AC Load Flow, balanced, positive sequence
+    qds_com_obj.SetAttribute('iopt_net', balanced)  # AC Load Flow, balanced, positive sequence
     qds_com_obj.SetAttribute('calcPeriod', 4)  # User defined time range
 
     qds_com_obj.SetAttribute('startTime', int(
@@ -33,7 +36,7 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end):
         (pd.DatetimeIndex([(t_end - t_end.tz_convert(local_machine_tz).utcoffset())]).astype(np.int64) // 10 ** 9)[
             0]))
     qds_com_obj.SetAttribute('stepSize', config.step_size)
-    qds_com_obj.SetAttribute('stepUnit', 1)  # Minutes
+    qds_com_obj.SetAttribute('stepUnit', step_unit)  # Seconds, Minutes ....
 
     if config.parallel_computing == True:
         qds_com_obj.SetAttribute('iEnableParal', config.parallel_computing)  # settings for parallel computation
@@ -43,13 +46,13 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end):
         settings.SetAttribute('iActUseCore', 1)
         settings.SetAttribute('iCoreInput', config.cores)
 
-    if config.just_voltages == True:  # define result variables of interest; result file is generated accordingly
+    if config.just_voltages:  # define result variables of interest; result file is generated accordingly
         result_variables = {
             'ElmTerm': [
                 'm:u',  # voltage at terminal
             ],
         }
-    else:
+    elif config.deeplearning:
         result_variables = {
             'ElmTerm': [
                 'm:u',  # voltage at terminal
@@ -57,6 +60,8 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end):
                 'm:Qgen',  # reactive power generated at terminal
             ],
         }
+    else:
+        result_variables = m.mapping()
 
     if config.system_language == 0:
         #result = pf._resolve_result_object('Quasi-Dynamic Simulation AC')  # get result file
@@ -137,34 +142,39 @@ def create_malfunctioning_devices(active_PVs, active_EVCs, o_ElmNet, curves):
     return malfunctioning_devices, terms_with_malfunction
 
 
-def set_times(file):
+def set_times(file, element=None):
     if not config.t_start and not config.t_end:  # default > simulation time inferred from available load/generation profile data
-        t_start = pd.Timestamp(
-            pd.read_csv(os.path.join(config.grid_data_folder, file, 'LoadProfile.csv'), sep=';',
-                        index_col='time').index[0], tz='utc')
-        t_end = pd.Timestamp(
-            pd.read_csv(os.path.join(config.grid_data_folder, file, 'LoadProfile.csv'), sep=';',
-                        index_col='time').index[-1], tz='utc')
-
-        if config.dev_mode:
-            sim_length = 8 * 900
-            t_end = t_start + pd.Timedelta(str(sim_length) + 's')
-
-        if config.sim_length < 365:  # randomly choose period of defined length during maximum simulation period to simulate
-            time_delta = int((t_end - t_start) / np.timedelta64(1, 's'))  # simulation duration converted to seconds
-            seconds = random.sample([*range(0, time_delta, 1)], 1)[
-                0]  # pick random point of the maximum simulation period
-            t_off = pd.Timedelta(str(seconds) + 's')  # set offset
-
-            sim_start = (t_start + t_off).replace(hour=0, minute=0, second=0)
+        if config.deeplearning:
+            t_start = pd.Timestamp(
+                pd.read_csv(os.path.join(config.grid_data_folder, file, 'LoadProfile.csv'), sep=';',
+                            index_col='time').index[0], tz='utc')
+            t_end = pd.Timestamp(
+                pd.read_csv(os.path.join(config.grid_data_folder, file, 'LoadProfile.csv'), sep=';',
+                            index_col='time').index[-1], tz='utc')
 
             if config.dev_mode:
-                sim_length = 2 * 900
-                sim_end = sim_start + pd.Timedelta(str(sim_length) + 's')
-            else:
-                t_sim_length = pd.Timedelta(str(config.sim_length) + 'd')
-                sim_end = sim_start + t_sim_length
+                sim_length = 8 * 900
+                t_end = t_start + pd.Timedelta(str(sim_length) + 's')
 
+            if config.sim_length < 365:  # randomly choose period of defined length during maximum simulation period to simulate
+                time_delta = int((t_end - t_start) / np.timedelta64(1, 's'))  # simulation duration converted to seconds
+                seconds = random.sample([*range(0, time_delta, 1)], 1)[
+                    0]  # pick random point of the maximum simulation period
+                t_off = pd.Timedelta(str(seconds) + 's')  # set offset
+
+                sim_start = (t_start + t_off).replace(hour=0, minute=0, second=0)
+
+                if config.dev_mode:
+                    sim_length = 2 * 900
+                    sim_end = sim_start + pd.Timedelta(str(sim_length) + 's')
+                else:
+                    t_sim_length = pd.Timedelta(str(config.sim_length) + 'd')
+                    sim_end = sim_start + t_sim_length
+
+        if config.detection_methods:
+            char = pf.get_referenced_characteristics(element, 'p_gini')
+            t_start = char.data[0]
+            t_end = char.data[-1]
 
 
             if sim_end < t_end:
@@ -332,13 +342,17 @@ def clean_up(app, active_PVs, active_EVCS=None, malfunctioning_devices=None):
 
 
 def create_results_folder(file):
-    penetrations = ''
-    for key, value in config.percentage.items():
-        if value > 0:
-            penetrations += '_' + key + '(' + str(value) + ')'
+    if config.deeplearning:
+        penetrations = ''
+        for key, value in config.percentage.items():
+            if value > 0:
+                penetrations += '_' + key + '(' + str(value) + ')'
 
-    results_folder = os.path.join(config.raw_data_folder,
-                                  (config.raw_data_set_name + penetrations + '_raw_data'))
+        results_folder = os.path.join(config.raw_data_folder,
+                                      (config.raw_data_set_name + penetrations + '_raw_data'))
+    elif config.detection_methods: results_folder = os.path.join(config.raw_data_folder,
+                                      (config.sim_setting + '_sim_data'))
+
     file_folder = os.path.join(results_folder, file)
 
     if not os.path.isdir(results_folder):
@@ -349,7 +363,7 @@ def create_results_folder(file):
     return results_folder, file_folder
 
 
-def create_data(app, o_ElmNet, grid_data, study_case_obj, file):
+def create_deeplearning_data(app, o_ElmNet, grid_data, study_case_obj, file):
     '''
 
     begin of loop to vary malfunctioning device and point of malfunction between simulation runs
@@ -412,5 +426,58 @@ def create_data(app, o_ElmNet, grid_data, study_case_obj, file):
             clean_up(app, active_PVs, active_EVCS)
 
         count += 1
+
+    return
+
+
+def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file):
+    '''
+
+    create all data that was collected in the sim setup defined
+
+    '''
+
+    chars_dict = grid_data[0]
+
+    if config.sim_setup == 'ERIGrid_phase_1':
+        variation = learning_config['setup_chosen'].split('_')[1]
+        pf.activate_variations('Test Setup ' + variation)
+        if variation == 'A': variation = 'B'
+        else: variation = 'A'
+        pf.deactivate_variations('Test Setup ' + variation)
+
+    results_folder, file_folder = create_results_folder(file)
+
+    PV = app.GetCalcRelevantObjects('*.ElmPvsys')[0]
+    if len(PV) > 1: print('too many PVs!')
+
+    for scenario in chars_dict[PV]:
+        for element in chars_dict.keys():
+            if element.type == '.Elmlod':
+                pf.set_referenced_characteristics(element, 'p_lini', chars_dict[element][scenario][f'p_{scenario}'])
+                pf.set_referenced_characteristics(element, 'q_lini', chars_dict[element][scenario][f'q_{scenario}'])
+            elif element.type == '.ElmPvsys':
+                pf.set_referenced_characteristics(element, 'p_gini', chars_dict[element][scenario][f'p_{scenario}'])
+
+        #do calc for correct, wrong, inversed
+
+        if learning_config['setup_chosen'].split('_')[1] == 'A': control_curves = {'correct':[1,3,0.9,6], 'wrong': [1,3,1,6]}
+        else: control_curves = {'correct':[1,3,0.9,6], 'wrong': [1,3,1,6], 'inversed': [1,3,-0.9,6]}
+
+        for control_curve in control_curves:
+            PV.pf_over = control_curves[control_curve][0]
+            PV.p_over = control_curves[control_curve][1]
+            PV.pf_under = control_curves[control_curve][2]
+            PV.p_under = control_curves[control_curve][3]
+
+            t_start, t_end = set_times(file, element=PV)
+
+            result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=config.step_unit, balanced=config.balanced)          #set which vars and where!
+            results = run_QDS(app, count, result)       #count = scenario? scenario now 22,11... change to 1,2,3??
+
+            #save correctly as to be used by rest of framework
+            save_results(count, results, file, t_start, t_end, malfunctioning_devices=malfunctioning_devices,
+                         terminals_with_PVs=terminals_with_PVs, terminals_with_EVCs=terminals_with_EVCs)
+            clean_up(app, active_PVs, active_EVCS, malfunctioning_devices=malfunctioning_devices)
 
     return
