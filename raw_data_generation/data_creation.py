@@ -63,13 +63,14 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=
     else:
         result_variables = m.mapping()
 
-    if config.system_language == 0:
+    result = pf.app.GetFromStudyCase('ComStatsim').presults  # should be language independent
+    """if config.system_language == 0:
         #result = pf._resolve_result_object('Quasi-Dynamic Simulation AC')  # get result file
         result = pf.app.GetFromStudyCase('ComStatsim').presults #should be language independent
     else:
         if config.system_language == 1:
             result = pf.app.GetFromStudyCase('ComStatsim').presults #should be language independent
-            #result = pf._resolve_result_object('Quasi-Dynamische Simulation AC')  # get result file
+            #result = pf._resolve_result_object('Quasi-Dynamische Simulation AC')  # get result file"""
 
     pf.set_vars_of_result_obj(result,
                               result_variables=result_variables)
@@ -473,6 +474,7 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
             t_start, t_end = set_times(file, element=PV)
 
             result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=config.step_unit, balanced=config.balanced)          #set which vars and where!
+            count = scenario    #???
             results = run_QDS(app, count, result)       #count = scenario? scenario now 22,11... change to 1,2,3??
 
             #save correctly as to be used by rest of framework
