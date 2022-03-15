@@ -1,8 +1,9 @@
 import os
 import math
 
-from detection_method_settings import Variables
+from detection_method_settings import Variables, Mapping_Fluke_to_PowerFactory
 v = Variables()
+m = Mapping_Fluke_to_PowerFactory()
 
 '''
 insert conclusio
@@ -13,6 +14,7 @@ dev_mode = False
 grid_data_folder = os.path.join(os.getcwd(), 'raw_data_generation', 'input')
 raw_data_folder = os.path.join(os.getcwd(), 'raw_data')
 data_path = os.path.join(os.getcwd(), raw_data_folder, 'ERIGrid-Test-Results-26-11-2021-phase1_final')
+sim_data_path = os.path.join(os.getcwd(), raw_data_folder, 'ERIGrid_phase_1_sim_data')
 datasets_folder = os.path.join(os.getcwd(), 'datasets')
 test_data_folder = os.path.join(os.getcwd(), 'test')
 models_folder = os.path.join(os.getcwd(), 'models')
@@ -20,6 +22,7 @@ local_machine_tz = 'Europe/Berlin'  # timezone; it's important for Powerfactory
 
 # Deep learning settings
 learning_config = {
+    'data_source': 'simulation', #real_world, simulation
     'setup_chosen' : 'Setup_B_F2_data2_2c',  # for assembly or clustering
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
@@ -40,7 +43,8 @@ learning_config = {
 #########################################################################
 
 # Dataset settings
-raw_data_available = True  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
+raw_data_available = False  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
+add_data = False  # raw_data_available = False has to be set for this! set add_data = True to add more data to raw data or fill gaps i scenarios that are not done yet;
 #dataset_available = True  # set to False to recreate instances from raw data
 detection_methods = True
 deeplearning = False
@@ -49,8 +53,19 @@ test_bays = ['B1', 'F1', 'F2']
 scenario = 1  # 1 to 15 as there is 15 scenarios (profiles)
 plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
                       'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
-variables = {'B1': [v.variables_B1, v.pca_variables_B1], 'F1': [v.variables_F1, v.pca_variables_F1],
-             'F2': [v.variables_F2, v.pca_variables_F2]}
+if learning_config['data_source'] == 'real_world':
+    variables = {'B1': [v.variables_B1, v.pca_variables_B1], 'F1': [v.variables_F1, v.pca_variables_F1],
+                 'F2': [v.variables_F2, v.pca_variables_F2]}
+elif learning_config['data_source'] == 'simulation':
+    pf_to_fluke_map = m.map
+    B1_F1_vars = [[k[0] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]
+    B1_F1_vars = B1_F1_vars[0] + B1_F1_vars[1]
+    F2_vars = [[k[1] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]
+    F2_vars = F2_vars[0] + F2_vars[1]
+    variables = {'B1': [v.variables_B1, B1_F1_vars], 'F1': [v.variables_F1, B1_F1_vars],
+                 'F2': [v.variables_F2, F2_vars]}
+else:
+    variables = plotting_variables
 sampling_step_size_in_seconds = None  # None or 0 to use all data, 1, 20 to sample once every n seconds ....
 
 setups = {'Setup_A_F2_data': ['correct', 'wrong'], 'Setup_B_F2_data1_3c': ['correct', 'wrong', 'inversed'],
@@ -68,17 +83,17 @@ user = 'FellnerD'
 system_language = 1  # chose 0 for english, 1 for german according to the lagnuage of powerfactory installed on the system
 parallel_computing = True
 QDSL_models_available = True
-cores = 12  # cores to be used for parallel computing (when 64 available use 12 - 24)
+cores = 4  # cores to be used for parallel computing (when 64 available use 12 - 24)
 reduce_result_file_size = True  # save results as integers to save memory in csv
 just_voltages = False  # if variables defined in file are used
 
 # Simulation settings
 sim_setting = 'ERIGrid_phase_1'
 if sim_setting == 'ERIGrid_phase_1': pf_file = 'PNDC_ERIGrid_phase1'
-resolution = '1s'
+resolution = '15T' #resolution of load/generation profiles to be used
 t_start = None  # default(None): times inferred from profiles in data
 t_end = None
-step_size = resolution[:-1]
+step_size = 1
 step_unit = 0 #0...seconds, 1... minutes
 balanced = 1 # 0... AC Load Flow, balanced, positive sequence, 1... imbalanced 3 phase
 

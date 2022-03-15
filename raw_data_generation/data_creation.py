@@ -8,14 +8,15 @@ import os
 import importlib
 from experiment_config import experiment_path, chosen_experiment
 from detection_method_settings import Mapping_Fluke_to_PowerFactory
+
 m = Mapping_Fluke_to_PowerFactory()
 
 from raw_data_generation.Sim.core.run_multiple_simulations import run_simulations
 
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
 config = importlib.util.module_from_spec(spec)
-learning_config = config.learning_config
 spec.loader.exec_module(config)
+learning_config = config.learning_config
 
 
 def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=0):
@@ -63,7 +64,7 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=
     else:
         result_variables = m.mapping()
 
-    result = pf.app.GetFromStudyCase('ComStatsim').presults  # should be language independent
+    result = pf.app.GetFromStudyCase('ComStatsim').results  # should be language independent
     """if config.system_language == 0:
         #result = pf._resolve_result_object('Quasi-Dynamic Simulation AC')  # get result file
         result = pf.app.GetFromStudyCase('ComStatsim').presults #should be language independent
@@ -79,7 +80,6 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=
 
 
 def create_malfunctioning_PVs(malfunctioning_devices, o_ElmNet, curves):
-
     terms_with_malfunction = []
 
     for i in malfunctioning_devices:
@@ -108,8 +108,8 @@ def create_malfunctioning_PVs(malfunctioning_devices, o_ElmNet, curves):
 
     return terms_with_malfunction
 
-def create_malfunctioning_EVCs(malfunctioning_devices):
 
+def create_malfunctioning_EVCs(malfunctioning_devices):
     terms_with_malfunction = []
 
     for i in malfunctioning_devices:
@@ -118,6 +118,7 @@ def create_malfunctioning_EVCs(malfunctioning_devices):
         terms_with_malfunction.append(connection)
 
     return terms_with_malfunction
+
 
 def create_malfunctioning_devices(active_PVs, active_EVCs, o_ElmNet, curves):
     '''
@@ -143,7 +144,7 @@ def create_malfunctioning_devices(active_PVs, active_EVCs, o_ElmNet, curves):
     return malfunctioning_devices, terms_with_malfunction
 
 
-def set_times(file, element=None):
+def set_times(file, element=None, chars_dict=None, scenario=None):
     if not config.t_start and not config.t_end:  # default > simulation time inferred from available load/generation profile data
         if config.deeplearning:
             t_start = pd.Timestamp(
@@ -172,16 +173,17 @@ def set_times(file, element=None):
                     t_sim_length = pd.Timedelta(str(config.sim_length) + 'd')
                     sim_end = sim_start + t_sim_length
 
+                if sim_end < t_end:
+                    t_start = sim_start
+                    t_end = sim_end
+                    return t_start, t_end
+
         if config.detection_methods:
-            char = pf.get_referenced_characteristics(element, 'p_gini')
-            t_start = char.data[0]
-            t_end = char.data[-1]
-
-
-            if sim_end < t_end:
-                t_start = sim_start
-                t_end = sim_end
-                return t_start, t_end
+            """char = pf.get_referenced_characteristics(element, 'pgini')[0]
+            t_start = char.scale.scale[0]
+            t_end = char.scale.scale[-1]"""
+            t_start = chars_dict[element][f'{scenario}_t_start']
+            t_end = chars_dict[element][f'{scenario}_t_end']
 
     else:
         t_start = config.t_start
@@ -268,48 +270,101 @@ def run_QDS(app, run, result):
     return results
 
 
+def pick_results(results):
+    test_bay_dfs = {}
+
+    if config.sim_setting == 'ERIGrid_phase_1':
+        map = {'B1_elements': {'lines': ['LV-028', 'LV-027'], 'term': 'Test Bay B1'},
+               'F1_elements': {'lines': ['LV-004', 'LV-005'], 'term': 'Test Bay F1'},
+               'F2_elements': {'lines': ['LV-001', 'LV-002'], 'term': 'Test Bay F2'}}
+    else:
+        print('undefined sim setup chosen!')
+
+    for test_bay in map:
+        test_bay_df = pd.DataFrame()
+        for element in map[test_bay]:
+            if element == 'lines':
+                # do calc and picking on line data
+                for var in m.map['ElmLne']:
+                    try:
+                        if test_bay.split('_')[0] == 'F2':
+                            test_bay_df[m.map['ElmLne'][var][1]] = results[
+                                (map[test_bay][element][0], 'ElmLne', var)]  # always upstream of terminal value used
+                        else:
+                            test_bay_df[m.map['ElmLne'][var][0]] = results[
+                                (map[test_bay][element][0], 'ElmLne', var)]  # always upstream of terminal value used
+                    except KeyError:
+                        print(f"{(map[test_bay][element][0], 'ElmLne', var)} not defined")
+            if element == 'term':
+                for var in m.map['ElmTerm']:
+                    try:
+                        if test_bay.split('_')[0] == 'F2':
+                            test_bay_df[m.map['ElmTerm'][var][1]] = results[(map[test_bay][element], 'ElmTerm', var)]
+                        else:
+                            test_bay_df[m.map['ElmTerm'][var][0]] = results[(map[test_bay][element], 'ElmTerm', var)]
+                    except KeyError:
+                        print(f"{(map[test_bay][element][0], 'ElmTerm', var)} not defined")
+        test_bay_dfs[test_bay] = test_bay_df
+
+    return test_bay_dfs
+
+
 def save_results(count, results, file, t_start, t_end, malfunctioning_devices=None, time_of_malfunction=None,
-                 terminals_with_PVs=None, terminals_with_EVCs=None, terminals=None):
-    if malfunctioning_devices:
-        if config.type == 'PV':
-            malfunction_type = {0: 'cos(phi)(P)', 1: 'Q(P)', 2: 'broken Q(P) (flat curve)',
-                                3: 'wrong Q(P) (inversed curve)'}
-            malfunction = malfunction_type[config.broken_control_curve_choice]
-        elif config.type == 'EV':
-            malfunction = 'EVSE without P(U) control'
-        else:
-            print("Undefined type of malfunction chosen")
+                 terminals_with_PVs=None, terminals_with_EVCs=None, terminals=None, control_curve=None):
+    if config.deeplearning:
+        if malfunctioning_devices:
+            if config.type == 'PV':
+                malfunction_type = {0: 'cos(phi)(P)', 1: 'Q(P)', 2: 'broken Q(P) (flat curve)',
+                                    3: 'wrong Q(P) (inversed curve)'}
+                malfunction = malfunction_type[config.broken_control_curve_choice]
+            elif config.type == 'EV':
+                malfunction = 'EVSE without P(U) control'
+            else:
+                print("Undefined type of malfunction chosen")
 
-        try:
-            terminals_with_malfunction = [i.bus1.cterm.loc_name for i in malfunctioning_devices]
-        except AttributeError:
-            terminals_with_malfunction = [i.loc_name.split('@ ')[1] for i in malfunctioning_devices]
+            try:
+                terminals_with_malfunction = [i.bus1.cterm.loc_name for i in malfunctioning_devices]
+            except AttributeError:
+                terminals_with_malfunction = [i.loc_name.split('@ ')[1] for i in malfunctioning_devices]
 
-    metainfo = ['simulation#%d' % count, 'comment data format: active and reactive powers in Watts',
-                'step time in minutes: %d' % config.step_size, 'start time of simulation: %s' % t_start,
-                'end time of simulation: %s' % t_end]
+        metainfo = ['simulation#%d' % count, 'comment data format: active and reactive powers in Watts',
+                    'step time in minutes: %d' % config.step_size, 'start time of simulation: %s' % t_start,
+                    'end time of simulation: %s' % t_end]
 
-    if malfunctioning_devices:
-        metainfo.append(['terminal(s) with malfunction: %s' % terminals_with_malfunction,
-                         'type of malfunction: %s' % malfunction])
-    if terminals_with_PVs:
-        metainfo.append('terminals with PVs: %s' % terminals_with_PVs)
-    if terminals_with_EVCs:
-        metainfo.append('terminals with EVSE: %s' % terminals_with_EVCs)
-    if terminals:
-        metainfo.append('terminals with loads: %s' % terminals)
-    if time_of_malfunction:
-        metainfo.append('time of malfunction: %s' % time_of_malfunction)
+        if malfunctioning_devices:
+            metainfo.append(['terminal(s) with malfunction: %s' % terminals_with_malfunction,
+                             'type of malfunction: %s' % malfunction])
+        if terminals_with_PVs:
+            metainfo.append('terminals with PVs: %s' % terminals_with_PVs)
+        if terminals_with_EVCs:
+            metainfo.append('terminals with EVSE: %s' % terminals_with_EVCs)
+        if terminals:
+            metainfo.append('terminals with loads: %s' % terminals)
+        if time_of_malfunction:
+            metainfo.append('time of malfunction: %s' % time_of_malfunction)
 
-    metainfo += [''] * (len(results[0]) - len(metainfo))
-    for i in list(range(len(results))):
-        results[i][('metainfo', 'in the first', 'few indices')] = metainfo
+        metainfo += [''] * (len(results[0]) - len(metainfo))
+        for i in list(range(len(results))):
+            results[i][('metainfo', 'in the first', 'few indices')] = metainfo
 
-    results_folder, file_folder = create_results_folder(file)
-    if config.just_voltages:
-        results = results[0].dropna(axis=1)
-    results.to_csv(os.path.join(file_folder, 'result_run#%d.csv' % count), header=True, sep=';', decimal='.',
-                   float_format='%.' + '%sf' % config.float_decimal)
+        results_folder, file_folder = create_results_folder(file)
+        if config.just_voltages:
+            results = results[0].dropna(axis=1)
+        results.to_csv(os.path.join(file_folder, 'result_run#%d.csv' % count), header=True, sep=';', decimal='.',
+                       float_format='%.' + '%sf' % config.float_decimal)
+    if config.detection_methods:
+        results_folder, file_folder = create_results_folder(file)
+
+        test_bay_dfs = pick_results(results)
+
+        test_bays = {'Test_Bay_B1': 'B1dataframe', 'Test_Bay_F1': 'F1dataframe', 'Test_Bay_F2': 'F2dataframe'}
+        for test_bay in test_bays:
+            bay_folder = os.path.join(file_folder, test_bay)
+            if not os.path.isdir(bay_folder):
+                os.mkdir(bay_folder)
+            test_bay_dfs[test_bay.split('_')[2] + '_elements'].to_csv(os.path.join(bay_folder,
+                                                                                   f'scenario_{count}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'),
+                                                                      sep=',', decimal=',')
 
     return
 
@@ -351,7 +406,8 @@ def create_results_folder(file):
 
         results_folder = os.path.join(config.raw_data_folder,
                                       (config.raw_data_set_name + penetrations + '_raw_data'))
-    elif config.detection_methods: results_folder = os.path.join(config.raw_data_folder,
+    elif config.detection_methods:
+        results_folder = os.path.join(config.raw_data_folder,
                                       (config.sim_setting + '_sim_data'))
 
     file_folder = os.path.join(results_folder, file)
@@ -385,7 +441,8 @@ def create_deeplearning_data(app, o_ElmNet, grid_data, study_case_obj, file):
                    i.loc_name.split(' ')[1] == 'SGen']  # get list of PVs
 
     sample_PVs = math.floor(len(list_of_PVs) * config.percentage['PV'] / 100)  # set % of terminals to have PV
-    sample_EVCs = math.floor(len(EV_charging_stations) * config.percentage['EV'] / 100) # set % of terminals to have EV charging stations
+    sample_EVCs = math.floor(
+        len(EV_charging_stations) * config.percentage['EV'] / 100)  # set % of terminals to have EV charging stations
 
     while count < config.simruns:  # every simrun has a different malfunction location and time (& different PV, EVCs... locations in general)
 
@@ -400,18 +457,21 @@ def create_deeplearning_data(app, o_ElmNet, grid_data, study_case_obj, file):
 
         for o in active_EVCS: o.outserv = 0  # EVCs not outofservice and therefore active = installed EVCs
         terminals_with_EVCs = list(set([i.bus1.cterm.loc_name for i in
-                                       active_EVCS]))  # set bc there can be 2 load on one terminal and therefore 2 EVCs on one terminal
+                                        active_EVCS]))  # set bc there can be 2 load on one terminal and therefore 2 EVCs on one terminal
 
         t_start, t_end = set_times(file)
         current_grid_info.append(t_start)
         current_grid_info.append(t_end)
         if config.raw_data_set_name == 'malfunctions_in_LV_grid_dataset':
-            malfunctioning_devices, terms_with_malfunction = create_malfunctioning_devices(active_PVs, active_EVCS, o_ElmNet, curves) #only 1 malfunction looked at? also only 1 type of malfunction?
+            malfunctioning_devices, terms_with_malfunction = create_malfunctioning_devices(active_PVs, active_EVCS,
+                                                                                           o_ElmNet,
+                                                                                           curves)  # only 1 malfunction looked at? also only 1 type of malfunction?
             current_grid_info.append(malfunctioning_devices)
             print(malfunctioning_devices[0].loc_name)
             # time_of_malfunction = create_malfunction_events(app, malfunctioning_devices, t_start, t_end)
 
-        if config.number_of_broken_devices_and_type[1] == 'PV':    #only here QDS can be done, otherwise malfunction has to be produced in individual loadflows
+        if config.number_of_broken_devices_and_type[
+            1] == 'PV':  # only here QDS can be done, otherwise malfunction has to be produced in individual loadflows
             result = set_QDS_settings(app, study_case_obj, t_start, t_end)
             results = run_QDS(app, count, result)
         else:
@@ -439,31 +499,41 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
     '''
 
     chars_dict = grid_data[0]
+    if learning_config['setup_chosen'].split('_')[1] == 'A':
+        control_curves = {'correct': [1, 3, 0.9, 6], 'wrong': [1, 3, 0.999999, 6]}
+    else:
+        control_curves = {'correct': [1, 3, 0.9, 6], 'wrong': [1, 3, 0.999999, 6], 'inversed': [0.9, 6, 0.999999, 3]}
 
-    if config.sim_setup == 'ERIGrid_phase_1':
-        variation = learning_config['setup_chosen'].split('_')[1]
-        pf.activate_variations('Test Setup ' + variation)
-        if variation == 'A': variation = 'B'
-        else: variation = 'A'
-        pf.deactivate_variations('Test Setup ' + variation)
+    if config.add_data:
+        new_chars_dict = {}
+        results_folder, file_folder = create_results_folder(file)
+        for element in chars_dict:
+            new_chars_dict[element] = {}
+            for char in chars_dict[element]:
+                bay_folder = os.path.join(file_folder, 'Test_Bay_F2')
+                if not os.path.isdir(bay_folder):
+                    os.mkdir(bay_folder)
+                if not os.path.isfile(os.path.join(bay_folder,
+                                               f'scenario_{char.split("_")[1]}_correct_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'))\
+                        and not os.path.isfile(os.path.join(bay_folder,
+                                               f'scenario_{char.split("_")[0]}_correct_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
+                    new_chars_dict[element][char] = chars_dict[element][char]
+                    #del new_chars_dict[element][char]
+        chars_dict = new_chars_dict
 
-    results_folder, file_folder = create_results_folder(file)
 
     PV = app.GetCalcRelevantObjects('*.ElmPvsys')[0]
-    if len(PV) > 1: print('too many PVs!')
+    if len(app.GetCalcRelevantObjects('*.ElmPvsys')) > 1: print('too many PVs!')
 
-    for scenario in chars_dict[PV]:
+    for scenario in [i.split('_')[1] for i in chars_dict[PV].keys()][0::3]:
         for element in chars_dict.keys():
-            if element.type == '.Elmlod':
-                pf.set_referenced_characteristics(element, 'p_lini', chars_dict[element][scenario][f'p_{scenario}'])
-                pf.set_referenced_characteristics(element, 'q_lini', chars_dict[element][scenario][f'q_{scenario}'])
-            elif element.type == '.ElmPvsys':
-                pf.set_referenced_characteristics(element, 'p_gini', chars_dict[element][scenario][f'p_{scenario}'])
+            if element in app.GetCalcRelevantObjects('.ElmLod'):
+                pf.set_referenced_characteristics(element, 'plini', chars_dict[element][f'p_{scenario}'])
+                pf.set_referenced_characteristics(element, 'qlini', chars_dict[element][f'q_{scenario}'])
+            elif element in app.GetCalcRelevantObjects('.ElmPvsys'):
+                pf.set_referenced_characteristics(element, 'pgini', chars_dict[element][f'p_{scenario}'])
 
-        #do calc for correct, wrong, inversed
-
-        if learning_config['setup_chosen'].split('_')[1] == 'A': control_curves = {'correct':[1,3,0.9,6], 'wrong': [1,3,1,6]}
-        else: control_curves = {'correct':[1,3,0.9,6], 'wrong': [1,3,1,6], 'inversed': [1,3,-0.9,6]}
+        # do calc for correct, wrong, inversed
 
         for control_curve in control_curves:
             PV.pf_over = control_curves[control_curve][0]
@@ -471,15 +541,13 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
             PV.pf_under = control_curves[control_curve][2]
             PV.p_under = control_curves[control_curve][3]
 
-            t_start, t_end = set_times(file, element=PV)
+            t_start, t_end = set_times(file, element=PV, chars_dict=chars_dict, scenario=scenario)
 
-            result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=config.step_unit, balanced=config.balanced)          #set which vars and where!
-            count = scenario    #???
-            results = run_QDS(app, count, result)       #count = scenario? scenario now 22,11... change to 1,2,3??
+            result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=config.step_unit,
+                                      balanced=config.balanced)  # set which vars and where!
+            results = run_QDS(app, int(scenario), result)
 
-            #save correctly as to be used by rest of framework
-            save_results(count, results, file, t_start, t_end, malfunctioning_devices=malfunctioning_devices,
-                         terminals_with_PVs=terminals_with_PVs, terminals_with_EVCs=terminals_with_EVCs)
-            clean_up(app, active_PVs, active_EVCS, malfunctioning_devices=malfunctioning_devices)
+            # save correctly as to be used by rest of framework
+            save_results(int(scenario), results, file, t_start, t_end, control_curve=control_curve)
 
     return

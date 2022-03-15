@@ -39,7 +39,12 @@ def start_powerfactory(file):
         study_case_obj.CreateObject('ComLdf', 'load_flow_calculation')
 
     ldf = study_case_obj.SearchObject('*.ComLdf')                                  # Get load flow calculation object
-    set_load_flow_settings(ldf, config.load_scaling, config.generation_scaling)       # Set default laod flow settings
+    if config.deeplearning:
+        set_load_flow_settings(ldf, config.load_scaling, config.generation_scaling)
+    elif config.detection_methods and config.sim_setting == 'ERIGrid_phase_1':
+        set_load_flow_settings(ldf, 0.1, 100)   #set load flow settings ina  way to scale loads correctly
+    else:
+        set_load_flow_settings(ldf, 100, 100)  # Set default load flow settings
 
     o_IntPrjFolder_netdat = app.GetProjectFolder('netdat')
     o_ElmNet = o_IntPrjFolder_netdat.SearchObject('*.ElmNet')                   # Get network

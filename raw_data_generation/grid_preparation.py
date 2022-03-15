@@ -10,6 +10,7 @@ from experiment_config import experiment_path, chosen_experiment
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
+learning_config = config.learning_config
 
 
 def define_PV_controls(app):
@@ -292,6 +293,11 @@ def utf8_complaint_naming(o_ElmNet):
 
     return 0
 
+def convert_to_unix_timestamp(pd_timestamp):
+
+    unix_timestamp = (pd_timestamp - pd.Timestamp("1970-01-01", tz='utc')) // pd.Timedelta('1ns')
+
+    return unix_timestamp
 
 def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, type='load'):
     if sim_setting == 'ERIGrid_phase_1':
@@ -299,13 +305,21 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
     else:
         print('Undefined simulation setting!')
 
-    loads = pd.read_csv(os.path.join(config.raw_data_folder, folder, 'Load.csv'), sep=';', index_col='id')
-    profiles = pd.read_csv(os.path.join(config.raw_data_folder, folder, 'LoadProfile.csv'), sep=';', index_col='time')
-    pv_profiles = load_workbook(os.path.join(config.raw_data_folder, folder, r"PV Profiles.xlsx"))
-
-    chars_dict[element.loc_name] = {}
+    loads = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'Load.csv'), sep=';', index_col='id')
+    profiles = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'LoadProfile.csv'), sep=';', index_col='time')
+    pv_profiles = load_workbook(os.path.join(config.grid_data_folder, folder, r"PV_Profiles.xlsx"))
 
     if sim_setting == 'ERIGrid_phase_1':
+
+        variation = learning_config['setup_chosen'].split('_')[1]
+        pf.activate_variations('Test Setup ' + variation)
+        if variation == 'A':
+            variation = 'B'
+        else:
+            variation = 'A'
+        pf.deactivate_variations('Test Setup ' + variation)
+
+        chars_dict[element] = {}
 
         for id, row in loads.iterrows():
 
@@ -325,18 +339,18 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                                      (['Tabelle' + i for i in ['15', '23', '24', '30', '27', '3', '6', '10']], 20)]
             for item in profiles_and_scalings:
                 for sheet_name in item[0]:
-                    sheet_df = pd.read_excel('PV Profiles.xlsx', sheet_name=sheet_name, header=None)
+                    sheet_df = pd.read_excel(os.path.join(config.grid_data_folder, folder, "PV_Profiles.xlsx"), sheet_name=sheet_name, header=None)
 
                     #begin = sheet_df[0][0].strftime("%d.%m.%Y %H:%M")
                     #end = sheet_df[0][95].strftime("%d.%m.%Y %H:%M")
 
                     start_index = 36  # 9am
-                    end_index = 61  # 3pm
+                    end_index = 60  # 3pm
 
                     begin = sheet_df[0][start_index].strftime("%d.%m.%Y %H:%M")
                     end = sheet_df[0][end_index].strftime("%d.%m.%Y %H:%M")
 
-                    data = sheet_df[2][begin:end]
+                    data = sheet_df[2][ start_index:end_index+1]
 
                     if type == 'load':
 
@@ -360,7 +374,11 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                     # string_t_start = '2017-01-01 00:00:00'
                     # t_start = pd.Timestamp(string_t_start, tz='utc')
                     t_start = pd.Timestamp(begin, tz='utc')
+                    #t_start = pd.Timestamp('2017-01-01 00:00:00', tz='utc')
+                    t_start_unix = convert_to_unix_timestamp(t_start)
                     t_end = pd.Timestamp(end, tz='utc')
+                    t_end_unix = convert_to_unix_timestamp(t_end)
+                    #t_end = pd.Timestamp('2018-01-01 00:00:00', tz='utc') - pd.Timedelta(config.resolution)
 
                     # Objects which control the time scale
                     utc = datetime.timezone.utc
@@ -369,7 +387,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
 
                     # scale for cyprus profiles (5 minute resolution):
                     o_TriTime = pf.create_time_scale(
-                        time_scale='times',
+                        time_scale=f'times_{sheet_name}',
                         time_points=times,
                         unit="Y",
                         parent=None,
@@ -388,7 +406,9 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                         parent=None
                     )
 
-                    chars_dict[element][sheet_name] = {f'p_{sheet_name}': p_char}
+                    chars_dict[element][f'p_{i}'] = p_char
+                    chars_dict[element][f'{i}_t_start'] = t_start
+                    chars_dict[element][f'{i}_t_end'] = t_end
 
                     if type == 'load':
                         q_char = pf.create_vector_characteristic(
@@ -403,7 +423,9 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                             parent=None
                         )
 
-                        chars_dict[element][sheet_name] = {f'q_{sheet_name}': q_char}
+                        chars_dict[element][f'q_{i}'] = q_char
+
+                    i += 1
 
     return chars_dict
 
@@ -426,10 +448,10 @@ def prepare_grid(app, file, o_ElmNet):
                 init_f_name_ending = char.f_name.split('/')[-1]
             char.f_name = os.path.join(config.grid_data_folder, file, init_f_name_ending)
 
-        # loads_df = pd.read_csv(os.path.join(config.grid_data_folder, file, 'Load.csv'), sep=';')
-        loads_by_type = {'regular_loads': [], 'heatpumps': [], 'EV_charging_stations': {'Work': [], 'Home': []}}
+    # loads_df = pd.read_csv(os.path.join(config.grid_data_folder, file, 'Load.csv'), sep=';')
+    loads_by_type = {'regular_loads': [], 'heatpumps': [], 'EV_charging_stations': {'Work': [], 'Home': []}}
 
-    if config.deeplearning:
+    if config.detection_methods:
         curves = {}
         EV_charging_stations = None
 

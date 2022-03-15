@@ -240,7 +240,7 @@ class Combined_Dataset:
         for measurement in data:
             if measurement[-2:] == name.split('_')[2] and measurement.split(' ')[3] == name.split('_')[1] and measurement.split(' ')[0] in self.classes:
                 reduced_measurement = pd.DataFrame(index=data[measurement].data.index,
-                                                                     data=data[measurement].data[self.variables].values,
+                                                                     data=data[measurement].data[variables].values,
                                                                      columns=variables)
                 measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, reduced_measurement)
 

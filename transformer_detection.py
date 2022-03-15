@@ -23,6 +23,8 @@ class Transformer_detection:
 
     def __init__(self, config, learning_config):
 
+        self.sim_data_path = config.sim_data_path
+        self.pf_file = config.pf_file
         self.data_path = config.data_path
         self.test_bays = config.test_bays
         self.scenario = config.scenario
@@ -33,6 +35,7 @@ class Transformer_detection:
         self.plot_data = config.plot_data
         self.classifier_combos = c.classifier_combos[learning_config['classifier_combos']]
 
+        self.data_source = learning_config['data_source']
         self.setup_chosen = learning_config['setup_chosen']
         self.mode = learning_config['mode']
         self.data_mode = learning_config['data_mode']
@@ -107,39 +110,16 @@ class Transformer_detection:
         print('Data loaded with sampling of ' + str(sampling))
         relevant_measurements = {}
         if scenario:
-            # to get data of entire scenario
-            for measurement in measurements:
-                for test_bay in self.test_bays:
-                    full_path = os.path.join(self.data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
-                    data = pd.read_csv(os.path.join(full_path, measurements[measurement][scenario - 1] + '.csv'),
-                                       sep=',',
-                                       decimal=',', low_memory=False)
-                    data = data[
-                           2 * 60 * 4:]  # cut off the first 2 minutes because this is where laods / PV where started up
-                    data = data[
-                           :6000]  # cut off after 25 minutes (25*60*4 bc 4 samples per second) because measurements were not turned off at same time
-                    data['new_index'] = range(len(data))
-                    data = data.set_index('new_index')
-
-                    if sampling:
-                        data = self.sample(data, sampling)
-
-                    name = str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(test_bay)
-                    relevant_measurements[
-                        str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(
-                            test_bay)] = Measurement(
-                        data, name)
-        else:
-            # get all data
-            for measurement in measurements:
-                for scenario in measurements[measurement]:
+            if self.data_source == 'real_world':
+                # to get data of entire scenario
+                for measurement in measurements:
                     for test_bay in self.test_bays:
                         full_path = os.path.join(self.data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
-                        data = pd.read_csv(os.path.join(full_path, scenario + '.csv'),
+                        data = pd.read_csv(os.path.join(full_path, measurements[measurement][scenario - 1] + '.csv'),
                                            sep=',',
                                            decimal=',', low_memory=False)
                         data = data[
-                               2 * 60 * 4:]  # cut off the first 2 minutes because this is where laods / PV where started up
+                               2 * 60 * 4:]  # cut off the first 2 minutes because this is where loads / PV where started up
                         data = data[
                                :6000]  # cut off after 25 minutes (25*60*4 bc 4 samples per second) because measurements were not turned off at same time
                         data['new_index'] = range(len(data))
@@ -148,14 +128,80 @@ class Transformer_detection:
                         if sampling:
                             data = self.sample(data, sampling)
 
-                        name = str(measurement)[13:] + ' Scenario ' + str(
-                            measurements[measurement].index(scenario) + 1) + ': Test Bay ' + str(test_bay)
+                        name = str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(test_bay)
                         relevant_measurements[
-                            str(measurement)[13:] + ' Scenario ' + str(
-                                measurements[measurement].index(scenario) + 1) + ': Test Bay ' + str(
+                            str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(
                                 test_bay)] = Measurement(
                             data, name)
+            if self.data_source == 'simulation':
+                # to get data of entire scenario
+                for measurement in measurements:
+                    for test_bay in self.test_bays:
+                        full_path = os.path.join(self.sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
+                        data = pd.read_csv(os.path.join(full_path, f'scenario_{scenario}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
+                                           sep=',',
+                                           decimal=',', low_memory=False)
+                        data['new_index'] = range(len(data))
+                        data = data.set_index('new_index')
 
+                        if sampling:
+                            data = self.sample(data, sampling)
+
+                        name = str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(test_bay)
+                        relevant_measurements[
+                            str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(
+                                test_bay)] = Measurement(
+                            data, name)
+        else:
+            # get all data
+            if self.data_source == 'real_world':
+                for measurement in measurements:
+                    for scenario in measurements[measurement]:
+                        for test_bay in self.test_bays:
+                            full_path = os.path.join(self.data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
+                            data = pd.read_csv(os.path.join(full_path,
+                                                            f'scenario_{scenario+1}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
+                                               sep=',',
+                                               decimal=',', low_memory=False)
+                            data = data[
+                                   2 * 60 * 4:]  # cut off the first 2 minutes because this is where laods / PV where started up
+                            data = data[
+                                   :6000]  # cut off after 25 minutes (25*60*4 bc 4 samples per second) because measurements were not turned off at same time
+                            data['new_index'] = range(len(data))
+                            data = data.set_index('new_index')
+
+                            if sampling:
+                                data = self.sample(data, sampling)
+
+                            name = str(measurement)[13:] + ' Scenario ' + str(
+                                measurements[measurement].index(scenario) + 1) + ': Test Bay ' + str(test_bay)
+                            relevant_measurements[
+                                str(measurement)[13:] + ' Scenario ' + str(
+                                    measurements[measurement].index(scenario) + 1) + ': Test Bay ' + str(
+                                    test_bay)] = Measurement(
+                                data, name)
+            if self.data_source == 'simulation':
+                for measurement in measurements:
+                    for scenario in list(range(len(measurements[measurement]))):
+                        for test_bay in self.test_bays:
+                            full_path = os.path.join(self.sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
+                            data = pd.read_csv(os.path.join(full_path,
+                                                            f'scenario_{scenario+1}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
+                                               sep=',',
+                                               decimal=',', low_memory=False)
+                            data['new_index'] = range(len(data))
+                            data = data.set_index('new_index')
+
+                            if sampling:
+                                data = self.sample(data, sampling)
+
+                            name = str(measurement)[13:] + ' Scenario ' + str(
+                                scenario + 1) + ': Test Bay ' + str(test_bay)
+                            relevant_measurements[
+                                str(measurement)[13:] + ' Scenario ' + str(
+                                    scenario + 1) + ': Test Bay ' + str(
+                                    test_bay)] = Measurement(
+                                data, name)
         return relevant_measurements
 
     def sample(self, data, sampling):
@@ -356,7 +402,7 @@ class Transformer_detection:
             uses principal components instead of explained variances!
             '''
             data = self.load_data(sampling=self.sampling_step_size_in_seconds)
-            data = create_dataset(type='combined', data=data, variables=v.pca_variables_F2, name=self.setup_chosen,
+            data = create_dataset(type='combined', data=data, variables=self.variables['F2'][1], name=self.setup_chosen,
                                   classes=self.setups[self.setup_chosen],
                                   bay=self.setup_chosen.split('_')[2], Setup=self.setup_chosen.split('_')[1],
                                   labelling=self.mode)
