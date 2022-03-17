@@ -25,7 +25,7 @@ learning_config = {
     'data_source': 'simulation', #real_world, simulation
     'setup_chosen' : 'Setup_B_F2_data2_2c',  # for assembly or clustering
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
-    'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
+    'data_mode' : 'measurement_wise',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
 
     'approach' : 'PCA+clf',  # 'PCA+clf', 'clustering'
@@ -43,8 +43,8 @@ learning_config = {
 #########################################################################
 
 # Dataset settings
-raw_data_available = False  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
-add_data = False  # raw_data_available = False has to be set for this! set add_data = True to add more data to raw data or fill gaps i scenarios that are not done yet;
+raw_data_available = True  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
+add_data = True  # raw_data_available = False has to be set for this! set add_data = True to add more data to raw data or fill gaps i scenarios that are not done yet;
 #dataset_available = True  # set to False to recreate instances from raw data
 detection_methods = True
 deeplearning = False
