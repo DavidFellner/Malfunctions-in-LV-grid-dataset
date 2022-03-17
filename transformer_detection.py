@@ -8,6 +8,14 @@ v = Variables()
 from detection_method_settings import Classifier_Combos
 c = Classifier_Combos()
 
+import importlib
+from experiment_config import experiment_path, chosen_experiment
+
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+learning_config = config.learning_config
+
 import os
 import pandas as pd
 import numpy as np
@@ -62,12 +70,16 @@ class Transformer_detection:
         fgs = {}
         axs = {}
 
-        try:
-            var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
-                           vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
-        except ValueError:
-            print(f"The variable  defined is not available")
-            return fgs, axs
+        if learning_config['data_source'] == 'simulation':
+            vars_in_data = self.load_data(1, sampling=sampling)#.columns
+            var_numbers= [list(vars_in_data[i].data.columns).index(vars[i.split(' ')[-1]]) for i in vars_in_data.keys()]
+        else:
+            try:
+                var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
+                               vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
+            except ValueError:
+                print(f"The variable  defined is not available")
+                return fgs, axs
 
         vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]),
                 'F2': (vars['F2'], var_numbers[2])}
@@ -87,12 +99,20 @@ class Transformer_detection:
         fgs = {}
         axs = {}
 
-        try:
-            var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
-                           vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
-        except ValueError:
-            print(f"The variable  defined is not available")
-            return fgs, axs
+        if learning_config['data_source'] == 'simulation':
+            vars_in_data = self.load_data(1, sampling=sampling)  # .columns
+            var_numbers = [list(vars_in_data[i].data.columns).index(vars[i.split(' ')[-1]]) for i in
+                           vars_in_data.keys()]
+        else:
+            try:
+                var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
+                               vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
+            except ValueError:
+                print(f"The variable  defined is not available")
+                return fgs, axs
+
+        vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]),
+                'F2': (vars['F2'], var_numbers[2])}
 
         vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]),
                 'F2': (vars['F2'], var_numbers[2])}
@@ -431,28 +451,41 @@ class Transformer_detection:
     # results_ssa = ssa()
 
     def pca(self, variables=None, PCA_type='PCA', analyse=False, n_components=2, data=None, sampling=None):
-        if variables is None:
-            variables = {'B1': [v.variables_B1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
-                         'F1': [v.variables_F1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
-                         'F2': [v.variables_F2, ['Vrms ph-n L1N Avg', 'Vrms ph-n L2N Avg', 'Vrms ph-n L3N Avg']]}
-
-        if data is None:
-            data = self.load_data(sampling=sampling)
-            results = {}
+        if learning_config['data_source'] == 'simulation':
+            if data is None:
+                data = self.load_data(sampling=sampling)
+                variables = {'B1': [v.variables_B1, list(data[list(data.keys())[0][:-2]+'B1'].data.columns)[1:]],
+                                 'F1': [v.variables_F1, list(data[list(data.keys())[0][:-2]+'F1'].data.columns)[1:]],
+                                 'F2': [v.variables_F2, list(data[list(data.keys())[0][:-2]+'F2'].data.columns)[1:]]}
+                results = {}
+            else:
+                results = []
         else:
-            results = []
+            if variables is None:
+                variables = {'B1': [v.variables_B1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
+                             'F1': [v.variables_F1, ['Vrms ph-n AN Avg', 'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg']],
+                             'F2': [v.variables_F2, ['Vrms ph-n L1N Avg', 'Vrms ph-n L2N Avg', 'Vrms ph-n L3N Avg']]}
+
+            if data is None:
+                data = self.load_data(sampling=sampling)
+                results = {}
+            else:
+                results = []
 
         for measurement in data:
-            try:
-                if type(data) is dict:
-                    var_numbers = [variables[data[measurement].name[-2:]][0].index(i) + 1 for i in
-                                   variables[data[measurement].name[-2:]][1]]
-                else:
-                    var_numbers = [variables[measurement.name[-2:]][0].index(i) + 1 for i in
-                                   variables[measurement.name[-2:]][1]]
-            except ValueError:
-                [print(f"Variable {i} not available") for i in variables[data[measurement].name[-2:]][1] if
-                 i not in variables[data[measurement].name[-2:]][0]]
+            if learning_config['data_source'] == 'simulation':
+                var_numbers = [1, 2, 3]  # irrelevant in this case
+            else:
+                try:
+                    if type(data) is dict:
+                        var_numbers = [variables[data[measurement].name[-2:]][0].index(i) + 1 for i in
+                                       variables[data[measurement].name[-2:]][1]]
+                    else:
+                        var_numbers = [variables[measurement.name[-2:]][0].index(i) + 1 for i in
+                                       variables[measurement.name[-2:]][1]]
+                except ValueError:
+                    [print(f"Variable {i} not available") for i in variables[data[measurement].name[-2:]][1] if
+                     i not in variables[data[measurement].name[-2:]][0]]
 
             if type(data) is dict:
                 if PCA_type == 'PCA':

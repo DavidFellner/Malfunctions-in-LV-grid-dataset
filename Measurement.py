@@ -2,6 +2,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA, KernelPCA
 import numpy as np
 import pandas as pd
+import importlib
+from experiment_config import experiment_path, chosen_experiment
+
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+learning_config = config.learning_config
 
 class Measurement:
 
@@ -12,14 +19,19 @@ class Measurement:
 
     def pca(self, vars, var_numbers, analyse=False, n_components=2):
 
-        try:
-            selected_data = self.data.loc[:, self.data.columns[var_numbers]].values
-        except IndexError:
-            print('Check variables!')
-            return ()
+        if learning_config['data_source'] == 'simulation':
+            #selected_data = self.data.loc[:, self.data.columns[1:]].values
+            selected_data = self.data.loc[:, vars].values
+        else:
+            try:
+                selected_data = self.data.loc[:, self.data.columns[var_numbers]].values
+            except IndexError:
+                print('Check variables!')
+                return ()
         selected_data = StandardScaler().fit_transform(selected_data)
 
         selected_data_normalised = pd.DataFrame(selected_data, columns=vars)
+
 
         if analyse:
             dimensions_cut_off_value, most_important_names = self.analysis(selected_data_normalised)
@@ -38,7 +50,7 @@ class Measurement:
         # to do analysis on the dimension reduction done on data to find most important features
         pca = PCA()  # to find out how many components needed
         X_pca = pca.fit(data)
-        dimensions_cut_off_value = np.where(np.around(np.cumsum(pca.explained_variance_ratio_), decimals=2) == 0.99)[0][
+        dimensions_cut_off_value = np.where(np.around(np.cumsum(pca.explained_variance_ratio_), decimals=2) >= 0.99)[0][
             0]
         # fig, ax = plt.subplots()
         # ax.plot(np.cumsum(pca.explained_variance_ratio_))

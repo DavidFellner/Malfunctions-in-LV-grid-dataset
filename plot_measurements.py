@@ -1,6 +1,13 @@
 import matplotlib.pyplot as plt
 from statistics import mean, pstdev
 import numpy as np
+import importlib
+from experiment_config import experiment_path, chosen_experiment
+
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+learning_config = config.learning_config
 
 def  plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=True):
 
@@ -11,6 +18,9 @@ def  plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=Tru
     Y = [(measurements[i].name, measurements[i].data) for i in measurements]
 
     data = [i[1][i[1].columns[vars[i[0][-2:]][1]]] for i in Y]  # voltages_phase_1_avg
+
+    if learning_config['data_source'] == 'simulation':
+        data = data * 1000
     if pu == True and vars['B1'][1] <= 126:  # only for voltages
         data = [i / 230 for i in data]
 
@@ -100,7 +110,9 @@ def  plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
     Y = [(measurements[i].name ,measurements[i].data) for i in measurements]
 
     data = [i[1][i[1].columns[vars[i[0][-2:]][1]]] for i in Y]  # voltages_phase_1_avg
-    if pu == True and vars['B1'][1] <= 126:    #only for voltages
+    if learning_config['data_source'] == 'simulation':
+        data = data * 1000
+    if pu == True and vars['B1'][1] <= 126:  # only for voltages
         data = [i / 230 for i in data]
 
     fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
