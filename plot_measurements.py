@@ -20,7 +20,7 @@ def  plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=Tru
     data = [i[1][i[1].columns[vars[i[0][-2:]][1]]] for i in Y]  # voltages_phase_1_avg
 
     if learning_config['data_source'] == 'simulation':
-        data = data * 1000
+        data = [i *1000 for i in data]
     if pu == True and vars['B1'][1] <= 126:  # only for voltages
         data = [i / 230 for i in data]
 
@@ -111,7 +111,7 @@ def  plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
 
     data = [i[1][i[1].columns[vars[i[0][-2:]][1]]] for i in Y]  # voltages_phase_1_avg
     if learning_config['data_source'] == 'simulation':
-        data = data * 1000
+        data = [i *1000 for i in data]
     if pu == True and vars['B1'][1] <= 126:  # only for voltages
         data = [i / 230 for i in data]
 
