@@ -861,6 +861,7 @@ class Variables():
 class Classifier_Combos:
 
     def __init__(self):
+        self.dim = 0.90
         self.classifier_combos = {'detection': [{'NuSVM': {'linear': [8], 'rbf': [11]}},
                                                 {'SVM': {'poly': [7, 2]}, 'NuSVM': {'linear': [8], 'poly': [9, 3]}},
                                                 {'SVM': {'poly': [7, 2]}, 'NuSVM': {'linear': [8], 'rbf': [11]}},
@@ -908,6 +909,15 @@ class Classifier_Combos:
                                         {'NuSVM': {'linear': [3]}, 'kNN': {2: [3, 'distance']}},
                                         {'SVM': {'poly': [3, 3]}, 'NuSVM': {'poly': [3, 4], 'linear': [3]},
                                          'kNN': {2: [3, 'distance']}}],
+                                  'A_sim': [{'NuSVM': {'poly': [3, 4], 'linear': [3]}},
+                                        {'SVM': {'poly': [3, 3]}, 'NuSVM': {'linear': [3]}},
+                                        {'SVM': {'poly': [3, 3]}, 'NuSVM': {'linear': [3]},
+                                         'kNN': {2: [3, 'distance']}},
+                                        {'SVM': {'poly': [3, 3]}, 'kNN': {2: [3, 'distance']}},
+                                        {'NuSVM': {'poly': [3, 4]}, 'kNN': {2: [3, 'distance']}},
+                                        {'NuSVM': {'linear': [3]}, 'kNN': {2: [3, 'distance']}},
+                                        {'SVM': {'poly': [3, 3]}, 'NuSVM': {'poly': [3, 4], 'linear': [3]},
+                                         'kNN': {2: [3, 'distance']}}],
 
                                   'c_vs_w_combined_dataset': [{'NuSVM': {'poly': [1]}}, {'NuSVM': {'poly': [2]}},
                                                               {'NuSVM': {'poly': [3]}}, {'NuSVM': {'poly': [4]}},
@@ -920,7 +930,44 @@ class Classifier_Combos:
                                                               {'NuSVM': {'sigmoid': []}}, {'SVM': {'rbf': []}},
                                                               {'SVM': {'linear': []}},
                                                               {'SVM': {'sigmoid': []}},
-                                                              {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}}]
+                                                              {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}}],
+                                  'c_vs_w_sim_combined_dataset': [{'NuSVM': {'poly': [1]}}, {'NuSVM': {'poly': [2]}},
+                                                              {'NuSVM': {'poly': [3]}}, {'NuSVM': {'poly': [4]}},
+                                                              {'NuSVM': {'poly': [5]}}, {'NuSVM': {'poly': [6]}},
+                                                              {'SVM': {'poly': [1]}}, {'SVM': {'poly': [2]}},
+                                                              {'SVM': {'poly': [3]}},
+                                                              {'SVM': {'poly': [4]}}, {'SVM': {'poly': [5]}},
+                                                              {'SVM': {'poly': [6]}},
+                                                              {'NuSVM': {'rbf': []}}, {'NuSVM': {'linear': []}},
+                                                              {'NuSVM': {'sigmoid': []}}, {'SVM': {'rbf': []}},
+                                                              {'SVM': {'linear': []}},
+                                                              {'SVM': {'sigmoid': []}},
+                                                              {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}}],
+
+                                  'A_combined_dataset': [{'NuSVM': {'poly': [1]}}, {'NuSVM': {'poly': [2]}},
+                                                              {'NuSVM': {'poly': [3]}}, {'NuSVM': {'poly': [4]}},
+                                                              {'NuSVM': {'poly': [5]}}, {'NuSVM': {'poly': [6]}},
+                                                              {'SVM': {'poly': [1]}}, {'SVM': {'poly': [2]}},
+                                                              {'SVM': {'poly': [3]}},
+                                                              {'SVM': {'poly': [4]}}, {'SVM': {'poly': [5]}},
+                                                              {'SVM': {'poly': [6]}},
+                                                              {'NuSVM': {'rbf': []}}, {'NuSVM': {'linear': []}},
+                                                              {'NuSVM': {'sigmoid': []}}, {'SVM': {'rbf': []}},
+                                                              {'SVM': {'linear': []}},
+                                                              {'SVM': {'sigmoid': []}},
+                                                              {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}}],
+                                  'A_sim_combined_dataset': [{'NuSVM': {'poly': [1]}}, {'NuSVM': {'poly': [2]}},
+                                                         {'NuSVM': {'poly': [3]}}, {'NuSVM': {'poly': [4]}},
+                                                         {'NuSVM': {'poly': [5]}}, {'NuSVM': {'poly': [6]}},
+                                                         {'SVM': {'poly': [1]}}, {'SVM': {'poly': [2]}},
+                                                         {'SVM': {'poly': [3]}},
+                                                         {'SVM': {'poly': [4]}}, {'SVM': {'poly': [5]}},
+                                                         {'SVM': {'poly': [6]}},
+                                                         {'NuSVM': {'rbf': []}}, {'NuSVM': {'linear': []}},
+                                                         {'NuSVM': {'sigmoid': []}}, {'SVM': {'rbf': []}},
+                                                         {'SVM': {'linear': []}},
+                                                         {'SVM': {'sigmoid': []}},
+                                                         {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}}]
                                   }
 
 class Mapping_Fluke_to_PowerFactory:

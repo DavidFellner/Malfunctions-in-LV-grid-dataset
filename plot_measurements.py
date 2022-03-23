@@ -25,7 +25,8 @@ def  plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=Tru
         data = [i / 230 for i in data]
 
     fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
-    fgs[str(len(fgs.keys()) + 1)] = fig
+    #fgs[str(len(fgs.keys()) + 1)] = fig
+    fgs[[i.split(' ')[5][:-1] for i in measurements.keys()][0]] = fig
 
     if pu:
         fig.suptitle(f"Variable: {vars['B1'][0]} in per unit")
@@ -116,20 +117,21 @@ def  plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
         data = [i / 230 for i in data]
 
     fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
-    fgs[str(len(fgs.keys())+1)] = fig
+    #fgs[str(len(fgs.keys())+1)] = fig
+    fgs[[i.split(' ')[5][:-1] for i in measurements.keys()][0]] = fig
 
     if pu:
-        fig.suptitle(f"Variable: {vars['B1'][0]} in per unit")
+        fig.suptitle(f"Variable: {vars['B1'][0][0]} in per unit")
     else:
-        fig.suptitle(f"Variable: {vars['B1'][0]}")
+        fig.suptitle(f"Variable: {vars['B1'][0][0]}")
 
     axs[str(len(fgs.keys())) + '_ax1'] = plt.subplot2grid(shape=(3, 4), loc=(0, 0), colspan=2, fig=fig)
     #axs[str(len(fgs.keys())) + '_ax1'].set_xlabel('timestep')
-    axs[str(len(fgs.keys())) + '_ax1'].set_ylabel(vars['B1'][0])
+    axs[str(len(fgs.keys())) + '_ax1'].set_ylabel(vars['B1'][0][0])
 
     axs[str(len(fgs.keys())) + '_ax2'] = plt.subplot2grid((3, 4), (1, 0), colspan=2, fig=fig)
     axs[str(len(fgs.keys())) + '_ax2'].set_xlabel('timestep')
-    axs[str(len(fgs.keys())) + '_ax2'].set_ylabel(vars['B1'][0])
+    axs[str(len(fgs.keys())) + '_ax2'].set_ylabel(vars['B1'][0][0])
 
     axs[str(len(fgs.keys())) + '_ax3'] = plt.subplot2grid((3, 4), (0, 2), colspan=2, fig=fig)
     #axs[str(len(fgs.keys())) + '_ax3'].set_xlabel('timestep')
@@ -143,7 +145,7 @@ def  plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
 
     axs[str(len(fgs.keys())) + '_ax5'] = plt.subplot2grid((3, 4), (2, 2), colspan=2, fig=fig)
     axs[str(len(fgs.keys())) + '_ax5'].set_xlabel('timestep')
-    axs[str(len(fgs.keys())) + '_ax5'].set_ylabel(vars['B1'][0])
+    axs[str(len(fgs.keys())) + '_ax5'].set_ylabel(vars['B1'][0][0])
     axs[str(len(fgs.keys())) + '_ax5'].yaxis.tick_right()
 
     #correct Setup A Scenario x: Test Bays B1,F1,F2

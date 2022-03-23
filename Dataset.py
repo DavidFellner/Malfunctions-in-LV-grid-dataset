@@ -5,6 +5,14 @@ import h5py
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA, KernelPCA
 
+import importlib
+from experiment_config import experiment_path, chosen_experiment
+
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+learning_config = config.learning_config
+
 from dataset_creation.create_instances import create_samples
 
 class Deep_learning_dataset:
@@ -250,7 +258,7 @@ class Combined_Dataset:
     def create_dataset(self):
 
         scaled_data = Combined_Dataset.scale(self)
-        pca_data = Combined_Dataset.PCA(self)
+        pca_data = Combined_Dataset.PCA(self, n_components=learning_config['components'])
         labelled_data = Combined_Dataset.label(self)
 
 

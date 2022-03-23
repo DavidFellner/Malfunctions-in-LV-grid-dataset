@@ -323,8 +323,11 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
 
         for id, row in loads.iterrows():
 
-            if id == 'LV4.101 Load 11':
-                break
+            if element.loc_name == 'LB 2':
+                if id == 'LV4.101 Load 11': break
+            else:
+                if id == 'LV4.101 Load 30': break
+
 
             p_profile = profiles[row['profile'] + '_pload']
             q_profile = profiles[row['profile'] + '_qload']
@@ -393,6 +396,9 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                         parent=None,
                         destination_timezone=utc
                     )
+
+                    if type == 'load':
+                        data = data.round()
 
                     p_char = pf.create_vector_characteristic(
                         characteristic=f'p_{element.loc_name}_{sheet_name}',

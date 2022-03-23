@@ -25,6 +25,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import KFold, StratifiedKFold
+import matplotlib.pyplot as plt
 
 
 class Transformer_detection:
@@ -36,12 +37,16 @@ class Transformer_detection:
         self.data_path = config.data_path
         self.test_bays = config.test_bays
         self.scenario = config.scenario
+        self.plot_all = config.plot_all
         self.plotting_variables = config.plotting_variables
         self.variables = config.variables
         self.sampling_step_size_in_seconds = config.sampling_step_size_in_seconds
         self.setups = config.setups
         self.plot_data = config.plot_data
-        self.classifier_combos = c.classifier_combos[learning_config['classifier_combos']]
+        if learning_config['data_mode'] == 'combined_data':
+            self.classifier_combos = c.classifier_combos[learning_config['classifier_combos'] + '_combined_dataset']
+        else:
+            self.classifier_combos = c.classifier_combos[learning_config['classifier_combos']]
 
         self.data_source = learning_config['data_source']
         self.setup_chosen = learning_config['setup_chosen']
@@ -58,11 +63,19 @@ class Transformer_detection:
         self.approach = learning_config['approach']
 
     def plotting_data(self):
-        fgs_test_bay, axs_test_bay = self.scenario_plotting_test_bay(self.variables, plot_all=False,
+        fgs_test_bay, axs_test_bay = self.scenario_plotting_test_bay(self.variables, plot_all=self.plot_all, scenario=self.scenario,
                                                                      vars=self.plotting_variables,
                                                                      sampling=self.sampling_step_size_in_seconds)
-        fgs_case, axs_case = self.scenario_plotting_case(self.variables, plot_all=False, vars=self.plotting_variables,
+        fgs_case, axs_case = self.scenario_plotting_case(self.variables, plot_all=self.plot_all, scenario=self.scenario, vars=self.plotting_variables,
                                                          sampling=self.sampling_step_size_in_seconds)
+
+        if config.save_figures:
+            for fig in fgs_test_bay:
+                fgs_test_bay[fig].set_size_inches(12, 12, forward=True)
+                fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs', 'scenario_' + fig + '_test_bay_' + learning_config['data_source']), dpi=fgs_test_bay[fig].dpi, bbox_inches='tight')
+            for fig in fgs_case:
+                fgs_case[fig].set_size_inches(12, 12, forward=True)
+                fgs_case[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs', 'scenario_' + fig + '_case_' + learning_config['data_source']), dpi=fgs_case[fig].dpi, bbox_inches='tight')
 
     def scenario_plotting_test_bay(self, variables, plot_all=True, scenario=1, vars=None, sampling=None):
         if vars is None:
@@ -179,10 +192,10 @@ class Transformer_detection:
                     for scenario in measurements[measurement]:
                         for test_bay in self.test_bays:
                             full_path = os.path.join(self.data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
-                            data = pd.read_csv(os.path.join(full_path,
-                                                            f'scenario_{scenario+1}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
-                                               sep=',',
-                                               decimal=',', low_memory=False)
+                            data = pd.read_csv(
+                                os.path.join(full_path, measurements[measurement][measurements[measurement].index(scenario)] + '.csv'),
+                                sep=',',
+                                decimal=',', low_memory=False)
                             data = data[
                                    2 * 60 * 4:]  # cut off the first 2 minutes because this is where laods / PV where started up
                             data = data[
