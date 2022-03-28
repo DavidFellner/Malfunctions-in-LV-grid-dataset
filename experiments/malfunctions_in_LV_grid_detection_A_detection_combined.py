@@ -25,17 +25,17 @@ learning_config = {
     'data_source': 'simulation', #real_world, simulation
     'setup_chosen' : 'Setup_B_F2_data2_2c',  # for assembly or clustering
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
-    'data_mode' : 'measurement_wise',  # 'measurement_wise', 'combined_data'
+    'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
-
     'approach' : 'PCA+clf',  # 'PCA+clf', 'clustering'
-    'clf' : 'Assembly', # SVM, NuSVM, kNN, Assembly
+    'clf' : 'NuSVM', # SVM, NuSVM, kNN, Assembly
     'kernels' : ['linear', 'poly', 'rbf', 'sigmoid'],   # ['linear', 'poly', 'rbf', 'sigmoid'] SVM kernels
     'gammas' : ['scale'],  # , 'auto']#[1/(i+1) for i in range(15)] #['scale', 'auto'] ; regularization for rbf kernels
     'degrees' : list(range(1, 7)),              #degrees for poly kernels
     'neighbours' : [i + 1 for i in range(5)],   #for kNN
     'weights' : ['uniform', 'distance'],        #for kNN
-    'classifier_combos' : 'c_vs_w_combined_dataset' # detection, c_vs_w, c_vs_inv, A, c_vs_w_combined_dataset not all work for all!
+    'classifier_combos' : 'general', # detection, c_vs_w, c_vs_inv, A, c_vs_w_combined_dataset not all work for all!
+    'components' : 0.99, #for combined dataset: percentage of variance that is to be retained by primary components
 }
 
 #########################################################################
@@ -48,9 +48,11 @@ add_data = True  # raw_data_available = False has to be set for this! set add_da
 #dataset_available = True  # set to False to recreate instances from raw data
 detection_methods = True
 deeplearning = False
-plot_data = True
+plot_data = False
 test_bays = ['B1', 'F1', 'F2']
+save_figures = True # save figures of data
 scenario = 1  # 1 to 15 as there is 15 scenarios (profiles)
+plot_all = True # whether to plot all scenarios
 plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
                       'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
 if learning_config['data_source'] == 'real_world':
@@ -93,7 +95,7 @@ if sim_setting == 'ERIGrid_phase_1': pf_file = 'PNDC_ERIGrid_phase1'
 resolution = '15T' #resolution of load/generation profiles to be used
 t_start = None  # default(None): times inferred from profiles in data
 t_end = None
-step_size = 1
+step_size = 3
 step_unit = 0 #0...seconds, 1... minutes
 balanced = 1 # 0... AC Load Flow, balanced, positive sequence, 1... imbalanced 3 phase
 

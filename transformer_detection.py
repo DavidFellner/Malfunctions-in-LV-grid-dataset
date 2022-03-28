@@ -70,6 +70,8 @@ class Transformer_detection:
                                                          sampling=self.sampling_step_size_in_seconds)
 
         if config.save_figures:
+            if not os.path.isdir(os.path.join(config.raw_data_folder, 'Graphs')):
+                os.mkdir(os.path.join(config.raw_data_folder, 'Graphs'))
             for fig in fgs_test_bay:
                 fgs_test_bay[fig].set_size_inches(12, 12, forward=True)
                 fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs', 'scenario_' + fig + '_test_bay_' + learning_config['data_source']), dpi=fgs_test_bay[fig].dpi, bbox_inches='tight')

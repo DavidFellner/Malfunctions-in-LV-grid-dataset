@@ -967,6 +967,18 @@ class Classifier_Combos:
                                                          {'NuSVM': {'sigmoid': []}}, {'SVM': {'rbf': []}},
                                                          {'SVM': {'linear': []}},
                                                          {'SVM': {'sigmoid': []}},
+                                                         {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}}],
+                                  'general_combined_dataset': [{'NuSVM': {'poly': [1]}}, {'NuSVM': {'poly': [2]}},
+                                                         {'NuSVM': {'poly': [3]}}, {'NuSVM': {'poly': [4]}},
+                                                         {'NuSVM': {'poly': [5]}}, {'NuSVM': {'poly': [6]}},
+                                                         {'SVM': {'poly': [1]}}, {'SVM': {'poly': [2]}},
+                                                         {'SVM': {'poly': [3]}},
+                                                         {'SVM': {'poly': [4]}}, {'SVM': {'poly': [5]}},
+                                                         {'SVM': {'poly': [6]}},
+                                                         {'NuSVM': {'rbf': []}}, {'NuSVM': {'linear': []}},
+                                                         {'NuSVM': {'sigmoid': []}}, {'SVM': {'rbf': []}},
+                                                         {'SVM': {'linear': []}},
+                                                         {'SVM': {'sigmoid': []}},
                                                          {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}}]
                                   }
 
