@@ -3,7 +3,15 @@ import scipy
 import sklearn
 import pandas as pd
 import numpy as np
+import os
 import matplotlib.pyplot as plt
+import importlib
+from experiment_config import experiment_path, chosen_experiment
+
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+learning_config = config.learning_config
 
 class Clustering:
 
@@ -69,7 +77,26 @@ class Clustering:
         plt.figure()
         sns.heatmap(df_corr_matrix)
         plt.figure()
-        sns.clustermap(df_corr_matrix, method='ward')
+        sns.set(font_scale=1.175)
+        ticks = [' '.join(i[0].split(' ')[:2] + i[0].split(' ')[4:6])[:-1] for i in df_corr_matrix.columns]
+        ticks_coded = [ i.split(' ')[0][0] + '. c. S. '+ i.split(' ')[-1] for i in ticks]
+        plot_matrix = pd.DataFrame(columns= ticks_coded, index = ticks_coded, data = df_corr_matrix.values)
+        clustermap = sns.clustermap(plot_matrix, method='ward')
+        ax = clustermap.ax_heatmap
+        ax.set_ylabel("")
+        ax.set_xlabel("")
+
+        if config.save_figures:
+            clustermap.savefig(os.path.join(config.raw_data_folder, 'Clustering',
+                                                   learning_config[
+                                                           'setup_chosen'] + '_' + learning_config[
+                                                           'data_source'] + '_' + learning_config[
+                                                           'mode']))
+            clustermap.savefig(os.path.join(config.raw_data_folder, 'Clustering',
+                                            learning_config[
+                                                'setup_chosen'] + '_' + learning_config[
+                                                'data_source'] + '_' + learning_config[
+                                                'mode'] + '.pdf'), format='pdf')
 
         self.corr_matrix = df_corr_matrix
 

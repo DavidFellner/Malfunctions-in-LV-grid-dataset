@@ -4,8 +4,10 @@ from Measurement import Measurement
 from Clustering import Clustering
 from util import create_dataset
 from detection_method_settings import Variables
+
 v = Variables()
 from detection_method_settings import Classifier_Combos
+
 c = Classifier_Combos()
 
 import importlib
@@ -63,10 +65,12 @@ class Transformer_detection:
         self.approach = learning_config['approach']
 
     def plotting_data(self):
-        fgs_test_bay, axs_test_bay = self.scenario_plotting_test_bay(self.variables, plot_all=self.plot_all, scenario=self.scenario,
+        fgs_test_bay, axs_test_bay = self.scenario_plotting_test_bay(self.variables, plot_all=self.plot_all,
+                                                                     scenario=self.scenario,
                                                                      vars=self.plotting_variables,
                                                                      sampling=self.sampling_step_size_in_seconds)
-        fgs_case, axs_case = self.scenario_plotting_case(self.variables, plot_all=self.plot_all, scenario=self.scenario, vars=self.plotting_variables,
+        fgs_case, axs_case = self.scenario_plotting_case(self.variables, plot_all=self.plot_all, scenario=self.scenario,
+                                                         vars=self.plotting_variables,
                                                          sampling=self.sampling_step_size_in_seconds)
 
         if config.save_figures:
@@ -74,10 +78,23 @@ class Transformer_detection:
                 os.mkdir(os.path.join(config.raw_data_folder, 'Graphs'))
             for fig in fgs_test_bay:
                 fgs_test_bay[fig].set_size_inches(12, 12, forward=True)
-                fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs', 'scenario_' + fig + '_test_bay_' + learning_config['data_source']), dpi=fgs_test_bay[fig].dpi, bbox_inches='tight')
+                fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
+                                                       'scenario_' + fig + '_test_bay_' + learning_config[
+                                                           'data_source']), dpi=fgs_test_bay[fig].dpi,
+                                          bbox_inches='tight')
+                fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
+                                                       'scenario_' + fig + '_test_bay_' + learning_config[
+                                                           'data_source'] + '.pdf'), dpi=fgs_test_bay[fig].dpi,
+                                          bbox_inches='tight', format='pdf')
             for fig in fgs_case:
                 fgs_case[fig].set_size_inches(12, 12, forward=True)
-                fgs_case[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs', 'scenario_' + fig + '_case_' + learning_config['data_source']), dpi=fgs_case[fig].dpi, bbox_inches='tight')
+                fgs_case[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
+                                                   'scenario_' + fig + '_case_' + learning_config['data_source']),
+                                      dpi=fgs_case[fig].dpi, bbox_inches='tight')
+                fgs_case[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
+                                                   'scenario_' + fig + '_case_' + learning_config[
+                                                       'data_source'] + '.pdf'),
+                                      dpi=fgs_case[fig].dpi, bbox_inches='tight', format='pdf')
 
     def scenario_plotting_test_bay(self, variables, plot_all=True, scenario=1, vars=None, sampling=None):
         if vars is None:
@@ -86,8 +103,9 @@ class Transformer_detection:
         axs = {}
 
         if learning_config['data_source'] == 'simulation':
-            vars_in_data = self.load_data(1, sampling=sampling)#.columns
-            var_numbers= [list(vars_in_data[i].data.columns).index(vars[i.split(' ')[-1]]) for i in vars_in_data.keys()]
+            vars_in_data = self.load_data(1, sampling=sampling)  # .columns
+            var_numbers = [list(vars_in_data[i].data.columns).index(vars[i.split(' ')[-1]]) for i in
+                           vars_in_data.keys()]
         else:
             try:
                 var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
@@ -173,7 +191,8 @@ class Transformer_detection:
                 for measurement in measurements:
                     for test_bay in self.test_bays:
                         full_path = os.path.join(self.sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
-                        data = pd.read_csv(os.path.join(full_path, f'scenario_{scenario}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
+                        data = pd.read_csv(os.path.join(full_path,
+                                                        f'scenario_{scenario}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
                                            sep=',',
                                            decimal=',', low_memory=False)
                         data['new_index'] = range(len(data))
@@ -195,7 +214,8 @@ class Transformer_detection:
                         for test_bay in self.test_bays:
                             full_path = os.path.join(self.data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
                             data = pd.read_csv(
-                                os.path.join(full_path, measurements[measurement][measurements[measurement].index(scenario)] + '.csv'),
+                                os.path.join(full_path, measurements[measurement][
+                                    measurements[measurement].index(scenario)] + '.csv'),
                                 sep=',',
                                 decimal=',', low_memory=False)
                             data = data[
@@ -221,7 +241,7 @@ class Transformer_detection:
                         for test_bay in self.test_bays:
                             full_path = os.path.join(self.sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
                             data = pd.read_csv(os.path.join(full_path,
-                                                            f'scenario_{scenario+1}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
+                                                            f'scenario_{scenario + 1}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
                                                sep=',',
                                                decimal=',', low_memory=False)
                             data['new_index'] = range(len(data))
@@ -446,8 +466,10 @@ class Transformer_detection:
             labelled_data = data.label()'''
 
             for classifiers in self.classifier_combos:
-                scores = self.cross_val(data, clf=self.clf, classifiers_and_parameters=classifiers, setup=self.setup_chosen,
-                                   mode=self.mode, sampling=self.sampling_step_size_in_seconds, data_mode=self.data_mode)
+                scores = self.cross_val(data, clf=self.clf, classifiers_and_parameters=classifiers,
+                                        setup=self.setup_chosen,
+                                        mode=self.mode, sampling=self.sampling_step_size_in_seconds,
+                                        data_mode=self.data_mode)
                 if self.mode == 'classification':
                     print(
                         f"\n########## Metrics for {self.clf} classifier on {self.setup_chosen} using {[(i, classifiers[i]) for i in classifiers.keys()]} classifiers with classes {self.setups[self.setup_chosen]} ##########")
@@ -469,9 +491,9 @@ class Transformer_detection:
         if learning_config['data_source'] == 'simulation':
             if data is None:
                 data = self.load_data(sampling=sampling)
-                variables = {'B1': [v.variables_B1, list(data[list(data.keys())[0][:-2]+'B1'].data.columns)[1:]],
-                                 'F1': [v.variables_F1, list(data[list(data.keys())[0][:-2]+'F1'].data.columns)[1:]],
-                                 'F2': [v.variables_F2, list(data[list(data.keys())[0][:-2]+'F2'].data.columns)[1:]]}
+                variables = {'B1': [v.variables_B1, list(data[list(data.keys())[0][:-2] + 'B1'].data.columns)[1:]],
+                             'F1': [v.variables_F1, list(data[list(data.keys())[0][:-2] + 'F1'].data.columns)[1:]],
+                             'F2': [v.variables_F2, list(data[list(data.keys())[0][:-2] + 'F2'].data.columns)[1:]]}
                 results = {}
             else:
                 results = []
@@ -708,11 +730,11 @@ class Transformer_detection:
             elif clf == 'Assembly':
                 if data_mode == 'measurement_wise':
                     y_pred, y_test = self.assembly_learner_single_dataset([X_train, X_test, y_train, y_test],
-                                                                     classifiers_and_parameters, cross_val=True,
-                                                                     variables=variables)
+                                                                          classifiers_and_parameters, cross_val=True,
+                                                                          variables=variables)
                 elif data_mode == 'combined_data':
                     y_pred, y_test = self.assembly_learner_combined_dataset([X_train, X_test, y_train, y_test],
-                                                                       classifiers_and_parameters, cross_val=True)
+                                                                            classifiers_and_parameters, cross_val=True)
                 scores.append(self.scoring(y_test, y_pred))
             else:
                 print('undefined classifier entered')

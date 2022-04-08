@@ -27,7 +27,7 @@ learning_config = {
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
-    'approach' : 'PCA+clf',  # 'PCA+clf', 'clustering'
+    'approach' : 'clustering',  # 'PCA+clf', 'clustering'
     'clf' : 'NuSVM', # SVM, NuSVM, kNN, Assembly
     'kernels' : ['linear', 'poly', 'rbf', 'sigmoid'],   # ['linear', 'poly', 'rbf', 'sigmoid'] SVM kernels
     'gammas' : ['scale'],  # , 'auto']#[1/(i+1) for i in range(15)] #['scale', 'auto'] ; regularization for rbf kernels
@@ -48,11 +48,13 @@ add_data = True  # raw_data_available = False has to be set for this! set add_da
 #dataset_available = True  # set to False to recreate instances from raw data
 detection_methods = True
 deeplearning = False
-plot_data = False
+plot_data = True
 test_bays = ['B1', 'F1', 'F2']
 save_figures = True # save figures of data
-scenario = 1  # 1 to 15 as there is 15 scenarios (profiles)
+scenario = 14  # 1 to 15 as there is 15 scenarios (profiles)
 plot_all = True # whether to plot all scenarios
+plot_only_trafo_and_pv = True # whether only the data of the trafo and PV connection test bay should be plotted in 'plot_scenario_test_bay' in 'plot_measurements'
+note_avg_and_std = False # whether average and standard deviation should be annotated in 'plot_scenario_test_bay' and 'plot_scenario_case' in 'plot_measurements'
 plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
                       'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
 if learning_config['data_source'] == 'real_world':
