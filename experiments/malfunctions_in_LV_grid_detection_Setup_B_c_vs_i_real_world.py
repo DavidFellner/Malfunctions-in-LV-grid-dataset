@@ -22,13 +22,13 @@ local_machine_tz = 'Europe/Berlin'  # timezone; it's important for Powerfactory
 
 # Deep learning settings
 learning_config = {
-    'data_source': 'simulation', #real_world, simulation
-    'setup_chosen' : 'Setup_B_F2_data2_2c',  # for assembly or clustering
+    'data_source': 'real_world', #real_world, simulation
+    'setup_chosen' : 'Setup_B_F2_data3_2c',  # for assembly or clustering
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
-    'approach' : 'clustering',  # 'PCA+clf', 'clustering'
-    'clf' : 'NuSVM', # SVM, NuSVM, kNN, Assembly
+    'approach' : 'PCA+clf',  # 'PCA+clf', 'clustering'
+    'clf' : 'Assembly', # SVM, NuSVM, kNN, Assembly
     'kernels' : ['linear', 'poly', 'rbf', 'sigmoid'],   # ['linear', 'poly', 'rbf', 'sigmoid'] SVM kernels
     'gammas' : ['scale'],  # , 'auto']#[1/(i+1) for i in range(15)] #['scale', 'auto'] ; regularization for rbf kernels
     'degrees' : list(range(1, 7)),              #degrees for poly kernels
@@ -48,7 +48,7 @@ add_data = True  # raw_data_available = False has to be set for this! set add_da
 #dataset_available = True  # set to False to recreate instances from raw data
 detection_methods = True
 deeplearning = False
-plot_data = True
+plot_data = False
 test_bays = ['B1', 'F1', 'F2']
 save_figures = True # save figures of data
 scenario = 14  # 1 to 15 as there is 15 scenarios (profiles)

@@ -979,7 +979,8 @@ class Classifier_Combos:
                                                          {'NuSVM': {'sigmoid': []}}, {'SVM': {'rbf': []}},
                                                          {'SVM': {'linear': []}},
                                                          {'SVM': {'sigmoid': []}},
-                                                         {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}}]
+                                                         {'kNN': {2: ['uniform']}}, {'kNN': {2: ['distance']}},
+                                                               {'DT': {'gini': []}}, {'DT': {'entropy': []}}]
                                   }
 
 class Mapping_Fluke_to_PowerFactory:

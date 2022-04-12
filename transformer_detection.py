@@ -22,7 +22,7 @@ import os
 import pandas as pd
 import numpy as np
 import collections
-from sklearn import svm, neighbors
+from sklearn import svm, neighbors, tree
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
@@ -882,6 +882,12 @@ class Transformer_detection:
                         0] + '_weights'] = clfs[
                         clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
                             0] + '_weights'].predict(
+                        X_test)  # Predict the response for test dataset
+            elif clf_type == 'DT':
+                for criterion in clf_types_and_paras[clf_type]:
+                    clfs[clf_type + '_' + str(criterion)] = tree.DecisionTreeClassifier(criterion=criterion)
+                    clfs[clf_type + '_' + str(criterion)].fit(X_train, y_train)
+                    y_preds[clf_type + '_' + str(criterion)] = clfs[clf_type + '_' + str(criterion)].predict(
                         X_test)  # Predict the response for test dataset
 
         y_pred = []
