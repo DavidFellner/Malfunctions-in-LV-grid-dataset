@@ -22,7 +22,7 @@ local_machine_tz = 'Europe/Berlin'  # timezone; it's important for Powerfactory
 
 # Deep learning settings
 learning_config = {
-    'data_source': 'simulation', #real_world, simulation
+    'data_source': 'real_world', #real_world, simulation
     'setup_chosen' : 'Setup_B_F2_data2_2c',  # for assembly or clustering
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
@@ -48,10 +48,10 @@ add_data = True  # raw_data_available = False has to be set for this! set add_da
 #dataset_available = True  # set to False to recreate instances from raw data
 detection_methods = True
 deeplearning = False
-plot_data = True
+plot_data = False
 test_bays = ['B1', 'F1', 'F2']
 extended = False #also add inversed curve to Setup A simulations
-save_figures = True # save figures of data
+save_figures = False # save figures of data
 scenario = 14  # 1 to 15 as there is 15 scenarios (profiles)
 plot_all = True # whether to plot all scenarios
 plot_only_trafo_and_pv = True # whether only the data of the trafo and PV connection test bay should be plotted in 'plot_scenario_test_bay' in 'plot_measurements'
