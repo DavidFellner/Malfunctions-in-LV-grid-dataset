@@ -500,7 +500,11 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
 
     chars_dict = grid_data[0]
     if learning_config['setup_chosen'].split('_')[1] == 'A':
-        control_curves = {'correct': [1, 3, 0.9, 6], 'wrong': [1, 3, 0.999999, 6]}
+        if config.extended:
+            control_curves = {'correct': [1, 3, 0.9, 6], 'wrong': [1, 3, 0.999999, 6],
+                              'inversed': [0.9, 6, 0.999999, 3]}
+        else:
+            control_curves = {'correct': [1, 3, 0.9, 6], 'wrong': [1, 3, 0.999999, 6], }
     else:
         control_curves = {'correct': [1, 3, 0.9, 6], 'wrong': [1, 3, 0.999999, 6], 'inversed': [0.9, 6, 0.999999, 3]}
 
@@ -513,11 +517,13 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
                 bay_folder = os.path.join(file_folder, 'Test_Bay_F2')
                 if not os.path.isdir(bay_folder):
                     os.mkdir(bay_folder)
-                if not os.path.isfile(os.path.join(bay_folder,
-                                               f'scenario_{char.split("_")[1]}_correct_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'))\
-                        and not os.path.isfile(os.path.join(bay_folder,
-                                               f'scenario_{char.split("_")[0]}_correct_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
-                    new_chars_dict[element][char] = chars_dict[element][char]
+
+                for control_curve in control_curves:
+                    if not os.path.isfile(os.path.join(bay_folder,
+                                                   f'scenario_{char.split("_")[1]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'))\
+                            and not os.path.isfile(os.path.join(bay_folder,
+                                                   f'scenario_{char.split("_")[0]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
+                        new_chars_dict[element][char] = chars_dict[element][char]
                     #del new_chars_dict[element][char]
         chars_dict = new_chars_dict
 
@@ -536,18 +542,25 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
         # do calc for correct, wrong, inversed
 
         for control_curve in control_curves:
-            PV.pf_over = control_curves[control_curve][0]
-            PV.p_over = control_curves[control_curve][1]
-            PV.pf_under = control_curves[control_curve][2]
-            PV.p_under = control_curves[control_curve][3]
+            do = True
+            if config.add_data:
+                bay_folder = os.path.join(file_folder, 'Test_Bay_F2')
+                if os.path.isfile(os.path.join(bay_folder, f'scenario_{scenario}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
+                    do = False
 
-            t_start, t_end = set_times(file, element=PV, chars_dict=chars_dict, scenario=scenario)
+            if do:
+                PV.pf_over = control_curves[control_curve][0]
+                PV.p_over = control_curves[control_curve][1]
+                PV.pf_under = control_curves[control_curve][2]
+                PV.p_under = control_curves[control_curve][3]
 
-            result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=config.step_unit,
-                                      balanced=config.balanced)  # set which vars and where!
-            results = run_QDS(app, int(scenario), result)
+                t_start, t_end = set_times(file, element=PV, chars_dict=chars_dict, scenario=scenario)
 
-            # save correctly as to be used by rest of framework
-            save_results(int(scenario), results, file, t_start, t_end, control_curve=control_curve)
+                result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=config.step_unit,
+                                          balanced=config.balanced)  # set which vars and where!
+                results = run_QDS(app, int(scenario), result)
+
+                # save correctly as to be used by rest of framework
+                save_results(int(scenario), results, file, t_start, t_end, control_curve=control_curve)
 
     return

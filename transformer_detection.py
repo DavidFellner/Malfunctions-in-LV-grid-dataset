@@ -1,5 +1,4 @@
 from plot_measurements import plot_scenario_test_bay, plot_scenario_case, plot_pca, plot_grid_search
-from detection_method_settings import measurements
 from Measurement import Measurement
 from Clustering import Clustering
 from util import create_dataset
@@ -17,6 +16,11 @@ spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 learning_config = config.learning_config
+
+if config.extended and learning_config['data_source'] == 'simulation':
+    from detection_method_settings import measurements_extended as measurements
+else:
+    from detection_method_settings import measurements as measurements
 
 import os
 import pandas as pd
@@ -76,24 +80,29 @@ class Transformer_detection:
         if config.save_figures:
             if not os.path.isdir(os.path.join(config.raw_data_folder, 'Graphs')):
                 os.mkdir(os.path.join(config.raw_data_folder, 'Graphs'))
+
+            if config.extended:
+                extended = '_extended'
+            else:
+                extended = ''
             for fig in fgs_test_bay:
                 fgs_test_bay[fig].set_size_inches(12, 12, forward=True)
                 fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
                                                        'scenario_' + fig + '_test_bay_' + learning_config[
-                                                           'data_source']), dpi=fgs_test_bay[fig].dpi,
+                                                           'data_source'] + extended), dpi=fgs_test_bay[fig].dpi,
                                           bbox_inches='tight')
                 fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
                                                        'scenario_' + fig + '_test_bay_' + learning_config[
-                                                           'data_source'] + '.pdf'), dpi=fgs_test_bay[fig].dpi,
+                                                           'data_source'] + extended + '.pdf'), dpi=fgs_test_bay[fig].dpi,
                                           bbox_inches='tight', format='pdf')
             for fig in fgs_case:
                 fgs_case[fig].set_size_inches(12, 12, forward=True)
                 fgs_case[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
-                                                   'scenario_' + fig + '_case_' + learning_config['data_source']),
+                                                   'scenario_' + fig + '_case_' + learning_config['data_source'] + extended),
                                       dpi=fgs_case[fig].dpi, bbox_inches='tight')
                 fgs_case[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
                                                    'scenario_' + fig + '_case_' + learning_config[
-                                                       'data_source'] + '.pdf'),
+                                                       'data_source'] + extended + '.pdf'),
                                       dpi=fgs_case[fig].dpi, bbox_inches='tight', format='pdf')
 
     def scenario_plotting_test_bay(self, variables, plot_all=True, scenario=1, vars=None, sampling=None):

@@ -43,6 +43,11 @@ def  plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=Tru
     X = [measurements[i].data.index for i in measurements]
     Y = [(measurements[i].name, measurements[i].data) for i in measurements]
 
+    numbers = {}
+    for number in list(range(len(Y))):
+        numbers[Y[number][0].split(' ')[3] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[0]] = number
+
+
     data = [i[1][i[1].columns[vars[i[0][-2:]][1]]] for i in Y]  # voltages_phase_1_avg
 
     if learning_config['data_source'] == 'simulation':
@@ -101,56 +106,66 @@ def  plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=Tru
     start_end = lambda x: [X[x][0], X[x][-1]]
 
     # Setup A Scenario x: Test Bay F1
-    axs[str(len(fgs.keys())) + '_ax1'].plot(X[1], data[1], 'tab:blue', label=label(1,15))
-    axs[str(len(fgs.keys())) + '_ax1'].plot(X[4], data[4], 'tab:red', label=label(4,13))
-    axs[str(len(fgs.keys())) + '_ax1'].set_title(list(measurements.keys())[1][16:].split(':')[0] + ': Load and PV ' + f'({list(measurements.keys())[1][16:].split(":")[1].split(" ")[-1]})')
+    axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_F1_correct']], data[numbers['A_F1_correct']], 'tab:blue', label=label(numbers['A_F1_correct'],15))
+    axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_F1_wrong']], data[numbers['A_F1_wrong']], 'tab:red', label=label(numbers['A_F1_wrong'],13))
+    if learning_config['data_source'] == 'simulation' and config.extended:
+        axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_F1_inversed']], data[numbers['A_F1_inversed']], 'tab:orange',
+                                                label=label(numbers['A_F1_inversed'], 16))
+    axs[str(len(fgs.keys())) + '_ax1'].set_title(list(measurements.keys())[numbers['A_F1_correct']][16:].split(':')[0] + ': Load and PV ' + f'({list(measurements.keys())[numbers["A_F1_correct"]][16:].split(":")[1].split(" ")[-1]})')
     axs[str(len(fgs.keys())) + '_ax1'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax1'], start_end=start_end(1))
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax1'], start_end=start_end(numbers['A_F1_correct']))
     adjust_yticks(axs[str(len(fgs.keys())) + '_ax1'])
 
     # Setup A Scenario x: Test Bay F2
-    axs[str(len(fgs.keys())) + '_ax2'].plot(X[2], data[2], 'tab:blue', label=label(2,15))
-    axs[str(len(fgs.keys())) + '_ax2'].plot(X[5], data[5], 'tab:red', label=label(5,13))
-    axs[str(len(fgs.keys())) + '_ax2'].set_title(list(measurements.keys())[2][16:].split(':')[0] + ': Transformer ' + f'({list(measurements.keys())[2][16:].split(":")[1].split(" ")[-1]})')
+    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_F2_correct']], data[numbers['A_F2_correct']], 'tab:blue', label=label(numbers['A_F2_correct'],15))
+    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_F2_wrong']], data[numbers['A_F2_wrong']], 'tab:red', label=label(numbers['A_F2_wrong'],13))
+    if learning_config['data_source'] == 'simulation' and config.extended:
+        axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_F2_inversed']], data[numbers['A_F2_inversed']], 'tab:orange',
+                                                label=label(numbers['A_F2_inversed'], 16))
+    axs[str(len(fgs.keys())) + '_ax2'].set_title(list(measurements.keys())[numbers['A_F2_correct']][16:].split(':')[0] + ': Transformer ' + f'({list(measurements.keys())[numbers["A_F2_correct"]][16:].split(":")[1].split(" ")[-1]})')
     axs[str(len(fgs.keys())) + '_ax2'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax2'], start_end=start_end(2))
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax2'], start_end=start_end(numbers['A_F2_correct']))
     adjust_yticks(axs[str(len(fgs.keys())) + '_ax2'])
 
     # Setup B Scenario x: Test Bay B1
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[6], data[6], 'tab:blue', label=label(6,15))
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[9], data[9], 'tab:red', label=label(9,13))
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[12], data[12], 'tab:orange', label=label(12,16))
-    axs[str(len(fgs.keys())) + '_ax4'].set_title('  ' + list(measurements.keys())[6][16:].split(':')[0] + ': Load and PV ' + f'({list(measurements.keys())[6][16:].split(":")[1].split(" ")[-1]})')
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_B1_correct']], data[numbers['B_B1_correct']], 'tab:blue', label=label(numbers['B_B1_correct'],15))
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_B1_wrong']], data[numbers['B_B1_wrong']], 'tab:red', label=label(numbers['B_B1_wrong'],13))
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_B1_inversed']], data[numbers['B_B1_inversed']], 'tab:orange', label=label(numbers['B_B1_inversed'],16))
+    axs[str(len(fgs.keys())) + '_ax4'].set_title('  ' + list(measurements.keys())[numbers['B_B1_correct']][16:].split(':')[0] + ': Load and PV ' + f'({list(measurements.keys())[numbers["B_B1_correct"]][16:].split(":")[1].split(" ")[-1]})')
     axs[str(len(fgs.keys())) + '_ax4'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax4'], start_end=start_end(6))
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax4'], start_end=start_end(numbers['B_B1_correct']))
     adjust_yticks(axs[str(len(fgs.keys())) + '_ax4'])
 
     # Setup B Scenario x: Test Bay F2
-    axs[str(len(fgs.keys())) + '_ax5'].plot(X[8], data[8], 'tab:blue', label=label(8, 15))
-    axs[str(len(fgs.keys())) + '_ax5'].plot(X[11], data[11], 'tab:red', label=label(11, 13))
-    axs[str(len(fgs.keys())) + '_ax5'].plot(X[14], data[14], 'tab:orange', label=label(14, 16))
-    axs[str(len(fgs.keys())) + '_ax5'].set_title('  ' + list(measurements.keys())[8][16:].split(':')[0] + ': Transformer ' + f'({list(measurements.keys())[8][16:].split(":")[1].split(" ")[-1]})')
+    axs[str(len(fgs.keys())) + '_ax5'].plot(X[numbers['B_F2_correct']], data[numbers['B_F2_correct']], 'tab:blue', label=label(numbers['B_F2_correct'], 15))
+    axs[str(len(fgs.keys())) + '_ax5'].plot(X[numbers['B_F2_wrong']], data[numbers['B_F2_wrong']], 'tab:red', label=label(numbers['B_F2_wrong'], 13))
+    axs[str(len(fgs.keys())) + '_ax5'].plot(X[numbers['B_F2_inversed']], data[numbers['B_F2_inversed']], 'tab:orange', label=label(numbers['B_F2_inversed'], 16))
+    axs[str(len(fgs.keys())) + '_ax5'].set_title('  ' + list(measurements.keys())[numbers['B_F2_correct']][16:].split(':')[0] + ': Transformer ' + f'({list(measurements.keys())[numbers["B_F2_correct"]][16:].split(":")[1].split(" ")[-1]})')
     axs[str(len(fgs.keys())) + '_ax5'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax5'], start_end=start_end(8))
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax5'], start_end=start_end(numbers['B_F2_correct']))
     adjust_yticks(axs[str(len(fgs.keys())) + '_ax5'])
 
     if not config.plot_only_trafo_and_pv:
 
         # Setup A Scenario x: Test Bay B1
-        axs[str(len(fgs.keys())) + '_ax3'].plot(X[0], data[0], 'tab:blue', label=label(0, 15))
-        axs[str(len(fgs.keys())) + '_ax3'].plot(X[3], data[3], 'tab:red', label=label(3, 13))
-        axs[str(len(fgs.keys())) + '_ax3'].set_title(list(measurements.keys())[0][16:].split(':')[0] + ': Load ' + f'({list(measurements.keys())[0][16:].split(":")[1].split(" ")[-1]})')
+        axs[str(len(fgs.keys())) + '_ax3'].plot(X[numbers['A_B1_correct']], data[numbers['A_B1_correct']], 'tab:blue', label=label(numbers['A_B1_correct'], 15))
+        axs[str(len(fgs.keys())) + '_ax3'].plot(X[numbers['A_B1_wrong']], data[numbers['A_B1_wrong']], 'tab:red', label=label(numbers['A_B1_wrong'], 13))
+        if learning_config['data_source'] == 'simulation' and config.extended:
+            axs[str(len(fgs.keys())) + '_ax3'].plot(X[numbers['A_B1_inversed']], data[numbers['A_B1_inversed']],
+                                                    'tab:orange',
+                                                    label=label(numbers['A_B1_inversed'], 16))
+        axs[str(len(fgs.keys())) + '_ax3'].set_title(list(measurements.keys())[numbers['A_B1_correct']][16:].split(':')[0] + ': Load ' + f'({list(measurements.keys())[numbers["A_B1_correct"]][16:].split(":")[1].split(" ")[-1]})')
         axs[str(len(fgs.keys())) + '_ax3'].legend()
-        adjust_xticks(axs[str(len(fgs.keys())) + '_ax3'], start_end=start_end(0))
+        adjust_xticks(axs[str(len(fgs.keys())) + '_ax3'], start_end=start_end(numbers['A_B1_correct']))
         adjust_yticks(axs[str(len(fgs.keys())) + '_ax3'])
 
         # Setup B Scenario x: Test Bay F1
-        axs[str(len(fgs.keys())) + '_ax6'].plot(X[7], data[7], 'tab:blue', label=label(7,15))
-        axs[str(len(fgs.keys())) + '_ax6'].plot(X[10], data[10], 'tab:red', label=label(10,13))
-        axs[str(len(fgs.keys())) + '_ax6'].plot(X[13], data[13], 'tab:orange', label=label(13,16))
-        axs[str(len(fgs.keys())) + '_ax6'].set_title('  ' + list(measurements.keys())[7][16:].split(':')[0] + ': Load ' + f'({list(measurements.keys())[7][16:].split(":")[1].split(" ")[-1]})')
+        axs[str(len(fgs.keys())) + '_ax6'].plot(X[numbers['B_F1_correct']], data[numbers['B_F1_correct']], 'tab:blue', label=label(numbers['B_F1_correct'],15))
+        axs[str(len(fgs.keys())) + '_ax6'].plot(X[numbers['B_F1_wrong']], data[numbers['B_F1_wrong']], 'tab:red', label=label(numbers['B_F1_wrong'],13))
+        axs[str(len(fgs.keys())) + '_ax6'].plot(X[numbers['B_F1_inversed']], data[13], 'tab:orange', label=label(numbers['B_F1_inversed'],16))
+        axs[str(len(fgs.keys())) + '_ax6'].set_title('  ' + list(measurements.keys())[numbers['B_F1_correct']][16:].split(':')[0] + ': Load ' + f'({list(measurements.keys())[numbers["B_F1_correct"]][16:].split(":")[1].split(" ")[-1]})')
         axs[str(len(fgs.keys())) + '_ax6'].legend()
-        adjust_xticks(axs[str(len(fgs.keys())) + '_ax6'], start_end=start_end(7))
+        adjust_xticks(axs[str(len(fgs.keys())) + '_ax6'], start_end=start_end(numbers['B_F1_correct']))
         adjust_yticks(axs[str(len(fgs.keys())) + '_ax6'])
 
 
@@ -164,6 +179,11 @@ def  plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
         vars = {'B1': ('Vrms ph-n AN Avg', 4), 'F1': ('Vrms ph-n AN Avg', 4), 'F2': ('Vrms ph-n AN Avg', 4)}
     X = [measurements[i].data.index for i in measurements]
     Y = [(measurements[i].name ,measurements[i].data) for i in measurements]
+
+    numbers = {}
+    for number in list(range(len(Y))):
+        numbers[
+            Y[number][0].split(' ')[3] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[0]] = number
 
     data = [i[1][i[1].columns[vars[i[0][-2:]][1]]] for i in Y]  # voltages_phase_1_avg
     if learning_config['data_source'] == 'simulation':
@@ -185,7 +205,8 @@ def  plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
     axs[str(len(fgs.keys())) + '_ax1'].set_ylabel(vars['B1'][0][0])
 
     axs[str(len(fgs.keys())) + '_ax2'] = plt.subplot2grid((3, 4), (1, 0), colspan=2, fig=fig)
-    axs[str(len(fgs.keys())) + '_ax2'].set_xlabel('timestep')
+    if not (learning_config['data_source'] == 'simulation' and config.extended):
+        axs[str(len(fgs.keys())) + '_ax2'].set_xlabel('timestep')
     axs[str(len(fgs.keys())) + '_ax2'].set_ylabel(vars['B1'][0][0])
 
     axs[str(len(fgs.keys())) + '_ax3'] = plt.subplot2grid((3, 4), (0, 2), colspan=2, fig=fig)
@@ -198,9 +219,15 @@ def  plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
     #axs[str(len(fgs.keys())) + '_ax4'].set_ylabel(var[0])
     axs[str(len(fgs.keys())) + '_ax4'].yaxis.tick_right()
 
+    if learning_config['data_source'] == 'simulation' and config.extended:
+        axs[str(len(fgs.keys())) + '_ax5'] = plt.subplot2grid((3, 4), (2, 0), colspan=2, fig=fig)
+        axs[str(len(fgs.keys())) + '_ax5'].set_xlabel('timestep')
+        axs[str(len(fgs.keys())) + '_ax5'].set_ylabel(vars['B1'][0][0])
+
     axs[str(len(fgs.keys())) + '_ax6'] = plt.subplot2grid((3, 4), (2, 2), colspan=2, fig=fig)
     axs[str(len(fgs.keys())) + '_ax6'].set_xlabel('timestep')
-    axs[str(len(fgs.keys())) + '_ax6'].set_ylabel(vars['B1'][0][0])
+    if not (learning_config['data_source'] == 'simulation' and config.extended):
+        axs[str(len(fgs.keys())) + '_ax6'].set_ylabel(vars['B1'][0][0])
     axs[str(len(fgs.keys())) + '_ax6'].yaxis.tick_right()
 
     if config.note_avg_and_std:
@@ -213,64 +240,78 @@ def  plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
     start_end = lambda x: [X[x][0], X[x][-1]]
 
     #correct Setup A Scenario x: Test Bays B1,F1,F2
-    axs[str(len(fgs.keys())) + '_ax1'].plot(X[0], data[0], 'tab:blue', label=label(0))
-    axs[str(len(fgs.keys())) + '_ax1'].plot(X[1], data[1], 'tab:green', label=label(1))
-    axs[str(len(fgs.keys())) + '_ax1'].plot(X[2], data[2], 'tab:orange',
-                                            label=label(2))
+    axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_B1_correct']], data[numbers['A_B1_correct']], 'tab:blue', label=label(numbers['A_B1_correct']))
+    axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_F1_correct']], data[numbers['A_F1_correct']], 'tab:green', label=label(numbers['A_F1_correct']))
+    axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_F2_correct']], data[numbers['A_F2_correct']], 'tab:orange',
+                                            label=label(numbers['A_F2_correct']))
     axs[str(len(fgs.keys())) + '_ax1'].set_title(list(measurements.keys())[0].split(': ')[0])
     axs[str(len(fgs.keys())) + '_ax1'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax1'], start_end=start_end(0))
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax1'], start_end=start_end(numbers['A_F2_correct']))
     adjust_yticks(axs[str(len(fgs.keys())) + '_ax1'])
 
     #wrong Setup A Scenario x: Test Bays B1,F1,F2
-    axs[str(len(fgs.keys())) + '_ax2'].plot(X[3], data[3], 'tab:blue',
-                                            label=label(3))
-    axs[str(len(fgs.keys())) + '_ax2'].plot(X[4], data[4], 'tab:green',
-                                            label=label(4))
-    axs[str(len(fgs.keys())) + '_ax2'].plot(X[5], data[5], 'tab:orange',
-                                            label=label(5))
-    axs[str(len(fgs.keys())) + '_ax2'].set_title(list(measurements.keys())[3].split(': ')[0])
+    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_B1_wrong']], data[numbers['A_B1_wrong']], 'tab:blue',
+                                            label=label(numbers['A_B1_wrong']))
+    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_F1_wrong']], data[numbers['A_F1_wrong']], 'tab:green',
+                                            label=label(numbers['A_F1_wrong']))
+    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_F2_wrong']], data[numbers['A_F2_wrong']], 'tab:orange',
+                                            label=label(numbers['A_F2_wrong']))
+    axs[str(len(fgs.keys())) + '_ax2'].set_title(list(measurements.keys())[numbers['A_B1_wrong']].split(': ')[0])
     axs[str(len(fgs.keys())) + '_ax2'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax2'], start_end=start_end(3))
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax2'], start_end=start_end(numbers['A_F2_wrong']))
     adjust_yticks(axs[str(len(fgs.keys())) + '_ax2'])
 
     #correct Setup B Scenario x: Test Bays B1,F1,F2
-    axs[str(len(fgs.keys())) + '_ax3'].plot(X[6], data[6], 'tab:blue',
-                                            label=label(6))
-    axs[str(len(fgs.keys())) + '_ax3'].plot(X[7], data[7], 'tab:green',
-                                            label=label(7))
-    axs[str(len(fgs.keys())) + '_ax3'].plot(X[8], data[8], 'tab:orange',
-                                            label=label(8))
-    axs[str(len(fgs.keys())) + '_ax3'].set_title(list(measurements.keys())[6].split(': ')[0])
+    axs[str(len(fgs.keys())) + '_ax3'].plot(X[numbers['B_B1_correct']], data[numbers['B_B1_correct']], 'tab:blue',
+                                            label=label(numbers['B_B1_correct']))
+    axs[str(len(fgs.keys())) + '_ax3'].plot(X[numbers['B_F1_correct']], data[numbers['B_F1_correct']], 'tab:green',
+                                            label=label(numbers['B_F1_correct']))
+    axs[str(len(fgs.keys())) + '_ax3'].plot(X[numbers['B_F2_correct']], data[numbers['B_F2_correct']], 'tab:orange',
+                                            label=label(numbers['B_F2_correct']))
+    axs[str(len(fgs.keys())) + '_ax3'].set_title(list(measurements.keys())[numbers['B_B1_correct']].split(': ')[0])
     axs[str(len(fgs.keys())) + '_ax3'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax3'], start_end=start_end(6))
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax3'], start_end=start_end(numbers['B_B1_correct']))
     adjust_yticks(axs[str(len(fgs.keys())) + '_ax3'])
 
     #wrong Setup B Scenario x: Test Bays B1,F1,F2
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[9], data[9], 'tab:blue',
-                                            label=label(9))
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[10], data[10], 'tab:green',
-                                            label=label(10))
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[11], data[11], 'tab:orange',
-                                            label=label(11))
-    axs[str(len(fgs.keys())) + '_ax4'].set_title(list(measurements.keys())[9].split(': ')[0])
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_B1_wrong']], data[numbers['B_B1_wrong']], 'tab:blue',
+                                            label=label(numbers['B_B1_wrong']))
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_F1_wrong']], data[numbers['B_F1_wrong']], 'tab:green',
+                                            label=label(numbers['B_F1_wrong']))
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_F2_wrong']], data[numbers['B_F2_wrong']], 'tab:orange',
+                                            label=label(numbers['B_F2_wrong']))
+    axs[str(len(fgs.keys())) + '_ax4'].set_title(list(measurements.keys())[numbers['B_B1_wrong']].split(': ')[0])
     axs[str(len(fgs.keys())) + '_ax4'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax4'], start_end=start_end(9))
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax4'], start_end=start_end(numbers['B_B1_wrong']))
     adjust_yticks(axs[str(len(fgs.keys())) + '_ax4'])
 
     #inversed Setup B Scenario x: Test Bays B1,F1,F2
-    axs[str(len(fgs.keys())) + '_ax6'].plot(X[12], data[12], 'tab:blue',
-                                            label=label(12))
-    axs[str(len(fgs.keys())) + '_ax6'].plot(X[13], data[13], 'tab:green',
-                                            label=label(13))
-    axs[str(len(fgs.keys())) + '_ax6'].plot(X[14], data[14], 'tab:orange',
-                                            label=label(14))
-    axs[str(len(fgs.keys())) + '_ax6'].set_title(list(measurements.keys())[12].split(': ')[0])
+    axs[str(len(fgs.keys())) + '_ax6'].plot(X[numbers['B_B1_inversed']], data[numbers['B_B1_inversed']], 'tab:blue',
+                                            label=label(numbers['B_B1_inversed']))
+    axs[str(len(fgs.keys())) + '_ax6'].plot(X[numbers['B_F1_inversed']], data[numbers['B_F1_inversed']], 'tab:green',
+                                            label=label(numbers['B_F1_inversed']))
+    axs[str(len(fgs.keys())) + '_ax6'].plot(X[numbers['B_F2_inversed']], data[numbers['B_F2_inversed']], 'tab:orange',
+                                            label=label(numbers['B_F2_inversed']))
+    axs[str(len(fgs.keys())) + '_ax6'].set_title(list(measurements.keys())[numbers['B_B1_inversed']].split(': ')[0])
     axs[str(len(fgs.keys())) + '_ax6'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax6'], start_end=start_end(12))
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax6'], start_end=start_end(numbers['B_B1_inversed']))
     adjust_yticks(axs[str(len(fgs.keys())) + '_ax6'])
 
-    ax5.set_axis_off()
+    if learning_config['data_source'] == 'simulation' and config.extended:
+        # inversed Setup A Scenario x: Test Bays B1,F1,F2
+        axs[str(len(fgs.keys())) + '_ax5'].plot(X[numbers['A_B1_inversed']], data[numbers['A_B1_inversed']], 'tab:blue',
+                                                label=label(numbers['A_B1_inversed']))
+        axs[str(len(fgs.keys())) + '_ax5'].plot(X[numbers['A_F1_inversed']], data[numbers['A_F1_inversed']], 'tab:green',
+                                                label=label(numbers['A_F1_inversed']))
+        axs[str(len(fgs.keys())) + '_ax5'].plot(X[numbers['A_F2_inversed']], data[numbers['A_F2_inversed']], 'tab:orange',
+                                                label=label(numbers['A_F2_inversed']))
+        axs[str(len(fgs.keys())) + '_ax5'].set_title(list(measurements.keys())[numbers['A_B1_inversed']].split(': ')[0])
+        axs[str(len(fgs.keys())) + '_ax5'].legend()
+        adjust_xticks(axs[str(len(fgs.keys())) + '_ax5'], start_end=start_end(numbers['A_F2_inversed']))
+        adjust_yticks(axs[str(len(fgs.keys())) + '_ax5'])
+
+    else:
+        ax5.set_axis_off()
 
     #plt.show()
     return fgs, axs

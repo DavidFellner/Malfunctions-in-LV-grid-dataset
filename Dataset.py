@@ -243,7 +243,6 @@ class Combined_Dataset:
                                                                measurement[-2:] == name.split('_')[2] and
                                                                measurement.split(' ')[3] == name.split('_')[1] and
                                                                measurement.split(' ')[0] in self.classes]}
-
         measurements = {}
         for measurement in data:
             if measurement[-2:] == name.split('_')[2] and measurement.split(' ')[3] == name.split('_')[1] and measurement.split(' ')[0] in self.classes:
@@ -264,7 +263,7 @@ class Combined_Dataset:
 
     def dataset_info(self):
         print(
-            f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created')
+            f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created (if only 2 classes inversed is called wrong)')
 
     def label(self):
 

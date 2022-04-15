@@ -48,8 +48,9 @@ add_data = True  # raw_data_available = False has to be set for this! set add_da
 #dataset_available = True  # set to False to recreate instances from raw data
 detection_methods = True
 deeplearning = False
-plot_data = False
+plot_data = True
 test_bays = ['B1', 'F1', 'F2']
+extended = False #also add inversed curve to Setup A simulations
 save_figures = True # save figures of data
 scenario = 14  # 1 to 15 as there is 15 scenarios (profiles)
 plot_all = True # whether to plot all scenarios
@@ -72,8 +73,17 @@ else:
     variables = plotting_variables
 sampling_step_size_in_seconds = None  # None or 0 to use all data, 1, 20 to sample once every n seconds ....
 
-setups = {'Setup_A_F2_data': ['correct', 'wrong'], 'Setup_B_F2_data1_3c': ['correct', 'wrong', 'inversed'],
-          'Setup_B_F2_data2_2c': ['correct', 'wrong'], 'Setup_B_F2_data3_2c': ['correct', 'inversed']}
+if extended:
+    setups = {'Setup_A_F2_data1_3c': ['correct', 'wrong', 'inversed'],
+              'Setup_A_F2_data2_2c': ['correct', 'wrong'],
+              'Setup_A_F2_data3_2c': ['correct', 'inversed'],
+              'Setup_B_F2_data1_3c': ['correct', 'wrong', 'inversed'],
+              'Setup_B_F2_data2_2c': ['correct', 'wrong'],
+              'Setup_B_F2_data3_2c': ['correct', 'inversed']}
+else:
+    setups = {'Setup_A_F2_data': ['correct', 'wrong'], 'Setup_B_F2_data1_3c': ['correct', 'wrong', 'inversed'],
+              'Setup_B_F2_data2_2c': ['correct', 'wrong'], 'Setup_B_F2_data3_2c': ['correct', 'inversed']}
+
 
 # additional settings : necessary here after?
 sample_length = 7 * 96  # 96 datapoints per day

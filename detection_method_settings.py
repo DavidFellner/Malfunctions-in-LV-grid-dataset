@@ -16,6 +16,26 @@ measurements = {'measurements correct control Setup A':
                      'Meas_98', 'Meas_99', 'Meas_100', 'Meas_101', 'Meas_102', 'Meas_103', 'Meas_104'],
                 }
 
+measurements_extended = {'measurements correct control Setup A':
+                        ['Meas_34', 'Meas_35', 'Meas_36', 'Meas_37', 'Meas_38', 'Meas_40', 'Meas_42', 'Meas_43',
+                         'Meas_44', 'Meas_45', 'Meas_46', 'Meas_48', 'Meas_50', 'Meas_51', 'Meas_53'],
+                    'measurements wrong control Setup A':
+                        ['Meas_9', 'Meas_10', 'Meas_11', 'Meas_16', 'Meas_17', 'Meas_18', 'Meas_19', 'Meas_20',
+                         'Meas_22', 'Meas_25', 'Meas_26', 'Meas_28', 'Meas_29', 'Meas_30', 'Meas_33'],
+                    'measurements inversed control Setup A':
+                             ['Meas_x', 'Meas_x', 'Meas_x', 'Meas_x', 'Meas_x', 'Meas_x', 'Meas_x', 'Meas_x',
+                              'Meas_x', 'Meas_x', 'Meas_x', 'Meas_x', 'Meas_x', 'Meas_x', 'Meas_x'],
+                    'measurements correct control Setup B':
+                        ['Meas_56', 'Meas_57', 'Meas_58', 'Meas_59', 'Meas_60', 'Meas_61', 'Meas_62', 'Meas_63',
+                         'Meas_64', 'Meas_65', 'Meas_66', 'Meas_67', 'Meas_68', 'Meas_69', 'Meas_70'],
+                    'measurements wrong control Setup B':
+                        ['Meas_71', 'Meas_72', 'Meas_73', 'Meas_74', 'Meas_75', 'Meas_76', 'Meas_81', 'Meas_82',
+                         'Meas_83', 'Meas_84', 'Meas_85', 'Meas_86', 'Meas_87', 'Meas_88', 'Meas_89'],
+                    'measurements inversed control Setup B':
+                        ['Meas_90', 'Meas_91', 'Meas_92', 'Meas_93', 'Meas_94', 'Meas_95', 'Meas_96', 'Meas_97',
+                         'Meas_98', 'Meas_99', 'Meas_100', 'Meas_101', 'Meas_102', 'Meas_103', 'Meas_104'],
+                    }
+
 
 class Variables():
 
