@@ -87,6 +87,7 @@ class Transformer_detection:
                 extended = ''
             for fig in fgs_test_bay:
                 fgs_test_bay[fig].set_size_inches(12, 12, forward=True)
+                fgs_test_bay[fig].subplots_adjust(hspace=0.275, top=0.925)
                 fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
                                                        'scenario_' + fig + '_test_bay_' + learning_config[
                                                            'data_source'] + extended), dpi=fgs_test_bay[fig].dpi,
@@ -97,6 +98,7 @@ class Transformer_detection:
                                           bbox_inches='tight', format='pdf')
             for fig in fgs_case:
                 fgs_case[fig].set_size_inches(12, 12, forward=True)
+                fgs_case[fig].subplots_adjust(hspace=0.275, top=0.925)
                 fgs_case[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
                                                    'scenario_' + fig + '_case_' + learning_config['data_source'] + extended),
                                       dpi=fgs_case[fig].dpi, bbox_inches='tight')
