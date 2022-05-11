@@ -317,3 +317,13 @@ class Combined_Dataset:
         v.columns = v.columns.map(str)
 
         return v
+
+class Reduced_Combined_Dataset:
+
+    def __init__(self, X, y):
+
+        self.X = X
+        self.y = y
+
+        pca = PCA(n_components=0.99)
+        self.X = pca.fit_transform(self.X)

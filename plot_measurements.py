@@ -232,8 +232,8 @@ def  plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
 
     if config.note_avg_and_std:
         label = lambda x: list(measurements.keys())[x].split(': ')[1] + ' avg: ' + str(
-                                                format(mean(data[y]), ".3f")) + ' std: ' + str(
-                                                format(pstdev(data[y]), ".3f"))
+                                                format(mean(data[x]), ".3f")) + ' std: ' + str(
+                                                format(pstdev(data[x]), ".3f"))
     else:
         label = lambda x: list(measurements.keys())[x].split(': ')[1]
 

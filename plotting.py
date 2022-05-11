@@ -95,10 +95,34 @@ def plot_2D(y, x=None, labels=None, title=None, x_label=None, y_label=None, save
 
     return ax
 
+def plot_time_sweep():
+    path = os.path.join(config.models_folder, learning_config['classifier'])
+    file = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_training_time_sweep" + "_" + 'result.txt')
+    figure_name = os.path.join(path, learning_config["dataset"] + "_training_time_sweep")
+
+    f = open(file, 'r')
+    text = f.read()
+    F_scores = [float(i.split('\n')[0][:4]) for i in text.split('FScore: ')[1:]]
+    Precisions = [float(i.split('\n')[0][:5]) for i in text.split('Precision: ')[1:]]
+    Recalls = [float(i.split('\n')[0][:5]) for i in text.split('Recall: ')[1:]]
+    plot_2D([F_scores, Precisions, Recalls], x=list(range(1,learning_config['number of epochs']+1)), labels=['F-score', 'Precision', 'Recall'], x_label='Training time', y_label = 'Scores', save=True, figname=figure_name)
+
+
+def plot_hyp_para_tuning():
+    path = os.path.join(config.models_folder, learning_config['classifier'])
+    file = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_hyper_parameter_analysis_on_" + learning_config["hyperparameter tuning"][0] + "_" + 'result.txt')
+    figure_name = os.path.join(path, learning_config["dataset"] + "_hyper_parameter_analysis_on_" + learning_config["hyperparameter tuning"][0])
+
+    f = open(file, 'r')
+    text = f.read()
+    F_scores = [float(i.split('\n')[0][:4]) for i in text.split('FScore: ')[1:]]
+    Precisions = [float(i.split('\n')[0][:5]) for i in text.split('Precision: ')[1:]]
+    Recalls = [float(i.split('\n')[0][:5]) for i in text.split('Recall: ')[1:]]
+    plot_2D([F_scores, Precisions, Recalls], x=learning_config["hyperparameter tuning"][1], labels=['F-score', 'Precision', 'Recall'], x_label=learning_config["hyperparameter tuning"][0] + ' Values', y_label = 'Scores', save=True, figname=figure_name)
 
 def plot_grid_search():
     path = os.path.join(config.models_folder, learning_config['classifier'])
-    file = os.path.join(path, learning_config["dataset"] + "_gridsearch_on_" + learning_config["grid search"][0]
+    file = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_gridsearch_on_" + learning_config["grid search"][0]
                                 + "_" + 'result.txt')
     figure_name = os.path.join(path, learning_config["dataset"] + "_gridsearch_on_" + learning_config["grid search"][0])
 

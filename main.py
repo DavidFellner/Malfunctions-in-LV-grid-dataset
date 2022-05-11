@@ -39,6 +39,8 @@ import importlib
 import os
 import matplotlib.pyplot as plt
 
+import transformer_detection
+import util
 from experiment_config import experiment_path, chosen_experiment
 
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
@@ -55,6 +57,7 @@ if not config.raw_data_available:
 from util import create_dataset
 from deeplearning import Deeplearning
 from transformer_detection import Transformer_detection
+import plotting
 
 
 def generate_deeplearning_raw_data():
@@ -123,8 +126,19 @@ if __name__ == '__main__':  # see config file for settings
     if config.deeplearning:
         if config.dataset_available is False:
             dataset = create_dataset()
-        deep_learning = Deeplearning(config, learning_config)
-        deep_learning.training_or_testing()
+        if config.detection_methods:
+            X, y = util.load_dataset()
+            util.detection_method_dl(transformer_detection.Transformer_detection, X, y)
+
+        else:
+            if learning_config["do hyperparameter sensitivity analysis"]:
+                runs = len(learning_config["hyperparameter tuning"][1])
+            else:
+                runs = 1
+            for i in range(runs):
+                deep_learning = Deeplearning(config, learning_config, i)
+                deep_learning.training_or_testing(i)
+            if learning_config["do hyperparameter sensitivity analysis"]: plotting.plot_hyp_para_tuning()
 
     elif config.detection_methods:
         detection = Transformer_detection(config, learning_config)
@@ -133,4 +147,3 @@ if __name__ == '__main__':  # see config file for settings
         if detection.approach == 'PCA+clf': detection.detection()
 
     plt.show()
-    a = 1

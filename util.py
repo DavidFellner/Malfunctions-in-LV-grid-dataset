@@ -1,4 +1,7 @@
 import os
+
+import Dataset
+import detection_method_settings
 from HDF5Dataset import HDF5Dataset
 from Dataset import Deep_learning_dataset, Raw_Dataset, PCA_Dataset, Combined_Dataset
 import plotting
@@ -9,6 +12,7 @@ from sklearn.model_selection import train_test_split
 import random
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import KFold, StratifiedKFold
 
 import importlib
 
@@ -34,7 +38,7 @@ def model_exists(full_path):
         return os.path.exists(os.path.join(full_path, learning_config["dataset"] + "_" + learning_config["type"] + "_" + 'model.pth'))
 
 
-def load_model(learning_config):
+def load_model(learning_config, run):
     path = os.path.join(config.models_folder, learning_config['classifier'])
     if learning_config['classifier'] == 'RNN':
         load_saved = model_exists(path)
@@ -58,16 +62,53 @@ def load_model(learning_config):
                             learning_config['Transformer model settings'][5])
     elif learning_config['classifier'] == 'RTransformer':
         load_saved = model_exists(path)
-        model = RT(learning_config['R-Transformer model settings'][0],
-                   learning_config['R-Transformer model settings'][1],
-                   learning_config['R-Transformer model settings'][2],
-                   learning_config['R-Transformer model settings'][3],
-                   learning_config['R-Transformer model settings'][4],
-                   learning_config['R-Transformer model settings'][5],
-                   learning_config['R-Transformer model settings'][6],
-                   learning_config['R-Transformer model settings'][7],
-                   learning_config['R-Transformer model settings'][8],
-                   learning_config['R-Transformer model settings'][9])
+        if learning_config["do hyperparameter sensitivity analysis"]:
+            if learning_config["hyperparameter tuning"][0] == 'n_layers':
+                model = RT(learning_config['R-Transformer model settings'][0],
+                           learning_config['R-Transformer model settings'][1],
+                           learning_config['R-Transformer model settings'][2],
+                           learning_config['R-Transformer model settings'][3],
+                           learning_config['R-Transformer model settings'][4],
+                           learning_config['R-Transformer model settings'][5],
+                           learning_config["hyperparameter tuning"][1][run],
+                           learning_config['R-Transformer model settings'][7],
+                           learning_config['R-Transformer model settings'][8],
+                           learning_config['R-Transformer model settings'][9])
+            if learning_config["hyperparameter tuning"][0] == 'key_size':
+                model = RT(learning_config['R-Transformer model settings'][0],
+                           learning_config['R-Transformer model settings'][1],
+                           learning_config['R-Transformer model settings'][2],
+                           learning_config['R-Transformer model settings'][3],
+                           learning_config['R-Transformer model settings'][4],
+                           learning_config["hyperparameter tuning"][1][run],
+                           learning_config['R-Transformer model settings'][6],
+                           learning_config['R-Transformer model settings'][7],
+                           learning_config['R-Transformer model settings'][8],
+                           learning_config['R-Transformer model settings'][9])
+            if learning_config["hyperparameter tuning"][0] == 'n_heads':
+                model = RT(learning_config['R-Transformer model settings'][0],
+                           learning_config['R-Transformer model settings'][1],
+                           learning_config['R-Transformer model settings'][2],
+                           learning_config["hyperparameter tuning"][1][run],
+                           learning_config['R-Transformer model settings'][4],
+                           learning_config['R-Transformer model settings'][5],
+                           learning_config['R-Transformer model settings'][6],
+                           learning_config["hyperparameter tuning"][1][run],
+                           learning_config['R-Transformer model settings'][8],
+                           learning_config['R-Transformer model settings'][9])
+            else:
+                print('paramerter not defined for hyper parameter optimization!')
+        else:
+            model = RT(learning_config['R-Transformer model settings'][0],
+                       learning_config['R-Transformer model settings'][1],
+                       learning_config['R-Transformer model settings'][2],
+                       learning_config['R-Transformer model settings'][3],
+                       learning_config['R-Transformer model settings'][4],
+                       learning_config['R-Transformer model settings'][5],
+                       learning_config['R-Transformer model settings'][6],
+                       learning_config['R-Transformer model settings'][7],
+                       learning_config['R-Transformer model settings'][8],
+                       learning_config['R-Transformer model settings'][9])
     else:
         print('Invalid model type entered!')
         return None
@@ -98,7 +139,7 @@ def load_model(learning_config):
     return model, None, None
 
 
-def export_model(model, learning_config, grid_search_run):
+def export_model(model, learning_config, grid_search_run, hyper_para):
     dummy_input = torch.randn(1, 672, 1)
     out = model(dummy_input)
     input_names = ["input"]  # + ["learned_%d" % i for i in range(3)]
@@ -111,17 +152,23 @@ def export_model(model, learning_config, grid_search_run):
                       input_names=input_names, output_names=output_names)
 
 
-def save_model(model, epoch, loss, grid_search_run):
+def save_model(model, epoch, loss, grid_search_run, hyp_search_run):
     path = os.path.join(config.models_folder, learning_config['classifier'])
 
     if not os.path.exists(path):
         os.makedirs(path)
 
+    base_name = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"])
+
     if learning_config["do grid search"]:
-        name = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_gridsearch_on_" + learning_config["grid search"][0] +
-                            "_value_" + str(learning_config["grid search"][1][grid_search_run]) + "_" + 'model.pth')
-    else:
-        name = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_" + 'model.pth')
+        grid_search = "_gridsearch_on_" + learning_config["grid search"][0] + "_value_" + str(learning_config["grid search"][1][grid_search_run])
+    else: grid_search = ''
+    if learning_config["do hyperparameter sensitivity analysis"]:
+        hyper_para = "_hyper_parameter_analysis_on_" + learning_config["hyperparameter tuning"][0] + "_value_" + str(learning_config["hyperparameter tuning"][1][hyp_search_run])
+    else: hyper_para = ''
+
+    name = base_name + grid_search + hyper_para + '_model.pth'
+
     try:
         torch.save({
             'epoch': epoch,
@@ -141,26 +188,46 @@ def save_model(model, epoch, loss, grid_search_run):
     # torch.save(model.optimizer.state_dict(), path + ".optimizer")
 
 
-def save_result(score, grid_search_run):
+def save_result(score, grid_search_run, hyp_search_run, epoch):
     path = os.path.join(config.models_folder, learning_config['classifier'])
 
     if not os.path.exists(path):
         os.makedirs(path)
 
+    base_name = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"])
+
+    os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_gridsearch_on_" +
+                 learning_config["grid search"][0]
+                 + "_" + 'result.txt')
+
     if learning_config["do grid search"]:
-        name = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_gridsearch_on_" + learning_config["grid search"][0]
-                            + "_" + 'result.txt')
+        grid_search = "_gridsearch_on_" + learning_config["grid search"][0]
     else:
-        name = os.path.join(path, learning_config["dataset"] + "_" + learning_config["type"] + "_" + 'result.txt')
+        grid_search = ''
+    if learning_config["do hyperparameter sensitivity analysis"]:
+        hyper_para = "_hyper_parameter_analysis_on_" + learning_config["hyperparameter tuning"][0]
+    else:
+        hyper_para = ''
+    if learning_config["training time sweep"]:
+        training_time_sweep = "_training_time_sweep"
+    else:
+        training_time_sweep = ''
+
+    name = base_name + grid_search + hyper_para + training_time_sweep + '_result.txt'
 
     f = open(name, "a")
-    if grid_search_run == 0:
+    if grid_search_run == 0 or hyp_search_run == 0 or epoch == 0 :
         f.write("Configuration:\n")
         for key, value in learning_config.items():
             f.write("\n" + key + ' : ' + str(value))
     if learning_config["do grid search"]:
         f.write("\nGrid search on: " + learning_config["grid search"][0] +
                 "; value:" + str(learning_config["grid search"][1][grid_search_run]))
+    if learning_config["do hyperparameter sensitivity analysis"]:
+        f.write("\nHyperparameter sensitivity analysis on: " + learning_config["hyperparameter tuning"][0] +
+                "; value:" + str(learning_config["hyperparameter tuning"][1][hyp_search_run]))
+    if learning_config["training time sweep"]:
+        f.write("\nTraining time seep; epoch:" + str(epoch + 1))
     f.write("\n########## Metrics ##########")
     f.write(
         "Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\n".format(score[0],
@@ -225,8 +292,66 @@ def load_data(type):
 
     return data_loader
 
+def load_dataset():
 
-def load_dataset(dataset=None):
+    X = None
+    Y = None
+
+    for type in ['train', 'test']:
+        path = os.path.join(config.datasets_folder, learning_config['dataset'], type)
+        file = learning_config['dataset'] + '_' + learning_config['type'] + '_' + type + '.hdf5'
+
+
+        dataset = HDF5Dataset(os.path.join(path, file), type)
+
+        if X is None and Y is None:
+            X = dataset[:][0]
+            y = dataset[:][1]
+        else:
+            np.concatenate((X, dataset[:][0]), axis=0)
+            np.concatenate((y, dataset[:][1]), axis=0)
+
+    return X, y
+
+def detection_method_dl(module, X, y):
+
+    classifier_combos = detection_method_settings.Classifier_Combos().classifier_combos['general_combined_dataset']
+    data = Dataset.Reduced_Combined_Dataset(X,y)
+
+    for classifiers in classifier_combos:
+        scores = cross_val_ml_dl(module, data, classifiers_and_parameters=classifiers)
+        print(f"\n########## Metrics for traditional ML classifier on deep learnign data using {[(i, classifiers[i]) for i in classifiers.keys()]} classifiers with classes correct and wrong ##########")
+        for score in scores:
+            print("%s: %0.2f (+/- %0.2f)" % (
+                score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
+            print('Note: A score of 0.5 means guessing in this case!')
+
+
+def cross_val_ml_dl(module, data, classifiers_and_parameters=None):
+
+    if classifiers_and_parameters is None:
+        classifiers_and_parameters = {'SVM': {'poly': [8]}, 'NuSVM': {'linear': [9], 'poly': [11], 'rbf': [2]},
+                                      'kNN': {3: [18, 'uniform']}}
+    X = data.X
+    y = data.y
+    kf = KFold(n_splits=3, shuffle=True)
+
+    scores = []
+
+    for train_index, test_index in kf.split(X, y):
+        # print('Split #%d' % (len(scores) + 1))
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = np.array(y)[train_index], np.array(y)[test_index]
+
+        y_pred, y_test = module.assembly_learner_combined_dataset(module, [X_train, X_test, y_train.ravel(), y_test.ravel()], classifiers_and_parameters, cross_val=True)
+        scores.append(module.scoring(module, y_test, y_pred))
+
+    scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores],
+                   'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores]}
+
+    return scores_dict
+
+"""def load_dataset(dataset=None):
     '''
         deprecated
     '''
@@ -248,7 +373,7 @@ def load_dataset(dataset=None):
 
     X = dataset.get_x()
     y = dataset.get_y()
-    return dataset, X, y
+    return dataset, X, y"""
 
 
 def preprocess(X_train, X_test):

@@ -55,9 +55,11 @@ learning_config = {
     "save_model": True,  # saves state dict and optimizer for later use/further training
     "save_result": True,  # saves evaluation result in text file
     "export_model": False,  # for an application
-    "do grid search": True,  # grid search for hyperparameter optimization
-    "grid search": ("calibration rate", [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
-    # hyperparameter and values to be tried out as tuple  (("calibration rate", [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]))
+    "do grid search": False,  # grid search for learning parameters optimization
+    "grid search": ("calibration rate", [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]), # hyperparameter and values to be tried out as tuple  (("calibration rate", [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]))
+    "do hyperparameter sensitivity analysis": False,  # grid search for hyperparameter optimization
+    "hyperparameter tuning" :  ("n_heads", [2,4,10]),#("key_size", [1,2,3,4,5,6,7,8,9,10]), #("n_layers", [4, 8, 12, 16])
+    "training time sweep" : True, #use to evaluate influence of training time (records score for after each epoch)
 }
 
 #########################################################################
@@ -66,6 +68,8 @@ learning_config = {
 
 # Dataset settings
 raw_data_set_name = 'malfunctions_in_LV_grid_dataset'  # 'malfunctions_in_LV_grid_dataset', 'PV_noPV', dummy
+detection_methods = True       #to apply classical ML methods
+deeplearning = True
 type = 'PV'  # PV, EV, (PV, EV)
 dataset_available = True  # set to False to recreate instances from raw data
 train_test_split = 0.2  # if int, used as number of testing examples; if float, used as share of data

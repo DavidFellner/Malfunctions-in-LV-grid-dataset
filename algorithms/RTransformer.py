@@ -287,7 +287,7 @@ class RT(nn.Module):
         models_and_val_losses = []
         pause = 0                                                      # for early stopping
 
-        if prev_epoch is None or grid_search_parameter:
+        if prev_epoch is None or grid_search_parameter or config.learning_config['do hyperparameter sensitivity analysis']:
             prev_epoch = 1
         if grid_search_parameter is not None:
             configuration[configuration["grid search"][0]] = grid_search_parameter
