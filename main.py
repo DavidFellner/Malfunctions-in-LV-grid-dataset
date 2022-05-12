@@ -39,7 +39,6 @@ import importlib
 import os
 import matplotlib.pyplot as plt
 
-import transformer_detection
 import util
 from experiment_config import experiment_path, chosen_experiment
 
@@ -128,7 +127,7 @@ if __name__ == '__main__':  # see config file for settings
             dataset = create_dataset()
         if config.detection_methods:
             X, y = util.load_dataset()
-            util.detection_method_dl(transformer_detection.Transformer_detection, X, y)
+            util.detection_method_dl(Transformer_detection, X, y)
 
         else:
             if learning_config["do hyperparameter sensitivity analysis"]:

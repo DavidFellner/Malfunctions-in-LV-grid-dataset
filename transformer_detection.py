@@ -17,10 +17,13 @@ config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 learning_config = config.learning_config
 
-if config.extended and learning_config['data_source'] == 'simulation':
-    from detection_method_settings import measurements_extended as measurements
-else:
-    from detection_method_settings import measurements as measurements
+try:
+    if config.extended and learning_config['data_source'] == 'simulation':
+        from detection_method_settings import measurements_extended as measurements
+    else:
+        from detection_method_settings import measurements as measurements
+except AttributeError:
+    pass
 
 import os
 import pandas as pd
