@@ -92,6 +92,7 @@ def plot_2D(y, x=None, labels=None, title=None, x_label=None, y_label=None, save
         plt.ylabel(y_label)
     if save:
         plt.savefig(figname + '.png')
+        plt.savefig(figname + '.pdf', dpi=fig.dpi, bbox_inches='tight', format='pdf')
 
     return ax
 
@@ -118,7 +119,7 @@ def plot_hyp_para_tuning():
     F_scores = [float(i.split('\n')[0][:4]) for i in text.split('FScore: ')[1:]]
     Precisions = [float(i.split('\n')[0][:5]) for i in text.split('Precision: ')[1:]]
     Recalls = [float(i.split('\n')[0][:5]) for i in text.split('Recall: ')[1:]]
-    plot_2D([F_scores, Precisions, Recalls], x=learning_config["hyperparameter tuning"][1], labels=['F-score', 'Precision', 'Recall'], x_label=learning_config["hyperparameter tuning"][0] + ' Values', y_label = 'Scores', save=True, figname=figure_name)
+    plot_2D([F_scores, Precisions, Recalls], x=learning_config["hyperparameter tuning"][1], labels=['F-score', 'Precision', 'Recall'], x_label=learning_config["hyperparameter tuning"][0] + ' Values', y_label = 'Scores', save=True, figname=figure_name) #'Number of RNN Attention Blocks Values' #learning_config["hyperparameter tuning"][0] +
 
 def plot_grid_search():
     path = os.path.join(config.models_folder, learning_config['classifier'])
@@ -131,4 +132,4 @@ def plot_grid_search():
     F_scores = [float(i.split('\n')[0][:4]) for i in text.split('FScore: ')[1:]]
     Precisions = [float(i.split('\n')[0][:5]) for i in text.split('Precision: ')[1:]]
     Recalls = [float(i.split('\n')[0][:5]) for i in text.split('Recall: ')[1:]]
-    plot_2D([F_scores, Precisions, Recalls], x=learning_config["grid search"][1], labels=['F-score', 'Precision', 'Recall'], x_label=learning_config["grid search"][0] + ' Values', y_label = 'Scores', save=True, figname=figure_name)
+    plot_2D([F_scores, Precisions, Recalls], x=learning_config["grid search"][1], labels=['F-score', 'Precision', 'Recall'], x_label=learning_config["grid search"][0] + ' Values', y_label = 'Scores', save=True, figname=figure_name) #learning_config["grid search"][0] + ' Values'

@@ -96,6 +96,28 @@ def load_model(learning_config, run):
                            learning_config["hyperparameter tuning"][1][run],
                            learning_config['R-Transformer model settings'][8],
                            learning_config['R-Transformer model settings'][9])
+            if learning_config["hyperparameter tuning"][0] == 'heads':
+                model = RT(learning_config['R-Transformer model settings'][0],
+                           learning_config['R-Transformer model settings'][1],
+                           learning_config['R-Transformer model settings'][2],
+                           learning_config["hyperparameter tuning"][1][run],
+                           learning_config['R-Transformer model settings'][4],
+                           learning_config['R-Transformer model settings'][5],
+                           learning_config['R-Transformer model settings'][6],
+                           learning_config['R-Transformer model settings'][7],
+                           learning_config['R-Transformer model settings'][8],
+                           learning_config['R-Transformer model settings'][9])
+            if learning_config["hyperparameter tuning"][0] == 'RNN_heads':
+                model = RT(learning_config['R-Transformer model settings'][0],
+                           learning_config['R-Transformer model settings'][1],
+                           learning_config['R-Transformer model settings'][2],
+                           learning_config['R-Transformer model settings'][3],
+                           learning_config['R-Transformer model settings'][4],
+                           learning_config['R-Transformer model settings'][5],
+                           learning_config['R-Transformer model settings'][6],
+                           learning_config["hyperparameter tuning"][1][run],
+                           learning_config['R-Transformer model settings'][8],
+                           learning_config['R-Transformer model settings'][9])
             else:
                 print('paramerter not defined for hyper parameter optimization!')
         else:
