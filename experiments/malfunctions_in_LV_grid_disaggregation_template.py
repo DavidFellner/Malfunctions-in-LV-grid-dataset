@@ -47,8 +47,9 @@ learning_config = {
 raw_data_available = True  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True  # raw_data_available = False has to be set for this! set add_data = True to add more data to raw data or fill gaps i scenarios that are not done yet;
 #dataset_available = True  # set to False to recreate instances from raw data
-detection_methods = True
+detection_methods = False
 deeplearning = False
+disaggregation = True
 plot_data = True
 use_case = 'DSM' # 'DSM', 'q_control'
 if use_case == 'DSM':

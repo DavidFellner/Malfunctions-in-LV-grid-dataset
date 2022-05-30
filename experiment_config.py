@@ -41,7 +41,7 @@ import sys
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_c_vs_w_vs_i_simulation'
 
 #Disaggregation:
-chosen_experiment = 'malfunctions_in_LV_grid_detection_disaggregation_template'
+chosen_experiment = 'malfunctions_in_LV_grid_disaggregation_template'
 
 
 

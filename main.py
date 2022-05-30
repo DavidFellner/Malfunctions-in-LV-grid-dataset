@@ -57,6 +57,7 @@ from util import create_dataset
 from deeplearning import Deeplearning
 from transformer_detection import Transformer_detection
 import plotting
+from disaggregation_module import Disaggregation
 
 
 def generate_deeplearning_raw_data():
@@ -149,6 +150,6 @@ if __name__ == '__main__':  # see config file for settings
         if detection.approach == 'PCA+clf': detection.detection()
 
     elif config.disaggregation:
-        a = 1
+        disaggregation = Disaggregation(config, learning_config)
 
     plt.show()
