@@ -196,24 +196,34 @@ class Raw_Dataset:
                            measurement[-2:] == self.name.split('_')[2] and measurement.split(' ')[3] == self.name.split('_')[
                                1] and measurement.split(' ')[0] in self.classes])
         self.y = []
-        self.labels = {'correct': 0, 'wrong': 0, 'inversed': 0}
-        for measurement in self.X:
-            if measurement.name[-2:] == self.bay and measurement.name.split(' ')[3] == self.Setup:
-                if measurement.name.split(' ')[0] in self.classes and self.labelling == 'classification':
-                    self.y = self.y + [self.classes.index(measurement.name.split(' ')[0])]
-                    self.labels['correct'] = self.y.count(0)
-                    self.labels['wrong'] = self.y.count(1)
-                    self.labels['inversed'] = self.y.count(2)
-                elif self.labelling == 'detection':
-                    if self.data[measurement].name.split(' ')[0] == 'correct':
-                        self.y = self.y + [0]
-                        self.labels['correct'] = self.labels['correct'] + 1
-                    elif self.data[measurement].name.split(' ')[0] == 'wrong':
-                        self.y = self.y + [1]
-                        self.labels['wrong'] = self.labels['wrong'] + 1
-                    elif self.data[measurement].name.split(' ')[0] == 'inversed':
-                        self.y = self.y + [1]
-                        self.labels['wrong'] = self.labels['wrong'] + 1
+        if config.use_case == 'DSM':
+            self.labels = {'no DSM': 0, 'DSM': 0}
+            for measurement in self.X:
+                if self.data[measurement].name.split(' ')[0] == 'DSM':
+                    self.y = self.y + [0]
+                    self.labels['DSM'] = self.labels['DSM'] + 1
+                elif self.data[measurement].name.split(' ')[0] == 'no':
+                    self.y = self.y + [1]
+                    self.labels['no DSM'] = self.labels['no DSM'] + 1
+        else:
+            self.labels = {'correct': 0, 'wrong': 0, 'inversed': 0}
+            for measurement in self.X:
+                if measurement.name[-2:] == self.bay and measurement.name.split(' ')[3] == self.Setup:
+                    if measurement.name.split(' ')[0] in self.classes and self.labelling == 'classification':
+                        self.y = self.y + [self.classes.index(measurement.name.split(' ')[0])]
+                        self.labels['correct'] = self.y.count(0)
+                        self.labels['wrong'] = self.y.count(1)
+                        self.labels['inversed'] = self.y.count(2)
+                    elif self.labelling == 'detection':
+                        if self.data[measurement].name.split(' ')[0] == 'correct':
+                            self.y = self.y + [0]
+                            self.labels['correct'] = self.labels['correct'] + 1
+                        elif self.data[measurement].name.split(' ')[0] == 'wrong':
+                            self.y = self.y + [1]
+                            self.labels['wrong'] = self.labels['wrong'] + 1
+                        elif self.data[measurement].name.split(' ')[0] == 'inversed':
+                            self.y = self.y + [1]
+                            self.labels['wrong'] = self.labels['wrong'] + 1
         self.y = np.array(self.y)
 
     def dataset_info(self):
@@ -239,19 +249,35 @@ class Combined_Dataset:
         else:
             self.classes = ['correct', 'wrong']
 
-        self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in [data[measurement] for measurement in data if
+        if config.use_case == 'DSM':
+            self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in
+                         [data[measurement] for measurement in data if
+                          measurement[-2:] == name.split('_')[2] and
+                          (measurement.split(' ')[2] == name.split('_')[1] or measurement.split(' ')[3] == name.split('_')[1])]}
+
+            measurements = {}
+            for measurement in data:
+                if measurement[-2:] == name.split('_')[2] and (measurement.split(' ')[2] == name.split('_')[1] or measurement.split(' ')[3] == name.split('_')[1]):
+                    reduced_measurement = pd.DataFrame(index=data[measurement].data.index,
+                                                       data=data[measurement].data[variables].values,
+                                                       columns=variables)
+                    measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, reduced_measurement)
+        else:
+            self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in [data[measurement] for measurement in data if
                                                                measurement[-2:] == name.split('_')[2] and
                                                                measurement.split(' ')[3] == name.split('_')[1] and
                                                                measurement.split(' ')[0] in self.classes]}
-        measurements = {}
-        for measurement in data:
-            if measurement[-2:] == name.split('_')[2] and measurement.split(' ')[3] == name.split('_')[1] and measurement.split(' ')[0] in self.classes:
-                reduced_measurement = pd.DataFrame(index=data[measurement].data.index,
-                                                                     data=data[measurement].data[variables].values,
-                                                                     columns=variables)
-                measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, reduced_measurement)
+            measurements = {}
+            for measurement in data:
+                if measurement[-2:] == name.split('_')[2] and measurement.split(' ')[3] == name.split('_')[1] and measurement.split(' ')[0] in self.classes:
+                    reduced_measurement = pd.DataFrame(index=data[measurement].data.index,
+                                                                         data=data[measurement].data[variables].values,
+                                                                         columns=variables)
+                    measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, reduced_measurement)
 
-        self.combined_data = pd.DataFrame(index=[self.data[measurement].name for measurement in self.data], data=[measurements[measurement].values[0] for measurement in measurements], columns=measurements[list(measurements.keys())[0]].columns)
+        self.combined_data = pd.DataFrame(index=[self.data[measurement].name for measurement in self.data],
+                                          data=[measurements[measurement].values[0] for measurement in measurements],
+                                          columns=measurements[list(measurements.keys())[0]].columns).replace(np.nan, 0)    #NaN values filled up with 0; NaN can occur when a measurement is shorter than others
 
 
     def create_dataset(self):
@@ -262,8 +288,12 @@ class Combined_Dataset:
 
 
     def dataset_info(self):
-        print(
-            f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created (if only 2 classes inversed is called wrong)')
+        if config.use_case == 'DSM':
+            print(
+                f'Dataset containing {len(self.X)} samples, {self.labels["DSM"]} of which implementign DSM and {self.labels["no DSM"]} of which not implementing DSM')
+        else:
+            print(
+                f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created (if only 2 classes inversed is called wrong)')
 
     def label(self):
 
@@ -273,24 +303,34 @@ class Combined_Dataset:
                            measurement[-2:] == self.name.split('_')[2] and measurement.split(' ')[3] == self.name.split('_')[
                                1] and measurement.split(' ')[0] in self.classes])"""
         self.y = []
-        self.labels = {'correct': 0, 'wrong': 0, 'inversed': 0}
-        for measurement in self.data:
-            if measurement[-2:] == self.bay and measurement.split(' ')[3] == self.setup:
-                if measurement.split(' ')[0] in self.classes and self.labelling == 'classification':
-                    self.y = self.y + [self.classes.index(measurement.split(' ')[0])]
-                    self.labels['correct'] = self.y.count(0)
-                    self.labels['wrong'] = self.y.count(1)
-                    self.labels['inversed'] = self.y.count(2)
-                elif self.labelling == 'detection':
-                    if self.data[measurement].name.split(' ')[0] == 'correct':
-                        self.y = self.y + [0]
-                        self.labels['correct'] = self.labels['correct'] + 1
-                    elif self.data[measurement].name.split(' ')[0] == 'wrong':
-                        self.y = self.y + [1]
-                        self.labels['wrong'] = self.labels['wrong'] + 1
-                    elif self.data[measurement].name.split(' ')[0] == 'inversed':
-                        self.y = self.y + [1]
-                        self.labels['wrong'] = self.labels['wrong'] + 1
+        if config.use_case == 'DSM':
+            self.labels = {'no DSM': 0, 'DSM': 0}
+            for measurement in self.data:
+                if self.data[measurement].name.split(' ')[0] == 'DSM':
+                    self.y = self.y + [0]
+                    self.labels['DSM'] = self.labels['DSM'] + 1
+                elif self.data[measurement].name.split(' ')[0] == 'no':
+                    self.y = self.y + [1]
+                    self.labels['no DSM'] = self.labels['no DSM'] + 1
+        else:
+            self.labels = {'correct': 0, 'wrong': 0, 'inversed': 0}
+            for measurement in self.data:
+                if measurement[-2:] == self.bay and measurement.split(' ')[3] == self.setup:
+                    if measurement.split(' ')[0] in self.classes and self.labelling == 'classification':
+                        self.y = self.y + [self.classes.index(measurement.split(' ')[0])]
+                        self.labels['correct'] = self.y.count(0)
+                        self.labels['wrong'] = self.y.count(1)
+                        self.labels['inversed'] = self.y.count(2)
+                    elif self.labelling == 'detection':
+                        if self.data[measurement].name.split(' ')[0] == 'correct':
+                            self.y = self.y + [0]
+                            self.labels['correct'] = self.labels['correct'] + 1
+                        elif self.data[measurement].name.split(' ')[0] == 'wrong':
+                            self.y = self.y + [1]
+                            self.labels['wrong'] = self.labels['wrong'] + 1
+                        elif self.data[measurement].name.split(' ')[0] == 'inversed':
+                            self.y = self.y + [1]
+                            self.labels['wrong'] = self.labels['wrong'] + 1
         self.y = np.array(self.y)
 
         return self.X, self.y

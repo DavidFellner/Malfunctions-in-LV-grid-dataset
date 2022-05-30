@@ -18,10 +18,14 @@ spec.loader.exec_module(config)
 learning_config = config.learning_config
 
 try:
-    if config.extended and learning_config['data_source'] == 'simulation':
-        from detection_method_settings import measurements_extended as measurements
-    else:
-        from detection_method_settings import measurements as measurements
+    try:
+        if config.use_case == 'DSM':
+            from detection_method_settings import measurements_DSM as measurements
+    except AttributeError:
+        if config.extended and learning_config['data_source'] == 'simulation':
+            from detection_method_settings import measurements_extended as measurements
+        else:
+            from detection_method_settings import measurements as measurements
 except AttributeError:
     pass
 
@@ -34,7 +38,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import KFold, StratifiedKFold
-import matplotlib.pyplot as plt
 
 
 class Transformer_detection:
@@ -471,7 +474,9 @@ class Transformer_detection:
             uses principal components instead of explained variances!
             '''
             data = self.load_data(sampling=self.sampling_step_size_in_seconds)
-            data = create_dataset(type='combined', data=data, variables=self.variables['F2'][1], name=self.setup_chosen,
+            if config.use_case == 'DSM': trafo_point = 'B2'
+            else: trafo_point = 'F2'
+            data = create_dataset(type='combined', data=data, variables=self.variables[trafo_point][1], name=self.setup_chosen,
                                   classes=self.setups[self.setup_chosen],
                                   bay=self.setup_chosen.split('_')[2], Setup=self.setup_chosen.split('_')[1],
                                   labelling=self.mode)

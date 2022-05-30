@@ -1,6 +1,14 @@
 import os
 import pandas as pd
 
+import importlib
+from experiment_config import experiment_path, chosen_experiment
+
+spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+learning_config = config.learning_config
+
 
 def extract_data(test_bay, path, skip_existing=False):
 
@@ -43,8 +51,8 @@ def extract_data(test_bay, path, skip_existing=False):
 if __name__ == '__main__':
 
     data = {}
-    data_path = os.path.join(os.getcwd(), 'ERIGrid-Test-Results-26-11-2021-phase1_final')
-    test_bays = ['B1', 'F1', 'F2']
+    data_path = config.data_path #os.path.join(os.getcwd(), 'ERIGrid-Test-Results-26-11-2021-phase1_final')
+    test_bays = config.test_bays #['B1', 'F1', 'F2']
 
     for test_bay in test_bays:
         count = extract_data(test_bay, data_path, skip_existing=True)

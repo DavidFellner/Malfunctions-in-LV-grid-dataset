@@ -111,6 +111,9 @@ def generate_detectionmethods_raw_data():
 
 if __name__ == '__main__':  # see config file for settings
 
+    #if learning_config["do hyperparameter sensitivity analysis"]: plotting.plot_hyp_para_tuning()
+    #if learning_config["do grid search"]: plotting.plot_grid_search()
+
     if config.raw_data_available is False:
         if config.deeplearning:
             generate_deeplearning_raw_data()
@@ -141,8 +144,11 @@ if __name__ == '__main__':  # see config file for settings
 
     elif config.detection_methods:
         detection = Transformer_detection(config, learning_config)
-        if detection.plot_data: detection.plotting_data()
+        if detection.plot_data and config.use_case != 'DSM': detection.plotting_data()
         if detection.approach == 'clustering': detection.clustering()
         if detection.approach == 'PCA+clf': detection.detection()
+
+    elif config.disaggregation:
+        a = 1
 
     plt.show()

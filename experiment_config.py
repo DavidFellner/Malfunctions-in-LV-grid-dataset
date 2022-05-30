@@ -28,7 +28,7 @@ import sys
 #chosen_experiment = 'PV_noPV_1day_1k'
 
 #Transformer Detection:
-chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_template'
+#chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_template'
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_A_c_vs_w_real_world'
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_A_c_vs_w_simulation'
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_c_vs_anomal_real_world'
@@ -39,6 +39,9 @@ chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_template'
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_c_vs_w_simulation'
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_c_vs_w_vs_i_real_world'
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_c_vs_w_vs_i_simulation'
+
+#Disaggregation:
+chosen_experiment = 'malfunctions_in_LV_grid_detection_disaggregation_template'
 
 
 
