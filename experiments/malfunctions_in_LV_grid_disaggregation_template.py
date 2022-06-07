@@ -69,9 +69,18 @@ plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
 if learning_config['data_source'] == 'real_world':
     if use_case == 'DSM':
         variables = {'B2': [v.variables_B2, v.pca_variables_B2]}
+        disaggregation_variables = {'A1': v.disaggregation_variables_A1,
+                                   'B1': v.disaggregation_variables_B1,
+                                   'B2': v.disaggregation_variables_B2,
+                                   'C1': v.disaggregation_variables_C1}
+
     else:
         variables = {'B1': [v.variables_B1, v.pca_variables_B1], 'F1': [v.variables_F1, v.pca_variables_F1],
                      'F2': [v.variables_F2, v.pca_variables_F2]}
+        disaggregation_variables = {'B1': v.disaggregation_variables_B1,
+                                   'F1': v.disaggregation_variables_F1,
+                                   'F2': v.disaggregation_variables_F2}
+
 elif learning_config['data_source'] == 'simulation':
     pf_to_fluke_map = m.map
     B1_F1_vars = [[k[0] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]

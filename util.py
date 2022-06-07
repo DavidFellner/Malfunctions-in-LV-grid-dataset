@@ -3,7 +3,7 @@ import os
 import Dataset
 import detection_method_settings
 from HDF5Dataset import HDF5Dataset
-from Dataset import Deep_learning_dataset, Raw_Dataset, PCA_Dataset, Combined_Dataset
+from Dataset import Deep_learning_dataset, Raw_Dataset, PCA_Dataset, Combined_Dataset, Complete_Dataset
 import plotting
 import torch
 from torch.utils import data
@@ -430,7 +430,7 @@ def get_weights_copy(model):
     return torch.load(weights_path)
 
 
-def create_dataset(type='raw', data=None, variables=None, name=None, classes=None, bay='F2', Setup='A', labelling='classification'):
+def create_dataset(type='raw', data=None, variables=None, name=None, classes=None, bay='F2', Setup='A', labelling='classification',trafo_point=None):
     '''
     creates either  a deep learning dataset or the specified dataset for detection methods
     :param type: which type of detection methods dataset is needed? Options: raw, pca, combined
@@ -446,8 +446,12 @@ def create_dataset(type='raw', data=None, variables=None, name=None, classes=Non
             dataset =PCA_Dataset(data, name, classes=classes, bay=bay, Setup=Setup, labelling=labelling)
         if type=='combined':
             dataset = Combined_Dataset(data, variables, name, classes=classes, bay=bay, setup=Setup, labelling=labelling)
+    elif config.disaggregation:
+        if type=='complete':
+            dataset = Complete_Dataset(data, variables, name, trafo_point=trafo_point, classes=classes, bay=bay, setup=Setup,
+                                       labelling=labelling)
     else:
-        print('Dataset in config: either deeplearning or detection_methods')
+        print('Dataset in config: either deeplearning, detection_methods and/or disaggregation')
         dataset = None
         return dataset
 

@@ -151,5 +151,6 @@ if __name__ == '__main__':  # see config file for settings
 
     elif config.disaggregation:
         disaggregation = Disaggregation(config, learning_config)
+        disaggregation.disaggregation()
 
     plt.show()

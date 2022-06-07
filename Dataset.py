@@ -1,3 +1,4 @@
+import pandas
 import pandas as pd
 import numpy as np
 import os
@@ -15,6 +16,7 @@ learning_config = config.learning_config
 
 from dataset_creation.create_instances import create_samples
 
+
 class Deep_learning_dataset:
 
     def __init__(self, config):
@@ -31,7 +33,8 @@ class Deep_learning_dataset:
         print(
             f'Dataset containing {len(self.train_set.columns) + len(self.test_set.columns)} samples, {sum(self.train_set.loc["label"]) + sum(self.test_set.loc["label"])} of which positive, created')
         print(f'Test set: {len(self.test_set.columns)} samples, of which {sum(self.test_set.loc["label"])} positive')
-        print(f'Training set: {len(self.train_set.columns)} samples, of which {sum(self.train_set.loc["label"])} positive')
+        print(
+            f'Training set: {len(self.train_set.columns)} samples, of which {sum(self.train_set.loc["label"])} positive')
 
     def create_dataset(self):
         self.train_set = pd.DataFrame()
@@ -91,7 +94,8 @@ class Deep_learning_dataset:
                 data_preprocessed = preprocessing(data_raw, scaler).transpose()
 
                 with h5py.File(
-                        os.path.join(path, self.learning_config['dataset'] + '_' + self.config.type + '_' + type + '.hdf5'),
+                        os.path.join(path,
+                                     self.learning_config['dataset'] + '_' + self.config.type + '_' + type + '.hdf5'),
                         'w') as hdf:
                     if int(len(data_raw.columns) / len(label)) > 1:
                         dset_data = hdf.create_dataset('x_raw_' + type, data=data_raw, shape=(
@@ -107,7 +111,7 @@ class Deep_learning_dataset:
                                                        chunks=True)
                         dset_data_pre = hdf.create_dataset('x_' + type, data=data_preprocessed,
                                                            shape=(
-                                                           len(data_preprocessed.columns), len(data_preprocessed)),
+                                                               len(data_preprocessed.columns), len(data_preprocessed)),
                                                            compression='gzip', chunks=True)
 
                     dset_label = hdf.create_dataset('y_' + type, data=label, shape=(len(label), 1), compression='gzip',
@@ -115,12 +119,15 @@ class Deep_learning_dataset:
                     hdf.close()
                     return scaler
             else:
-                df.to_csv(self.config.raw_data_folder + self.learning_config['dataset'] + '_' + self.config.type + '.csv', header=True,
-                          sep=';', decimal='.',
-                          float_format='%.' + '%sf' % self.config.float_decimal)
+                df.to_csv(
+                    self.config.raw_data_folder + self.learning_config['dataset'] + '_' + self.config.type + '.csv',
+                    header=True,
+                    sep=';', decimal='.',
+                    float_format='%.' + '%sf' % self.config.float_decimal)
         print(
             "Dataset %s saved" % self.learning_config['dataset'])
         return 0
+
 
 class PCA_Dataset:
     '''
@@ -139,7 +146,6 @@ class PCA_Dataset:
             self.classes = classes
         else:
             self.classes = ['correct', 'wrong']
-
 
     def create_dataset(self):
 
@@ -193,7 +199,8 @@ class Raw_Dataset:
     def create_dataset(self):
 
         self.X = np.array([self.data[measurement] for measurement in self.data if
-                           measurement[-2:] == self.name.split('_')[2] and measurement.split(' ')[3] == self.name.split('_')[
+                           measurement[-2:] == self.name.split('_')[2] and measurement.split(' ')[3] ==
+                           self.name.split('_')[
                                1] and measurement.split(' ')[0] in self.classes])
         self.y = []
         if config.use_case == 'DSM':
@@ -230,6 +237,7 @@ class Raw_Dataset:
         print(
             f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created')
 
+
 class Combined_Dataset:
     '''
     combines all data in one dataframe with the measurements as an index and the variables at timesteps as columns (as in ('var1',t1) ('var2',t1), ('var3',t1), ('var1',t2), ('var2',t2) ...)
@@ -253,39 +261,43 @@ class Combined_Dataset:
             self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in
                          [data[measurement] for measurement in data if
                           measurement[-2:] == name.split('_')[2] and
-                          (measurement.split(' ')[2] == name.split('_')[1] or measurement.split(' ')[3] == name.split('_')[1])]}
+                          (measurement.split(' ')[2] == name.split('_')[1] or measurement.split(' ')[3] ==
+                           name.split('_')[1])]}
 
             measurements = {}
             for measurement in data:
-                if measurement[-2:] == name.split('_')[2] and (measurement.split(' ')[2] == name.split('_')[1] or measurement.split(' ')[3] == name.split('_')[1]):
+                if measurement[-2:] == name.split('_')[2] and (
+                        measurement.split(' ')[2] == name.split('_')[1] or measurement.split(' ')[3] == name.split('_')[
+                    1]):
                     reduced_measurement = pd.DataFrame(index=data[measurement].data.index,
                                                        data=data[measurement].data[variables].values,
                                                        columns=variables)
                     measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, reduced_measurement)
         else:
-            self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in [data[measurement] for measurement in data if
-                                                               measurement[-2:] == name.split('_')[2] and
-                                                               measurement.split(' ')[3] == name.split('_')[1] and
-                                                               measurement.split(' ')[0] in self.classes]}
+            self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in
+                         [data[measurement] for measurement in data if
+                          measurement[-2:] == name.split('_')[2] and
+                          measurement.split(' ')[3] == name.split('_')[1] and
+                          measurement.split(' ')[0] in self.classes]}
             measurements = {}
             for measurement in data:
-                if measurement[-2:] == name.split('_')[2] and measurement.split(' ')[3] == name.split('_')[1] and measurement.split(' ')[0] in self.classes:
+                if measurement[-2:] == name.split('_')[2] and measurement.split(' ')[3] == name.split('_')[1] and \
+                        measurement.split(' ')[0] in self.classes:
                     reduced_measurement = pd.DataFrame(index=data[measurement].data.index,
-                                                                         data=data[measurement].data[variables].values,
-                                                                         columns=variables)
+                                                       data=data[measurement].data[variables].values,
+                                                       columns=variables)
                     measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, reduced_measurement)
 
         self.combined_data = pd.DataFrame(index=[self.data[measurement].name for measurement in self.data],
                                           data=[measurements[measurement].values[0] for measurement in measurements],
-                                          columns=measurements[list(measurements.keys())[0]].columns).replace(np.nan, 0)    #NaN values filled up with 0; NaN can occur when a measurement is shorter than others
-
+                                          columns=measurements[list(measurements.keys())[0]].columns).replace(np.nan,
+                                                                                                              0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
 
     def create_dataset(self):
 
         scaled_data = Combined_Dataset.scale(self)
         pca_data = Combined_Dataset.PCA(self, n_components=learning_config['components'])
         labelled_data = Combined_Dataset.label(self)
-
 
     def dataset_info(self):
         if config.use_case == 'DSM':
@@ -347,7 +359,8 @@ class Combined_Dataset:
     def scale(self):
 
         combined_data_scaled = StandardScaler().fit_transform(self.combined_data)
-        self.combined_data_scaled = pd.DataFrame(index=self.combined_data.index, data=combined_data_scaled, columns=self.combined_data.columns)
+        self.combined_data_scaled = pd.DataFrame(index=self.combined_data.index, data=combined_data_scaled,
+                                                 columns=self.combined_data.columns)
 
         return self.combined_data_scaled
 
@@ -358,12 +371,162 @@ class Combined_Dataset:
 
         return v
 
+
 class Reduced_Combined_Dataset:
 
     def __init__(self, X, y):
-
         self.X = X
         self.y = y
 
         pca = PCA(n_components=0.99)
         self.X = pca.fit_transform(self.X)
+
+
+class Complete_Dataset:
+    '''
+    combines all data in one dataframe
+    '''
+
+    def __init__(self, data, variables, name, trafo_point='F2', classes=None, bay='F2', setup='A',
+                 labelling='classification'):
+
+        self.name = name
+        self.variables = variables
+        self.labelling = labelling
+        self.bay = bay
+        self.setup = setup
+
+        self.trafo = trafo_point
+
+        if classes is not None:
+            self.classes = classes
+        else:
+            self.classes = ['trafo', 'participant']
+
+        self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in
+                     [data[measurement] for measurement in data]}
+
+        measurements = {}
+        samples = {}
+        participant_data = []
+        if config.use_case == 'DSM':
+            num_participants = 3
+        else:
+            num_participants = 2
+        counter = 1
+
+        for measurement in data:
+            scenario = int(measurement.split(':')[0].split(' ')[-1])
+            vars = variables[measurement[-2:]]
+            reduced_measurement = pd.DataFrame(index=data[measurement].data.index,
+                                               data=data[measurement].data[vars].values,
+                                               columns=vars)
+            measurements[measurement] = reduced_measurement
+            measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, reduced_measurement)
+
+            if measurement[-2:] == self.trafo:
+                measurements[measurement].index = [self.trafo]
+                trafo_data = measurements[measurement]
+            else:
+                measurements[measurement].index = [measurement[-2:]]
+                participant_data.append(measurements[measurement])
+
+            if counter % (num_participants + 1) == 0:
+                #sample_data = (trafo_data, participant_data)
+                scenario_data = [trafo_data]
+                scenario_data += participant_data
+                sample_df = pd.concat(scenario_data)
+
+                sample_data = Complete_Dataset.combine_dfs_into_row(self, sample_df, num_participants)
+                samples[' '.join(measurement.split(':')[0].split(' ')[-4:])] = sample_data
+                participant_data = []
+
+
+
+            counter += 1
+
+        self.complete_dataset = pd.DataFrame(index=[measurement for measurement in samples],
+                                             data=[samples[sample].values[0] for sample in
+                                                   samples],
+                                             columns=samples[list(samples.keys())[0]].columns).replace(
+            np.nan,
+            0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
+
+        # DATASET: ONE SAMPLE OF INPUT IS ONE TIME POINT OF TRAFO DATA AND ONE SAMPLE OF OUTPUT IS ONE POINT OF ALL LOADS/GENS?
+
+        """self.complete_dataset = pd.DataFrame(index=[self.data[measurement].name for measurement in self.data],
+                                             data=[measurements[measurement].values[0] for measurement in measurements],
+                                             columns=measurements[list(measurements.keys())[0]].columns).replace(np.nan,
+                                                                                                                 0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
+"""
+    def create_dataset(self):
+
+        # scaled_data = Complete_Dataset.scale(self)
+        labelled_data = Complete_Dataset.label(self)
+
+    def dataset_info(self):
+        if config.use_case == 'DSM':
+            print(
+                f'Dataset containing {len(self.X)} samples, {self.labels["DSM"]} of which implementign DSM and {self.labels["no DSM"]} of which not implementing DSM')
+        else:
+            print(
+                f'Dataset containing {len(self.X)} samples, {self.labels["trafo"]} of which from a transformer measurement point, and {self.labels["participant"]} of which are from grid participants measurement points')
+
+    def label(self):
+
+        self.X = np.array(self.data)
+
+        """self.X = np.array([self.data[measurement] for measurement in self.data if
+                           measurement[-2:] == self.name.split('_')[2] and measurement.split(' ')[3] == self.name.split('_')[
+                               1] and measurement.split(' ')[0] in self.classes])"""
+        self.y = []
+        self.labels = {'trafo': 0, 'participant': 0}
+        for measurement in self.data:
+            if measurement[-2:] == self.trafo and measurement.split(' ')[3] == self.setup:
+                self.y = self.y + [0]
+                self.labels['trafo'] = self.labels['trafo'] + 1
+            else:
+                self.y = self.y + [1]
+                self.labels['participant'] = self.labels['participant'] + 1
+        self.y = np.array(self.y)
+
+        return self.X, self.y
+
+    def scale(self):
+
+        combined_data_scaled = StandardScaler().fit_transform(self.combined_data)
+        self.combined_data_scaled = pd.DataFrame(index=self.combined_data.index, data=combined_data_scaled,
+                                                 columns=self.combined_data.columns)
+
+        return self.combined_data_scaled
+
+    def combine_dfs_into_row(self, df, num_of_participants):
+
+        #v = df.unstack().to_frame().sort_index(level=1).T
+        #v.columns = v.columns.map(str)
+
+        v = df.unstack().to_frame().T
+
+        v.columns = v.columns.map(str)
+
+        counter = 1
+        entry = []
+        entries = []
+        for column in v.columns:
+            entry.append(v[column])
+            if counter % (num_of_participants+1) == 0:
+                entries.append(entry)
+                entry = []
+            counter += 1
+
+        new_df = pandas.DataFrame(index=v.index, data=entries,columns=df.unstack().to_frame().T.droplevel(1, axis=1).columns[::num_of_participants])
+
+
+        return new_df
+
+    """def flatten_df_into_row(self, df):
+
+        v = df.unstack().to_frame().sort_index(level=1).T
+        v.columns = v.columns.map(str)
+
+        return v"""
