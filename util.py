@@ -3,7 +3,7 @@ import os
 import Dataset
 import detection_method_settings
 from HDF5Dataset import HDF5Dataset
-from Dataset import Deep_learning_dataset, Raw_Dataset, PCA_Dataset, Combined_Dataset, Complete_Dataset
+from Dataset import Deep_learning_dataset, Raw_Dataset, PCA_Dataset, Combined_Dataset, Complete_Dataset, Sensor_Dataset, Application_Dataset
 import plotting
 import torch
 from torch.utils import data
@@ -430,7 +430,7 @@ def get_weights_copy(model):
     return torch.load(weights_path)
 
 
-def create_dataset(type='raw', data=None, variables=None, name=None, classes=None, bay='F2', Setup='A', labelling='classification',trafo_point=None):
+def create_dataset(type='raw', data=None, variables=None, name=None, classes=None, bay='F2', Setup='A', labelling='classification',trafo_point=None, phase_info=None):
     '''
     creates either  a deep learning dataset or the specified dataset for detection methods
     :param type: which type of detection methods dataset is needed? Options: raw, pca, combined
@@ -450,13 +450,21 @@ def create_dataset(type='raw', data=None, variables=None, name=None, classes=Non
         if type=='complete':
             dataset = Complete_Dataset(data, variables, name, trafo_point=trafo_point, classes=classes, bay=bay, setup=Setup,
                                        labelling=labelling)
+    elif config.detection_application:
+        if type=='sensor':
+            dataset = Sensor_Dataset(data, phase_info, variables, name, classes=classes,
+                                       setup=Setup)
+        elif type=='detection_application':
+            dataset= Application_Dataset(data, phase_info, variables, name, classes=classes,
+                           setup=Setup, labelling=labelling)
     else:
         print('Dataset in config: either deeplearning, detection_methods and/or disaggregation')
         dataset = None
         return dataset
 
-    dataset.create_dataset()
-    dataset.dataset_info()
+    if not type == 'sensor':            #for sensor do scaling and PCR once final datasets (14 correct real + 14 incorrect simulated + 1 incorrect real) are assembled
+        dataset.create_dataset()
+        dataset.dataset_info()
 
     if config.deeplearning:
         scaler = dataset.save_dataset(dataset.train_set, 'train')

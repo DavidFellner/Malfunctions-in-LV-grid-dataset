@@ -47,17 +47,19 @@ config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 learning_config = config.learning_config
 
-if not config.raw_data_available:
+if not config.raw_data_available or config.detection_application:
     from start_powerfactory import start_powerfactory
     from raw_data_generation.grid_preparation import prepare_grid
     from raw_data_generation.data_creation import create_deeplearning_data
     from raw_data_generation.data_creation import create_detectionmethods_data
+    from raw_data_generation.data_creation import create_load_estimation_training_data
 
 from util import create_dataset
 from deeplearning import Deeplearning
 from transformer_detection import Transformer_detection
 import plotting
 from disaggregation_module import Disaggregation
+from detection import Detection_application
 
 
 def generate_deeplearning_raw_data():
@@ -75,16 +77,37 @@ def generate_deeplearning_raw_data():
 
     return
 
-def generate_detectionmethods_raw_data():
+def generate_detectionmethods_raw_data(data=None, phase=None, setup=None):
     '''
-    USE PNDC GRID MODEL HERE
+    USE PNDC GRID MODELS HERE
     :return:
     '''
-    file = config.pf_file
+    if config.detection_application:
+        file = config.pf_file_dict[phase.split('_')[-1]]
+    else:
+        file = config.pf_file
+
     print('Creating data using the grid %s' % file)
     app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
-    grid_data = prepare_grid(app, study_case_obj, o_ElmNet)
-    create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
+    grid_data = prepare_grid(app, study_case_obj, o_ElmNet, data=data, setup=setup)
+    create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file, setup)
+
+    print('Done with all simulations')
+
+    return
+
+def generate_load_estimation_training_data(phase=None):
+    '''
+    USE PNDC GRID MODELS HERE
+    :return:
+    '''
+
+    file = config.pf_file_dict[phase.split('_')[-1]]
+
+    print('Creating training data for load estimation NN using the grid %s' % file)
+    app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
+    grid_data = prepare_grid(app, study_case_obj, o_ElmNet, data='sampled', phase=phase)
+    create_load_estimation_training_data(app, o_ElmNet, grid_data, study_case_obj, file, phase)
 
     print('Done with all simulations')
 
@@ -152,5 +175,27 @@ if __name__ == '__main__':  # see config file for settings
     elif config.disaggregation:
         disaggregation = Disaggregation(config, learning_config)
         disaggregation.disaggregation()
+
+    elif config.detection_application:
+        application = Detection_application()
+        for phase in application.phases:
+            if not config.load_estimation_training_data_available:
+                generate_load_estimation_training_data(phase=phase)
+
+            for setup in application.setups:
+                application.sensor_data = application.load_sensor_data(phase, setup)    #FORMAT OF SENSOR DATA SAME AS FOR SIM DATA ?
+
+                application.load_data_estimated = 'this is a placeholder for the estimated data'#application.load_estimation() #ADD FROM SARAH
+
+                #generate (wrong) samples using simulation
+                #generate_detectionmethods_raw_data(data=application.load_data_estimated, phase=phase, setup=setup)
+
+                application.complete_transformer_data = application.create_application_dataset(phase, setup)
+                application.score_dict[phase + '_setup_' + setup] = application.detection(phase, setup)    #try to classify one correct and one incorrect real sample from the same scenario with the classifier built on the rest of the 14 real correct and 14 simulated incorrect samples
+
+
+
+
+
 
     plt.show()

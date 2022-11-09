@@ -299,89 +299,110 @@ def convert_to_unix_timestamp(pd_timestamp):
 
     return unix_timestamp
 
-def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, type='load'):
-    if sim_setting == 'ERIGrid_phase_1':
+def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, type='load', data=None, setup=None):
+    if sim_setting in ['ERIGrid_phase_1', 'phase1']:
         folder = 'ERIGrid_Profiles_phase1'
     else:
         print('Undefined simulation setting!')
+
 
     loads = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'Load.csv'), sep=';', index_col='id')
     profiles = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'LoadProfile.csv'), sep=';', index_col='time')
     pv_profiles = load_workbook(os.path.join(config.grid_data_folder, folder, r"PV_Profiles.xlsx"))
 
-    if sim_setting == 'ERIGrid_phase_1':
+    if sim_setting == 'ERIGrid_phase_1' or config.detection_application:
 
-        variation = learning_config['setup_chosen'].split('_')[1]
-        pf.activate_variations('Test Setup ' + variation)
-        if variation == 'A':
-            variation = 'B'
+        if config.detection_application:
+            variation = setup
         else:
-            variation = 'A'
-        pf.deactivate_variations('Test Setup ' + variation)
+            variation = learning_config['setup_chosen'].split('_')[1]
+        if variation is not None:
+            pf.activate_variations('Test Setup ' + variation)
+            if variation == 'A':
+                variation = 'B'
+            else:
+                variation = 'A'
+            pf.deactivate_variations('Test Setup ' + variation)
 
         chars_dict[element] = {}
 
-        for id, row in loads.iterrows():
+        if config.detection_application:
 
-            if element.loc_name == 'LB 2':
-                if id == 'LV4.101 Load 11': break
+            if data == 'sampled':
+                num_data_points = config.num_training_samples
+
+                if type == 'PV':
+                    p_profile = np.zeros(num_data_points)     #PV deactivated here
+                else:
+                    mu = config.load_estimation_training_data_distributions_dict[sim_setting][element.loc_name][0]
+                    sigma = config.load_estimation_training_data_distributions_dict[sim_setting][element.loc_name][1]
+                    samples = np.random.default_rng().normal(mu, sigma, (2, num_data_points))
+                    p_profile = samples[0]
+                    q_profile = samples[1]
+
+                begin = '01.01.2022 00:00'
+                t_start = pd.Timestamp(begin, tz='utc')
+                times = pd.date_range(begin, periods=num_data_points, freq="S")
+                t_end = pd.Timestamp(times[-1], tz='utc')
+
+                # Objects which control the time scale
+                utc = datetime.timezone.utc
+                times = pd.date_range(start=t_start, end=t_end, freq='S',
+                                      tz='utc')
+
+                # scale for cyprus profiles (5 minute resolution):
+                o_TriTime = pf.create_time_scale(
+                    time_scale=f'timescale_training',
+                    time_points=times,
+                    unit="Y",
+                    parent=None,
+                    destination_timezone=utc
+                )
+
+                p_char = pf.create_vector_characteristic(
+                    characteristic=f'p_{element.loc_name}',
+                    # adds first letter of column name to characteristics name > most commonly P, Q or V
+                    # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                    # i].values / factor, index = config.times_household),
+                    vector_nodes=p_profile,
+                    scale=o_TriTime,
+                    usage=2,  # 0,1,2 ... 2 means absolute
+                    approximation="constant",
+                    parent=None
+                )
+
+                chars_dict[element][f'p'] = p_char
+                chars_dict[element][f't_start'] = t_start
+                chars_dict[element][f't_end'] = t_end
+
+                if type == 'load':
+                    q_char = pf.create_vector_characteristic(
+                        characteristic=f'q_{element.loc_name}',
+                        # adds first letter of column name to characteristics name > most commonly P, Q or V
+                        # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                        # i].values / factor, index = config.times_household),
+                        vector_nodes=q_profile,
+                        scale=o_TriTime,
+                        usage=2,  # 0,1,2 ... 2 means absolute
+                        approximation="constant",
+                        parent=None
+                    )
+
+                    chars_dict[element][f'q'] = q_char
+
             else:
-                if id == 'LV4.101 Load 30': break
 
+                num_data_points = 60 - 36  # 9am to 3pm
+                for sample_no in list(range(len(data.index)%num_data_points)):
+                    start_indices = sample_no % (num_data_points)
+                    p_profile = data[element]['p'][start_indices:start_indices+num_data_points]  #edit column names SHOULD BE IN KW!!
+                    q_profile = data[element]['q'][start_indices:start_indices+num_data_points]  #edit column names
 
-            p_profile = profiles[row['profile'] + '_pload']
-            q_profile = profiles[row['profile'] + '_qload']
-            p_load = row['pLoad']
-            q_load = row['qLoad']
+                    begin = f'{sample_no+1}.01.2022 09:00'
+                    end = f'{sample_no+1}.01.2022 15:00'    #check if 15:00 or 15:15 to get all datapoints
 
-            i = 1
-            data = pd.DataFrame()
-
-            # for sheet_name in pv_profiles.sheetnames[1:]:
-            profiles_and_scalings = [(['Tabelle' + i for i in ['22', '9', '14', '32', '12', '2', '8']], 10),
-                                     (['Tabelle' + i for i in ['15', '23', '24', '30', '27', '3', '6', '10']], 20)]
-            for item in profiles_and_scalings:
-                for sheet_name in item[0]:
-                    sheet_df = pd.read_excel(os.path.join(config.grid_data_folder, folder, "PV_Profiles.xlsx"), sheet_name=sheet_name, header=None)
-
-                    #begin = sheet_df[0][0].strftime("%d.%m.%Y %H:%M")
-                    #end = sheet_df[0][95].strftime("%d.%m.%Y %H:%M")
-
-                    start_index = 36  # 9am
-                    end_index = 60  # 3pm
-
-                    begin = sheet_df[0][start_index].strftime("%d.%m.%Y %H:%M")
-                    end = sheet_df[0][end_index].strftime("%d.%m.%Y %H:%M")
-
-                    data = sheet_df[2][ start_index:end_index+1]
-
-                    if type == 'load':
-
-                        p_slice = p_profile[begin:end]
-                        p_values = p_slice * p_load * 1000  # to have values in kW
-
-                        q_slice = q_profile[begin:end]
-                        q_values = q_slice * q_load * 1000  # to have values in kW
-
-                        # powerfactors = [math.cos(math.atan(i)) for i in q_values / p_values] not necessary here
-
-                        if element.loc_name == 'LB 7 8':
-                            factor = 2
-                        else:
-                            factor = 1
-                        p_values = p_values * item[1] * factor
-                        q_values = q_values * item[1] * factor
-
-                        data = p_values
-
-                    # string_t_start = '2017-01-01 00:00:00'
-                    # t_start = pd.Timestamp(string_t_start, tz='utc')
                     t_start = pd.Timestamp(begin, tz='utc')
-                    #t_start = pd.Timestamp('2017-01-01 00:00:00', tz='utc')
-                    t_start_unix = convert_to_unix_timestamp(t_start)
                     t_end = pd.Timestamp(end, tz='utc')
-                    t_end_unix = convert_to_unix_timestamp(t_end)
-                    #t_end = pd.Timestamp('2018-01-01 00:00:00', tz='utc') - pd.Timedelta(config.resolution)
 
                     # Objects which control the time scale
                     utc = datetime.timezone.utc
@@ -390,7 +411,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
 
                     # scale for cyprus profiles (5 minute resolution):
                     o_TriTime = pf.create_time_scale(
-                        time_scale=f'times_{sheet_name}',
+                        time_scale=f'times_{sample_no}',
                         time_points=times,
                         unit="Y",
                         parent=None,
@@ -401,42 +422,154 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                         data = data.round()
 
                     p_char = pf.create_vector_characteristic(
-                        characteristic=f'p_{element.loc_name}_{sheet_name}',
+                        characteristic=f'p_{element.loc_name}_{sample_no}',
                         # adds first letter of column name to characteristics name > most commonly P, Q or V
                         # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
                         # i].values / factor, index = config.times_household),
-                        vector_nodes=data,
+                        vector_nodes=p_profile,
                         scale=o_TriTime,
                         usage=2,  # 0,1,2 ... 2 means absolute
                         approximation="constant",
                         parent=None
                     )
 
-                    chars_dict[element][f'p_{i}'] = p_char
-                    chars_dict[element][f'{i}_t_start'] = t_start
-                    chars_dict[element][f'{i}_t_end'] = t_end
+                    chars_dict[element][f'p_{sample_no}'] = p_char
+                    chars_dict[element][f'{sample_no}_t_start'] = t_start
+                    chars_dict[element][f'{sample_no}_t_end'] = t_end
 
                     if type == 'load':
                         q_char = pf.create_vector_characteristic(
-                            characteristic=f'q_{element.loc_name}_{sheet_name}',
+                            characteristic=f'q_{element.loc_name}_{sample_no}',
                             # adds first letter of column name to characteristics name > most commonly P, Q or V
                             # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
                             # i].values / factor, index = config.times_household),
-                            vector_nodes=q_values,
+                            vector_nodes=q_profile,
                             scale=o_TriTime,
                             usage=2,  # 0,1,2 ... 2 means absolute
                             approximation="constant",
                             parent=None
                         )
 
-                        chars_dict[element][f'q_{i}'] = q_char
+                        chars_dict[element][f'q_{sample_no}'] = q_char
 
-                    i += 1
+        else:
+
+            for id, row in loads.iterrows():
+
+                if element.loc_name == 'LB 2':
+                    if id == 'LV4.101 Load 11': break
+                else:
+                    if id == 'LV4.101 Load 30': break
+
+
+                p_profile = profiles[row['profile'] + '_pload']
+                q_profile = profiles[row['profile'] + '_qload']
+                p_load = row['pLoad']
+                q_load = row['qLoad']
+
+                i = 1
+                data = pd.DataFrame()
+
+                # for sheet_name in pv_profiles.sheetnames[1:]:
+                profiles_and_scalings = [(['Tabelle' + i for i in ['22', '9', '14', '32', '12', '2', '8']], 10),
+                                         (['Tabelle' + i for i in ['15', '23', '24', '30', '27', '3', '6', '10']], 20)]
+                for item in profiles_and_scalings:
+                    for sheet_name in item[0]:
+                        sheet_df = pd.read_excel(os.path.join(config.grid_data_folder, folder, "PV_Profiles.xlsx"), sheet_name=sheet_name, header=None)
+
+                        #begin = sheet_df[0][0].strftime("%d.%m.%Y %H:%M")
+                        #end = sheet_df[0][95].strftime("%d.%m.%Y %H:%M")
+
+                        start_index = 36  # 9am
+                        end_index = 60  # 3pm
+
+                        begin = sheet_df[0][start_index].strftime("%d.%m.%Y %H:%M")
+                        end = sheet_df[0][end_index].strftime("%d.%m.%Y %H:%M")
+
+                        data = sheet_df[2][ start_index:end_index+1]
+
+                        if type == 'load':
+
+                            p_slice = p_profile[begin:end]
+                            p_values = p_slice * p_load * 1000  # to have values in kW
+
+                            q_slice = q_profile[begin:end]
+                            q_values = q_slice * q_load * 1000  # to have values in kW
+
+                            # powerfactors = [math.cos(math.atan(i)) for i in q_values / p_values] not necessary here
+
+                            if element.loc_name == 'LB 7 8':
+                                factor = 2
+                            else:
+                                factor = 1
+                            p_values = p_values * item[1] * factor
+                            q_values = q_values * item[1] * factor
+
+                            data = p_values
+
+                        # string_t_start = '2017-01-01 00:00:00'
+                        # t_start = pd.Timestamp(string_t_start, tz='utc')
+                        t_start = pd.Timestamp(begin, tz='utc')
+                        #t_start = pd.Timestamp('2017-01-01 00:00:00', tz='utc')
+                        t_start_unix = convert_to_unix_timestamp(t_start)
+                        t_end = pd.Timestamp(end, tz='utc')
+                        t_end_unix = convert_to_unix_timestamp(t_end)
+                        #t_end = pd.Timestamp('2018-01-01 00:00:00', tz='utc') - pd.Timedelta(config.resolution)
+
+                        # Objects which control the time scale
+                        utc = datetime.timezone.utc
+                        times = pd.date_range(start=t_start, end=t_end, freq=config.resolution,
+                                              tz='utc')
+
+                        # scale for cyprus profiles (5 minute resolution):
+                        o_TriTime = pf.create_time_scale(
+                            time_scale=f'times_{sheet_name}',
+                            time_points=times,
+                            unit="Y",
+                            parent=None,
+                            destination_timezone=utc
+                        )
+
+                        if type == 'load':
+                            data = data.round()
+
+                        p_char = pf.create_vector_characteristic(
+                            characteristic=f'p_{element.loc_name}_{sheet_name}',
+                            # adds first letter of column name to characteristics name > most commonly P, Q or V
+                            # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                            # i].values / factor, index = config.times_household),
+                            vector_nodes=data,
+                            scale=o_TriTime,
+                            usage=2,  # 0,1,2 ... 2 means absolute
+                            approximation="constant",
+                            parent=None
+                        )
+
+                        chars_dict[element][f'p_{i}'] = p_char
+                        chars_dict[element][f'{i}_t_start'] = t_start
+                        chars_dict[element][f'{i}_t_end'] = t_end
+
+                        if type == 'load':
+                            q_char = pf.create_vector_characteristic(
+                                characteristic=f'q_{element.loc_name}_{sheet_name}',
+                                # adds first letter of column name to characteristics name > most commonly P, Q or V
+                                # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                                # i].values / factor, index = config.times_household),
+                                vector_nodes=q_values,
+                                scale=o_TriTime,
+                                usage=2,  # 0,1,2 ... 2 means absolute
+                                approximation="constant",
+                                parent=None
+                            )
+
+                            chars_dict[element][f'q_{i}'] = q_char
+
+                        i += 1
 
     return chars_dict
 
 
-def prepare_grid(app, file, o_ElmNet):
+def prepare_grid(app, file, o_ElmNet, data=None, setup=None, phase=None):
     # set path for load and generation profiles
     char_folder = app.GetProjectFolder('chars')
     if config.deeplearning:
@@ -457,7 +590,7 @@ def prepare_grid(app, file, o_ElmNet):
     # loads_df = pd.read_csv(os.path.join(config.grid_data_folder, file, 'Load.csv'), sep=';')
     loads_by_type = {'regular_loads': [], 'heatpumps': [], 'EV_charging_stations': {'Work': [], 'Home': []}}
 
-    if config.detection_methods:
+    if config.detection_methods or config.detection_application:
         curves = {}
         EV_charging_stations = None
 
@@ -493,9 +626,27 @@ def prepare_grid(app, file, o_ElmNet):
             curves = create_characteristics(o_ElmLod, curves, sim_setting=config.sim_setting,
                                             type='load')  # create charcteristics
 
+        if config.detection_application:
+            if data == 'sampled':
+
+                curves = create_characteristics(o_ElmLod, curves, sim_setting=phase.split('_')[-1],
+                                                type='load', data=data, setup=setup)  # create characteristics
+            else:
+                curves = create_characteristics(o_ElmLod, curves, sim_setting=config.sim_setting,
+                                                type='load', data=data, setup=setup)  # create characteristics
+
     if config.detection_methods:
         for o_PV in app.GetCalcRelevantObjects('.ElmPvsys'):
             curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, type='PV')
+
+    if config.detection_application:
+        if data == 'sampled':
+            for o_PV in app.GetCalcRelevantObjects('.ElmPvsys'):
+                curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, type='PV', data=data,
+                                                setup=setup)  # create charcteristics of no dispatch bc does not matter here for load estimation training data
+        else:
+            for o_PV in app.GetCalcRelevantObjects('.ElmPvsys'):
+                curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, type='PV', data=data, setup=setup)  # create charcteristics
 
     if config.deeplearning:
         # deactivate storages in grid and count PVs for later use

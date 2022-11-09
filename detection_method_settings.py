@@ -335,7 +335,10 @@ class Variables():
                             'Strom N Avg'
                             ]"""
 
-        self.disaggregation_variables_B1 = ['Wirkleistung Total Avg', 'Blindleistung Total Avg','Scheinleistung Total Avg']
+        self.disaggregation_variables_B1 = ['Wirkleistung Total Avg', 'Blindleistung Total Avg','Scheinleistung Total Avg',
+                                            'Vrms ph-n AN Avg',
+                                            'Vrms ph-n BN Avg', 'Vrms ph-n CN Avg', 'Vrms ph-n NG Avg'
+                                            ]
 
         self.variables_F1 = ['Datum', 'Zeit', 'Vrms ph-n AN Min', 'Vrms ph-n AN Avg',
                              'Vrms ph-n AN Max', 'Vrms ph-n AN Status', 'Vrms ph-n BN Min',
@@ -899,7 +902,7 @@ class Variables():
                             'Power Faktor Total Avg',
                             ]"""
 
-        self.disaggregation_variables_F2 = self.disaggregation_variables_B1
+        self.disaggregation_variables_F2 = self.pca_variables_F2    #bc is trafo
 
         self.variables_B2 = ['Datum', 'Zeit', 'Vrms ph-n AN Min', 'Vrms ph-n AN Avg',
                              'Vrms ph-n AN Max', 'Vrms ph-n AN Status', 'Vrms ph-n BN Min',
@@ -1133,11 +1136,17 @@ class Variables():
                                  'THD W BN Avg',
                                  'THD W CN Avg']
 
-        self.disaggregation_variables_B2 = self.disaggregation_variables_B1
+        self.disaggregation_variables_B2 = self.pca_variables_B2    #bc is trafo
 
-        self.disaggregation_variables_A1 = self.disaggregation_variables_B1
+        self.disaggregation_variables_A1 = ['Wirkleistung Total Avg', 'Blindleistung Total Avg','Scheinleistung Total Avg',
+                                            'Vrms ph-n L1N Avg',
+                                            'Vrms ph-n L2N Avg', 'Vrms ph-n L3N Avg', 'Vrms ph-n NG Avg'
+                                            ]
 
         self.disaggregation_variables_C1 = self.disaggregation_variables_B1
+
+        self.disaggregation_input_variables = ['Vrms']
+        self.disaggregation_output_variables = ['Powers']
 
 
 class Classifier_Combos:

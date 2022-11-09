@@ -176,15 +176,27 @@ class Transformer_detection:
 
         return fgs, axs
 
-    def load_data(self, scenario=None, sampling=None):
+    def load_data(self, scenario=None, sampling=None, data_source=None, phase_info=None, grid_setup=None, marker=None):
+        if data_source is None:
+            data_source = self.data_source
+        if phase_info is not None:
+            measurements = {key: value for key, value in phase_info[1][1].items() if key.split(' ')[-1] == grid_setup}
+            data_path = config.data_path_dict[phase_info[0].split('_')[-1]]
+            sim_data_path = config.sim_data_path_dict[phase_info[0].split('_')[-1]]
+            test_bays = config.test_bays_dict[phase_info[0].split('_')[-1]]
+        else:
+            test_bays = self.test_bays
+            data_path = self.data_path
+            sim_data_path = self.sim_data_path
+
         print('Data loaded with sampling of ' + str(sampling))
         relevant_measurements = {}
         if scenario:
-            if self.data_source == 'real_world':
+            if data_source == 'real_world':
                 # to get data of entire scenario
                 for measurement in measurements:
-                    for test_bay in self.test_bays:
-                        full_path = os.path.join(self.data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
+                    for test_bay in test_bays:
+                        full_path = os.path.join(data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
                         data = pd.read_csv(os.path.join(full_path, measurements[measurement][scenario - 1] + '.csv'),
                                            sep=',',
                                            decimal=',', low_memory=False)
@@ -203,15 +215,21 @@ class Transformer_detection:
                             str(measurement)[13:] + ' Scenario ' + str(scenario) + ': Test Bay ' + str(
                                 test_bay)] = Measurement(
                             data, name)
-            if self.data_source == 'simulation':
+            if data_source == 'simulation':
                 # to get data of entire scenario
                 for measurement in measurements:
-                    for test_bay in self.test_bays:
-                        full_path = os.path.join(self.sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
-                        data = pd.read_csv(os.path.join(full_path,
-                                                        f'scenario_{scenario}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
-                                           sep=',',
-                                           decimal=',', low_memory=False)
+                    for test_bay in test_bays:
+                        full_path = os.path.join(sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
+                        if marker == 'estimated':
+                            data = pd.read_csv(os.path.join(full_path,
+                                                            f'scenario_{scenario}_{measurement.split(" ")[1]}_control_Setup_{grid_setup}_{marker}.csv'),
+                                               sep=',',
+                                               decimal=',', low_memory=False)
+                        else:
+                            data = pd.read_csv(os.path.join(full_path,
+                                                            f'scenario_{scenario}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
+                                               sep=',',
+                                               decimal=',', low_memory=False)
                         data['new_index'] = range(len(data))
                         data = data.set_index('new_index')
 
@@ -225,11 +243,11 @@ class Transformer_detection:
                             data, name)
         else:
             # get all data
-            if self.data_source == 'real_world':
+            if data_source == 'real_world':
                 for measurement in measurements:
                     for scenario in measurements[measurement]:
-                        for test_bay in self.test_bays:
-                            full_path = os.path.join(self.data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
+                        for test_bay in test_bays:
+                            full_path = os.path.join(data_path, 'Test_Bay_' + test_bay, 'Extracted_Measurements')
                             data = pd.read_csv(
                                 os.path.join(full_path, measurements[measurement][
                                     measurements[measurement].index(scenario)] + '.csv'),
@@ -252,15 +270,21 @@ class Transformer_detection:
                                     measurements[measurement].index(scenario) + 1) + ': Test Bay ' + str(
                                     test_bay)] = Measurement(
                                 data, name)
-            if self.data_source == 'simulation':
+            if data_source == 'simulation':
                 for measurement in measurements:
                     for scenario in list(range(len(measurements[measurement]))):
-                        for test_bay in self.test_bays:
-                            full_path = os.path.join(self.sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
-                            data = pd.read_csv(os.path.join(full_path,
-                                                            f'scenario_{scenario + 1}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
-                                               sep=',',
-                                               decimal=',', low_memory=False)
+                        for test_bay in test_bays:
+                            full_path = os.path.join(sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
+                            if marker ==  'estimated':
+                                data = pd.read_csv(os.path.join(full_path,
+                                                                f'scenario_{scenario + 1}_{measurement.split(" ")[1]}_control_Setup_{grid_setup}_{marker}.csv'),
+                                                   sep=',',
+                                                   decimal=',', low_memory=False)
+                            else:
+                                data = pd.read_csv(os.path.join(full_path,
+                                                                f'scenario_{scenario + 1}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
+                                                   sep=',',
+                                                   decimal=',', low_memory=False)
                             data['new_index'] = range(len(data))
                             data = data.set_index('new_index')
 

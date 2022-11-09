@@ -41,8 +41,8 @@ def start_powerfactory(file):
     ldf = study_case_obj.SearchObject('*.ComLdf')                                  # Get load flow calculation object
     if config.deeplearning:
         set_load_flow_settings(ldf, config.load_scaling, config.generation_scaling)
-    elif config.detection_methods and config.sim_setting == 'ERIGrid_phase_1':
-        set_load_flow_settings(ldf, 0.1, 100)   #set load flow settings ina  way to scale loads correctly
+    elif (config.detection_methods or config.detection_application) and (config.sim_setting == 'ERIGrid_phase_1' or config.pf_file in config.pf_file_dict.values()):
+        set_load_flow_settings(ldf, 0.1, 100)   #set load flow settings in a  way to scale loads correctly
     else:
         set_load_flow_settings(ldf, 100, 100)  # Set default load flow settings
 

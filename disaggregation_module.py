@@ -29,12 +29,15 @@ except AttributeError:
 import os
 import pandas as pd
 import numpy as np
-import collections
-from sklearn import svm, neighbors, tree
+import statistics
+from sklearn.svm import SVR
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import accuracy_score
 from sklearn.model_selection import KFold, StratifiedKFold
+from sklearn.multioutput import RegressorChain
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_percentage_error
+import math
 
 
 class Disaggregation:
@@ -58,7 +61,7 @@ class Disaggregation:
         self.mode = learning_config['mode']
         self.data_mode = learning_config['data_mode']
         self.selection = learning_config['selection']
-        self.clf = learning_config['clf']
+        self.disagg_algo = learning_config['disaggregation algorithm']
         self.kernels = learning_config['kernels']
         self.gammas = learning_config['gammas']
         self.degrees = learning_config['degrees']
@@ -185,8 +188,8 @@ class Disaggregation:
                                2 * 60 * 4:]  # cut off the first 2 minutes because this is where loads / PV where started up
                         data = data[
                                :6000]  # cut off after 25 minutes (25*60*4 bc 4 samples per second) because measurements were not turned off at same time
-                        data['new_index'] = range(len(data))
-                        data = data.set_index('new_index')
+                        data['timestep'] = range(len(data))
+                        data = data.set_index('timestep')
 
                         if sampling:
                             data = self.sample(data, sampling)
@@ -205,8 +208,8 @@ class Disaggregation:
                                                         f'scenario_{scenario}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
                                            sep=',',
                                            decimal=',', low_memory=False)
-                        data['new_index'] = range(len(data))
-                        data = data.set_index('new_index')
+                        data['timestep'] = range(len(data))
+                        data = data.set_index('timestep')
 
                         if sampling:
                             data = self.sample(data, sampling)
@@ -232,8 +235,31 @@ class Disaggregation:
                                    2 * 60 * 4:]  # cut off the first 2 minutes because this is where laods / PV where started up
                             data = data[
                                    :6000]  # cut off after 25 minutes (25*60*4 bc 4 samples per second) because measurements were not turned off at same time
-                            data['new_index'] = range(len(data))
-                            data = data.set_index('new_index')
+
+                            if test_bay == 'C1':
+                                script_name = f'ERI-Grid - Scenario {int(measurements[measurement].index(scenario))+1}.3_(use_in_all_Setups).txt'
+                                script_path = os.path.join(self.data_path, 'Test_Bay_' + test_bay,
+                                                         'Load_data', script_name)
+                                with open(script_path) as f:
+                                    contents = f.read()
+                                    load_data = [load_data for load_data in contents.split('\n') if load_data[:4] == 'Load']
+                                    p_values = [int(p_value.split(' ')[1][0])*1000 for p_value in load_data]
+                                    powerfactors = [float(p_value.split(' ')[2][:4]) for p_value in load_data]
+                                    s_values = [p_values[i]/powerfactors[i] for i in list(range(len(p_values)))]
+                                    q_values = [s_values[i]*math.sin(math.acos(powerfactors[i])) for i in list(range(len(s_values)))]
+                                    f.close()
+
+                                #extrapolate P/Q/S values
+                                data['Wirkleistung Total Avg'] =  pd.DataFrame(data=p_values, index=pd.date_range('1/1/2000', periods=len(s_values),
+                                                                                freq='15T')).resample('3600ms').bfill().values[:-1]
+                                data['Blindleistung Total Avg'] =  pd.DataFrame(data=q_values, index=pd.date_range('1/1/2000', periods=len(s_values),
+                                                                                freq='15T')).resample('3600ms').bfill().values[:-1]
+                                data['Scheinleistung Total Avg'] =  pd.DataFrame(data=s_values, index=pd.date_range('1/1/2000', periods=len(s_values),
+                                                                                freq='15T')).resample('3600ms').bfill().values[:-1]
+
+
+                            data['timestep'] = range(len(data))
+                            data = data.set_index('timestep')
 
                             if sampling:
                                 data = self.sample(data, sampling)
@@ -254,8 +280,8 @@ class Disaggregation:
                                                             f'scenario_{scenario + 1}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
                                                sep=',',
                                                decimal=',', low_memory=False)
-                            data['new_index'] = range(len(data))
-                            data = data.set_index('new_index')
+                            data['timestep'] = range(len(data))
+                            data = data.set_index('timestep')
 
                             if sampling:
                                 data = self.sample(data, sampling)
@@ -293,7 +319,7 @@ class Disaggregation:
         data = create_dataset(type='complete', data=data, variables=self.variables, name=self.setup_chosen,
                               Setup=self.setup_chosen.split('_')[1], trafo_point=trafo_point)
 
-        scores = self.cross_val(data, sampling=self.sampling_step_size_in_seconds)
+        scores = self.cross_val(data, sampling=self.sampling_step_size_in_seconds, disagg_algo=self.disagg_algo)
         print(
             f"\n########## Metrics for disaggregation on {self.setup_chosen}  ##########")
         for score in scores:
@@ -305,13 +331,26 @@ class Disaggregation:
             list.remove(i[0])
         return list
 
-    def scoring(self, y_test, y_pred):
-        metrics = precision_recall_fscore_support(y_test, y_pred, average='macro', zero_division=0)
-        accuracy = accuracy_score(y_test, y_pred)
+    def scoring(self, y_test, y_pred, timestep_wise=False):
 
-        return [accuracy, metrics]
+        if timestep_wise:
+            mapes = []
+            wmapes = []
+            for timestep in list(range(y_test.shape[1])):
+                mapes.append(mean_absolute_percentage_error(y_test[:, timestep], y_pred[:, timestep]))
+                wmapes = np.sum(np.abs(y_test[:, timestep] - y_pred[:, timestep])) / np.sum(np.abs(y_test[:, timestep]))
+            mape_avg = statistics.mean(mapes)   #average error over all timesteps
+            wmapes_avg = statistics.mean(wmapes)   #average error over all timesteps
 
-    def disaggregation_algorithm(self, data, cross_val=False):
+            self.scores['MAPE'] = mape_avg
+            self.scores['WMAPE'] = wmapes_avg
+        else:
+            self.scores['MAPE'] = mean_absolute_percentage_error(y_test, y_pred)
+            self.scores['WMAPE'] = np.sum(np.abs(y_test - y_pred)) / np.sum(np.abs(y_test))
+
+        return self.scores
+
+    def disaggregation_algorithm(self, data, cross_val=False, disagg_algo='RF', scale=False, timestep_wise=False):
 
         if not cross_val:
             X_train, X_test, y_train, y_test = train_test_split(data.X, data.y)
@@ -321,44 +360,107 @@ class Disaggregation:
             y_train = data[2]
             y_test = data[3]
 
-        # Create a svm Classifier
-        algo = 1 # insert disaggregation algo
-        # Train the model using the training sets
-        algo.fit(X_train, y_train)
+        scale = False
 
-        # Predict the response for test dataset
-        y_pred = algo.predict(X_test)
+        if disagg_algo in ['SVR']:
+            scale = True
+        if disagg_algo in ['SVR']:
+            timestep_wise = True
+
+        if scale:  # do prediction for each timestep individually
+            scaler = StandardScaler()
+            X_train = scaler.fit_transform(X_train.reshape(-1, X_train.shape[-1])).reshape(X_train.shape)
+            X_test = scaler.transform(X_test.reshape(-1, X_test.shape[-1])).reshape(X_test.shape)
+
+        if disagg_algo == 'SVR':  # do prediction for each timestep individually
+            algo = SVR(C=1.0, epsilon=0.2)
+        elif disagg_algo == 'RF':
+            algo = RandomForestRegressor(n_estimators=100, n_jobs=4)
+
+        # Train the model using the training sets
+        wrapper = RegressorChain(algo)  #first model in the sequence uses the input and predicts one output; the second model uses the input and the output from the first model to make a prediction; the third model uses the input and output from the first two models to make a prediction, and so on
+
+        if timestep_wise:
+            for timestep in list(range(X_train.shape[1])):
+                X_train_timestep = X_train[:, timestep]
+                y_train_timestep = y_train[:, timestep]
+                wrapper.fit(X_train_timestep, y_train_timestep)     #train model for each timestep
+
+            #algo.fit(X_train, y_train)
+
+            # Predict the response for test dataset
+            y_pred = np.empty(y_test.shape)
+            for timestep in list(range(X_test.shape[1])):
+                X_test_timestep = X_test[:, timestep]
+                y_pred_timestep = wrapper.predict(X_test_timestep)     #predict outputs for each timestep
+                y_pred[: , timestep] = y_pred_timestep
+
+            #y_pred = algo.predict(X_test)
+        else:
+            wrapper.fit(X_train, y_train)
+            y_pred = wrapper.predict(X_test)  # predict outputs for each timestep
 
         if not cross_val:
-            scores = self.scoring(y_test, y_pred)
+            self.scores = {}
 
-            print(f'Predicted labels: {y_pred}; correct labels: {y_test}')
             print(f"\n########## Metrics for {data.name} ##########")
-            print("Accuracy: {0}\nPrecision: {1}\nRecall: {2}\nFScore: {3}\n".format(scores[0], scores[1][1],
-                                                                                     scores[1][2],
-                                                                                     scores[1][3]))
+            print("Mean absolute percentage error: {0}\n".format(self.scores['MAPE']))
 
         return y_pred, y_test
 
-    def cross_val(self, data, sampling=None):
+    def cross_val(self, data, sampling=None, disagg_algo='SVR', splits_defined=True):
 
-        X = data.X
-        y = data.y
-        # kf = KFold(n_splits=7, shuffle=True)
-        kf = StratifiedKFold(n_splits=7,
-                             shuffle=True)  # ensures balanced classes in batches!! (as much as possible) > important
+        if not splits_defined:
+            X = data.X
+            y = data.y
+            kf = KFold(n_splits=7, shuffle=True)
+            #kf = StratifiedKFold(n_splits=7,
+                                 #shuffle=True)  # ensures balanced classes in batches!! (as much as possible) > important
 
-        scores = []
+            cv_scores = []
 
-        for train_index, test_index in kf.split(X, y):
-            # print('Split #%d' % (len(scores) + 1))
-            X_train, X_test = X[train_index], X[test_index]
-            y_train, y_test = np.array(y)[train_index], np.array(y)[test_index]
+            for train_index, test_index in kf.split(list(X), list(y)):
+                # print('Split #%d' % (len(scores) + 1))
 
-            y_pred, y_test = self.disaggregation_algorithm([X_train, X_test, y_train, y_test], cross_val=True)
-            scores.append(self.scoring(y_test, y_pred))
+                train_keys = [key for key in X.keys() if list(X.keys()).index(key) in train_index]
+                X_train = {your_key: X[your_key] for your_key in train_keys}
+                y_train = {your_key: y[your_key] for your_key in train_keys}
 
-        scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores],
-                       'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores]}
+                test_keys = [key for key in X.keys() if list(X.keys()).index(key) in test_index]
+                X_test = {your_key: X[your_key] for your_key in test_keys}
+                y_test = {your_key: y[your_key] for your_key in test_keys}
+
+                #X_train, X_test = X[train_index], X[test_index]
+                #y_train, y_test = np.array(y)[train_index], np.array(y)[test_index]
+
+                X_train = np.array(list(X_train.values()))
+                X_test = np.array(list(X_test.values()))
+                y_train = np.array(list(y_train.values()))
+                y_test = np.array(list(y_test.values()))
+
+                y_pred, y_test = self.disaggregation_algorithm([X_train, X_test, y_train, y_test], cross_val=True, disagg_algo=disagg_algo)
+
+                self.scores = {}
+                cv_scores.append(self.scoring(y_test, y_pred), timestep_wise=True)
+                #plot them against each other?
+
+        else:
+            cv_scores = []
+            for split in data.splits:
+                X_train = data.splits[split]['training_data'][list(data.complete_dataset.values())[0]['X'].keys()]
+                y_train = data.splits[split]['training_data'][list(data.complete_dataset.values())[0]['y'].keys()]
+                X_test = data.splits[split]['testing_data'][list(data.complete_dataset.values())[0]['X'].keys()]
+                y_test = data.splits[split]['testing_data'][list(data.complete_dataset.values())[0]['y'].keys()]
+
+                y_pred, y_test = self.disaggregation_algorithm([X_train, X_test, y_train, y_test], cross_val=True,
+                                                               disagg_algo=disagg_algo)
+
+                self.scores = {}
+                cv_scores.append(self.scoring(y_test, y_pred))
+                # plot them against each other?
+
+
+
+        scores_dict = {'Mean absolute percentage error': [i['MAPE'] for i in cv_scores]}
 
         return scores_dict

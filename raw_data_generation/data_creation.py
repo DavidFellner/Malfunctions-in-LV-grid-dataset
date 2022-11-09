@@ -19,7 +19,11 @@ spec.loader.exec_module(config)
 learning_config = config.learning_config
 
 
-def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=0):
+def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=0, step_size=None):
+
+    if step_size is None:
+        step_size = config.step_size
+
     local_machine_tz = config.local_machine_tz
 
     if study_case_obj.SearchObject('*.ComStatsim') is None:
@@ -36,7 +40,8 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=
     qds_com_obj.SetAttribute('endTime', int(
         (pd.DatetimeIndex([(t_end - t_end.tz_convert(local_machine_tz).utcoffset())]).astype(np.int64) // 10 ** 9)[
             0]))
-    qds_com_obj.SetAttribute('stepSize', config.step_size)
+
+    qds_com_obj.SetAttribute('stepSize', step_size)
     qds_com_obj.SetAttribute('stepUnit', step_unit)  # Seconds, Minutes ....
 
     if config.parallel_computing == True:
@@ -185,6 +190,10 @@ def set_times(file, element=None, chars_dict=None, scenario=None):
             t_start = chars_dict[element][f'{scenario}_t_start']
             t_end = chars_dict[element][f'{scenario}_t_end']
 
+        if config.detection_application:
+            t_start = chars_dict[element][f't_start']
+            t_end = chars_dict[element][f't_end']
+
     else:
         t_start = config.t_start
         t_end = config.t_end
@@ -270,7 +279,7 @@ def run_QDS(app, run, result):
     return results
 
 
-def pick_results(results):
+def pick_results(results, all=False):
     test_bay_dfs = {}
 
     if config.sim_setting == 'ERIGrid_phase_1':
@@ -305,12 +314,17 @@ def pick_results(results):
                     except KeyError:
                         print(f"{(map[test_bay][element][0], 'ElmTerm', var)} not defined")
         test_bay_dfs[test_bay] = test_bay_df
+    if all:
+        test_bays_df = pd.concat(test_bay_dfs.values(),
+                                 ignore_index=True)  # merge all selected data into one DF for training data for load estimation NN
+        return test_bays_df
 
     return test_bay_dfs
 
 
 def save_results(count, results, file, t_start, t_end, malfunctioning_devices=None, time_of_malfunction=None,
-                 terminals_with_PVs=None, terminals_with_EVCs=None, terminals=None, control_curve=None):
+                 terminals_with_PVs=None, terminals_with_EVCs=None, terminals=None, control_curve=None, marker='',
+                 setup=None, folder=None):
     if config.deeplearning:
         if malfunctioning_devices:
             if config.type == 'PV':
@@ -362,9 +376,21 @@ def save_results(count, results, file, t_start, t_end, malfunctioning_devices=No
             bay_folder = os.path.join(file_folder, test_bay)
             if not os.path.isdir(bay_folder):
                 os.mkdir(bay_folder)
-            test_bay_dfs[test_bay.split('_')[2] + '_elements'].to_csv(os.path.join(bay_folder,
-                                                                                   f'scenario_{count}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'),
-                                                                      sep=',', decimal=',')
+            if marker == 'estimated':
+                test_bay_dfs[test_bay.split('_')[2] + '_elements'].to_csv(os.path.join(bay_folder,
+                                                                                       f'scenario_{count}_{control_curve}_control_Setup_{setup}_{marker}.csv'),
+                                                                          sep=',', decimal=',')
+            else:
+                test_bay_dfs[test_bay.split('_')[2] + '_elements'].to_csv(os.path.join(bay_folder,
+                                                                                       f'scenario_{count}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'),
+                                                                          sep=',', decimal=',')
+    if config.detection_application:
+
+        if marker == 'training_data':
+            test_bays_df = pick_results(results, all=True)
+            test_bays_df.to_csv(os.path.join(folder,
+                                             f'load_estimation_training_data.csv'),
+                                sep=',', decimal=',')
 
     return
 
@@ -397,7 +423,7 @@ def clean_up(app, active_PVs, active_EVCS=None, malfunctioning_devices=None):
     return
 
 
-def create_results_folder(file):
+def create_results_folder(file, phase=None):
     if config.deeplearning:
         penetrations = ''
         for key, value in config.percentage.items():
@@ -409,6 +435,9 @@ def create_results_folder(file):
     elif config.detection_methods:
         results_folder = os.path.join(config.raw_data_folder,
                                       (config.sim_setting + '_sim_data'))
+    elif config.detection_application:
+        results_folder = os.path.join(config.raw_data_folder, (
+                    '_'.join(config.pf_file_dict[phase.split('_')[-1]].split('_')[1:]) + '_training_data'))
 
     file_folder = os.path.join(results_folder, file)
 
@@ -491,7 +520,7 @@ def create_deeplearning_data(app, o_ElmNet, grid_data, study_case_obj, file):
     return
 
 
-def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file):
+def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file, setup=None):
     '''
 
     create all data that was collected in the sim setup defined
@@ -508,6 +537,8 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
     else:
         control_curves = {'correct': [1, 3, 0.9, 6], 'wrong': [1, 3, 0.999999, 6], 'inversed': [0.9, 6, 0.999999, 3]}
 
+    if config.detection_application: control_curves.drop(label='correct')
+
     if config.add_data:
         new_chars_dict = {}
         results_folder, file_folder = create_results_folder(file)
@@ -520,13 +551,12 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
 
                 for control_curve in control_curves:
                     if not os.path.isfile(os.path.join(bay_folder,
-                                                   f'scenario_{char.split("_")[1]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'))\
+                                                       f'scenario_{char.split("_")[1]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')) \
                             and not os.path.isfile(os.path.join(bay_folder,
-                                                   f'scenario_{char.split("_")[0]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
+                                                                f'scenario_{char.split("_")[0]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
                         new_chars_dict[element][char] = chars_dict[element][char]
-                    #del new_chars_dict[element][char]
+                    # del new_chars_dict[element][char]
         chars_dict = new_chars_dict
-
 
     PV = app.GetCalcRelevantObjects('*.ElmPvsys')[0]
     if len(app.GetCalcRelevantObjects('*.ElmPvsys')) > 1: print('too many PVs!')
@@ -545,7 +575,8 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
             do = True
             if config.add_data:
                 bay_folder = os.path.join(file_folder, 'Test_Bay_F2')
-                if os.path.isfile(os.path.join(bay_folder, f'scenario_{scenario}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
+                if os.path.isfile(os.path.join(bay_folder,
+                                               f'scenario_{scenario}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
                     do = False
 
             if do:
@@ -561,6 +592,54 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file)
                 results = run_QDS(app, int(scenario), result)
 
                 # save correctly as to be used by rest of framework
-                save_results(int(scenario), results, file, t_start, t_end, control_curve=control_curve)
+                if config.detection_methods:
+                    save_results(int(scenario), results, file, t_start, t_end, control_curve=control_curve)
+                if config.detection_application:
+                    save_results(int(scenario), results, file, t_start, t_end, control_curve=control_curve,
+                                 marker='estimated', setup=setup)
+
+    return
+
+
+def create_load_estimation_training_data(app, o_ElmNet, grid_data, study_case_obj, file, phase):
+    '''
+
+    create data used for training the NN for load estimation
+
+    '''
+
+    chars_dict = grid_data[0]
+
+    results_folder, file_folder = create_results_folder(file, phase=phase)
+    training_data_folder = os.path.join(file_folder, 'Load_estimation_training_data')
+    if not os.path.isdir(training_data_folder):
+        os.mkdir(training_data_folder)
+
+    PV = app.GetCalcRelevantObjects('*.ElmPvsys')[0]
+    if len(app.GetCalcRelevantObjects('*.ElmPvsys')) > 1: print('too many PVs!')
+
+    for element in chars_dict.keys():
+        if element in app.GetCalcRelevantObjects('.ElmLod'):
+            pf.set_referenced_characteristics(element, 'plini', chars_dict[element][f'p'])
+            pf.set_referenced_characteristics(element, 'qlini', chars_dict[element][f'q'])
+        elif element in app.GetCalcRelevantObjects('.ElmPvsys'):
+            pf.set_referenced_characteristics(element, 'pgini', chars_dict[element][f'p'])
+            element.outserv = 1
+
+        # run QDS for the same number of steps as there are load values per load
+
+    t_start, t_end = set_times(file, element=PV, chars_dict=chars_dict)
+
+    step_unit = 0 #0 for seconds
+
+    result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=step_unit,
+                              balanced=0, step_size=1)  # set which vars and where!
+    results = run_QDS(app, 1, result)
+
+    # save correctly as to be used by rest of framework
+    # STILL GET ALL RESULTS (OR AT LEAST OF ALL TEST BAYS) INTO ONE DATAFRAME!!
+    if config.detection_application:
+        save_results(1, results, file, t_start, t_end,
+                     marker='training_data', folder=training_data_folder)
 
     return
