@@ -1,0 +1,10 @@
+- wie soll graph file eingelesen werden wenn nicht über die auskommentierte Zeile? > war eh so gedacht, aber finde ich eh am praktischsten
+- Als Funktion? > haben wir eh besprochen bzw. dass man alles in seperate funktionen aufteilt
+- Beim einlesen der trainingsdaten als csv grundsätzlich als option dass seperator ',' ist? > könnte für daten die mit deutschspraichegem PowerFactory generiert wurden interessant sein
+- Scenarios: provide sample file / option to write to json file in code and save it > wird vll hinfällig mit der neuen definitoon bzw. mit dieser direkt einbauen?
+- Scenarios: how to define which voltages known / pflows known at bars > how to tell the script that only v and not pflow is known > mit neuer definition sollte das ja möglich sein
+- gradients diverge: python 3.9 > check
+> scalers: spannungen werden beim training mit StandardScaler gescaled, default mäßig beim evaluieren aber mit minmaxscaler
+
+
+- dir_result in runner is called just dir in evaluator > confusing
