@@ -53,6 +53,9 @@ if not config.raw_data_available or config.detection_application:
     from raw_data_generation.data_creation import create_deeplearning_data
     from raw_data_generation.data_creation import create_detectionmethods_data
     from raw_data_generation.data_creation import create_load_estimation_training_data
+    from raw_data_generation.data_creation import create_load_estimation_input_data
+    from load_estimation.neurallelf.runner import load_estimation as training
+    from load_estimation.neurallelf.evaluator import eval as estimate
 
 from util import create_dataset
 from deeplearning import Deeplearning
@@ -77,7 +80,7 @@ def generate_deeplearning_raw_data():
 
     return
 
-def generate_detectionmethods_raw_data(data=None, phase=None, setup=None):
+def generate_detectionmethods_raw_data(data=None, phase=None, setup=None, extract_profiles=False, estimation=None, pv_input=None):
     '''
     USE PNDC GRID MODELS HERE
     :return:
@@ -87,27 +90,58 @@ def generate_detectionmethods_raw_data(data=None, phase=None, setup=None):
     else:
         file = config.pf_file
 
-    print('Creating data using the grid %s' % file)
+    if extract_profiles:
+        print('Load data for the grid %s' % file)
+    else:
+        print('Creating data using the grid %s' % file)
     app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
-    grid_data = prepare_grid(app, study_case_obj, o_ElmNet, data=data, setup=setup)
-    create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file, setup)
+    grid_data = prepare_grid(app, study_case_obj, o_ElmNet, data=data, setup=setup, extract_profiles=extract_profiles, pv_input=pv_input)
+    if not extract_profiles:
+        create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file, setup, estimation=estimation, phase=phase)
 
-    print('Done with all simulations')
+        print('Done with all simulations')
 
-    return
+    return grid_data
 
-def generate_load_estimation_training_data(phase=None):
+def load_profiles():
+    grid_data = prepare_grid()
+    return grid_data
+
+def generate_load_estimation_training_data(phase=None, setup=None):
     '''
     USE PNDC GRID MODELS HERE
     :return:
     '''
 
     file = config.pf_file_dict[phase.split('_')[-1]]
+    file = file + '_training'
 
     print('Creating training data for load estimation NN using the grid %s' % file)
     app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
-    grid_data = prepare_grid(app, study_case_obj, o_ElmNet, data='sampled', phase=phase)
-    create_load_estimation_training_data(app, o_ElmNet, grid_data, study_case_obj, file, phase)
+    grid_data = prepare_grid(app, study_case_obj, o_ElmNet, data='sampled', phase=phase, setup=setup)
+    create_load_estimation_training_data(app, o_ElmNet, grid_data, study_case_obj, file, phase, setup)
+
+    print('Done with all simulations')
+
+    return
+
+def compile_load_estimation_input_data(data, phase=None, setup=None):
+    '''
+    Used to merge sensor data with (PV) profiles which are assumed to be known
+    USE PNDC GRID MODELS HERE
+    :return:
+    '''
+
+    if type(data) is not list:
+        print('Please pass the sensor data and the (PV) profiles as two elements of a list')
+        return
+
+    file = config.pf_file_dict[phase.split('_')[-1]]
+    file = file + '_training'
+
+    app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
+    grid_data = prepare_grid(app, study_case_obj, o_ElmNet, data=data, phase=phase, setup=setup)
+    create_load_estimation_input_data(app, o_ElmNet, grid_data, study_case_obj, file, phase, setup)
 
     print('Done with all simulations')
 
@@ -179,20 +213,48 @@ if __name__ == '__main__':  # see config file for settings
     elif config.detection_application:
         application = Detection_application()
         for phase in application.phases:
-            if not config.load_estimation_training_data_available:
-                generate_load_estimation_training_data(phase=phase)
 
             for setup in application.setups:
-                application.sensor_data = application.load_sensor_data(phase, setup)    #FORMAT OF SENSOR DATA SAME AS FOR SIM DATA ?
 
-                application.load_data_estimated = 'this is a placeholder for the estimated data'#application.load_estimation() #ADD FROM SARAH
+                if config.raw_data_available is False:
+                    if not config.load_estimation_training_data_available:
+                        generate_load_estimation_training_data(phase=phase, setup=setup)
+                    else:
+                        print('training data found')
+                    if not config.pretrained:
+                        training(phase, setup=setup)  # train NN with generated data
 
-                #generate (wrong) samples using simulation
-                #generate_detectionmethods_raw_data(data=application.load_data_estimated, phase=phase, setup=setup)
+                    if not config.load_estimation_input_data_available:
+                        application.profiles = \
+                            generate_detectionmethods_raw_data(phase=phase, setup=setup, extract_profiles=True)[
+                                0]  # extract load and pv data used in lab setting
+                        application.sensor_data = application.load_sensor_data(phase, setup)
+                        if not config.use_saved_load_estimation_input_data:
+                            inputs = application.pick_estimation_input_data()
+                            compile_load_estimation_input_data(data=[application.sensor_data, inputs], phase=phase, setup=setup)
+                            inputs = 'from_file'
+                        else:
+                            application.pick_estimation_input_data(just_pv=True)
+                            inputs = 'from_file'
+                    else:
+                        application.profiles = \
+                            generate_detectionmethods_raw_data(phase=phase, setup=setup, extract_profiles=True)[
+                                0]  # extract load and pv data used in lab setting
+                        application.sensor_data = application.load_sensor_data(phase, setup)
+                        inputs = application.pick_estimation_input_data()
 
-                application.complete_transformer_data = application.create_application_dataset(phase, setup)
-                application.score_dict[phase + '_setup_' + setup] = application.detection(phase, setup)    #try to classify one correct and one incorrect real sample from the same scenario with the classifier built on the rest of the 14 real correct and 14 simulated incorrect samples
+                    application.load_data_estimated, load_data = estimate(phase, setup, X=inputs, pad_factor=application.pad_factor, config=config) #predict the loads using selected sensor data; returns both the estimation using a NN as well as LR
+                else:
+                    application.load_data_estimated = {'NN estimate': 'in file', 'LR estimate': 'in file'}
 
+                for estimation in application.load_data_estimated:
+                    if config.raw_data_available is False:
+                        #generate (wrong) samples using simulation
+                        generate_detectionmethods_raw_data(data=application.load_data_estimated[estimation].iloc[::application.pad_factor, :], phase=phase, setup=setup, estimation=estimation, pv_input=application.pv_input[::240])
+
+                    application.sensor_data = application.load_sensor_data(phase, setup)
+                    application.complete_transformer_data = application.create_application_dataset(phase, setup, estimation)
+                    application.score_dict[phase + '_setup_' + setup] = application.detection(phase, setup)    #try to classify one correct and one incorrect real sample from the same scenario with the classifier built on the rest of the 14 real correct and 14 simulated incorrect samples
 
 
 

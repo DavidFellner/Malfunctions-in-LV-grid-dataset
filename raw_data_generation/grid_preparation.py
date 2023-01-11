@@ -299,24 +299,39 @@ def convert_to_unix_timestamp(pd_timestamp):
 
     return unix_timestamp
 
-def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, type='load', data=None, setup=None):
+def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, element_type='load', data=None, setup=None, extract_profiles=False, pv_input=None):
     if sim_setting in ['ERIGrid_phase_1', 'phase1']:
         folder = 'ERIGrid_Profiles_phase1'
     else:
         print('Undefined simulation setting!')
 
-
-    loads = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'Load.csv'), sep=';', index_col='id')
-    profiles = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'LoadProfile.csv'), sep=';', index_col='time')
-    pv_profiles = load_workbook(os.path.join(config.grid_data_folder, folder, r"PV_Profiles.xlsx"))
+    if type(data) is list:
+        sensor_data = data[0]   #included in profiles, just here for optional use
+        profiles = data[1]
+    elif type(data) is pd.DataFrame:
+        loads = [load.split('_')[0] for load in list(data.columns[0::2])]
+        profiles = data
+    else:
+        loads = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'Load.csv'), sep=';', index_col='id')
+        profiles = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'LoadProfile.csv'), sep=';', index_col='time')
+        pv_profiles = load_workbook(os.path.join(config.grid_data_folder, folder, r"PV_Profiles.xlsx"))
 
     if sim_setting == 'ERIGrid_phase_1' or config.detection_application:
 
-        if config.detection_application:
+        if config.detection_application and data is str and data == 'sampled' or type(data) is list:
+            variation = setup
+            pf.activate_variations('Training data Setup')     #activate both PVs here
+
+            """if 'Test Setup A' not in [var.loc_name for var in pf.app.GetActiveNetworkVariations()]:
+                pf.activate_variations('Test Setup A')     #activate both PVs here
+            if 'Test Setup B' not in [var.loc_name for var in pf.app.GetActiveNetworkVariations()]:
+                pf.activate_variations('Test Setup B')"""
+        elif type(data) is pd.DataFrame:
             variation = setup
         else:
             variation = learning_config['setup_chosen'].split('_')[1]
-        if variation is not None:
+
+        if variation is not None and data is str and type(data) is not list:
             pf.activate_variations('Test Setup ' + variation)
             if variation == 'A':
                 variation = 'B'
@@ -326,19 +341,37 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
 
         chars_dict[element] = {}
 
-        if config.detection_application:
+        if config.detection_application and not extract_profiles:
 
-            if data == 'sampled':
+            if type(data) is str and data == 'sampled':
                 num_data_points = config.num_training_samples
 
-                if type == 'PV':
-                    p_profile = np.zeros(num_data_points)     #PV deactivated here
+                if element_type == 'PV':
+                    if element.loc_name.split(' ')[-1] == setup:
+                        mu = config.load_estimation_training_data_distributions_dict['PV']['mu']
+                        sigma = config.load_estimation_training_data_distributions_dict['PV']['sigma']
+                        if config.training_data_dist == 'standard':
+                            samples = np.random.default_rng().normal(mu, sigma, (1, num_data_points))
+                        else:
+                            samples = np.random.uniform(low=0.0, high=6.0, size=(1, num_data_points))
+                        p_profile = samples[0]
+                    else:
+                        p_profile = np.zeros(num_data_points)     #PV deactivated here
+
                 else:
                     mu = config.load_estimation_training_data_distributions_dict[sim_setting][element.loc_name][0]
                     sigma = config.load_estimation_training_data_distributions_dict[sim_setting][element.loc_name][1]
-                    samples = np.random.default_rng().normal(mu, sigma, (2, num_data_points))
-                    p_profile = samples[0]
-                    q_profile = samples[1]
+                    q_factor = config.load_estimation_training_data_distributions_dict[sim_setting][element.loc_name][2]
+                    if config.training_data_dist == 'standard':
+                        samples_p = np.random.default_rng().normal(mu, sigma, (1, num_data_points))
+                        samples_q = np.random.default_rng().normal(mu/q_factor, sigma/q_factor, (1, num_data_points))
+                    else:
+                        high = mu+3*sigma
+                        low = high * config.load_estimation_training_data_distributions_dict[sim_setting][element.loc_name][3]
+                        samples_p = np.random.uniform(low=config.load_estimation_training_data_distributions_dict[sim_setting]['p_low'], high=high, size=(1, num_data_points))
+                        samples_q = np.random.uniform(low=low/q_factor, high=high/q_factor, size=(1, num_data_points))
+                    p_profile = samples_p[0]
+                    q_profile = samples_q[0]
 
                 begin = '01.01.2022 00:00'
                 t_start = pd.Timestamp(begin, tz='utc')
@@ -375,7 +408,81 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                 chars_dict[element][f't_start'] = t_start
                 chars_dict[element][f't_end'] = t_end
 
-                if type == 'load':
+                if element_type == 'load':
+                    q_char = pf.create_vector_characteristic(
+                        characteristic=f'q_{element.loc_name}',
+                        # adds first letter of column name to characteristics name > most commonly P, Q or V
+                        # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                        # i].values / factor, index = config.times_household),
+                        vector_nodes=q_profile,
+                        scale=o_TriTime,
+                        usage=2,  # 0,1,2 ... 2 means absolute
+                        approximation="constant",
+                        parent=None
+                    )
+
+                    chars_dict[element][f'q'] = q_char
+
+            elif type(data) is list:
+
+                num_data_points = len(list(profiles[0][f'PV {setup}_P'].values))
+
+                if element_type == 'PV':
+                    if element.loc_name.split(' ')[-1] == setup:
+                        p_profile = list(profiles[0][f'PV {setup}_P'].values)
+                    else:
+                        p_profile = np.zeros(num_data_points)     #PV deactivated here
+
+                else:
+                    p_load = profiles[1][f'{element.loc_name}_P']
+                    q_load = profiles[1][f'{element.loc_name}_Q']
+
+                    p_measurement_test_bay = profiles[0]['Test Bay ' + config.load_test_bays_map_dict[sim_setting][element.loc_name] + '_p']/1000000
+                    q_measurement_test_bay = profiles[0]['Test Bay ' + config.load_test_bays_map_dict[sim_setting][element.loc_name] + '_q']/1000000
+
+                    """if config.load_test_bays_map_dict[sim_setting][element.loc_name] == config.PV_test_bays_map_dict[sim_setting][setup]:
+                        pv_p_profile = profiles[0][f'PV {setup}_P']
+                        pv_q_profile = profiles[0][f'PV {setup}_Q']"""
+
+                    p_profile = list(p_load.values)
+                    q_profile = list(q_load.values)
+
+                begin = '01.01.2022 00:00'
+                t_start = pd.Timestamp(begin, tz='utc')
+                times = pd.date_range(begin, periods=num_data_points, freq="S")
+                t_end = pd.Timestamp(times[-1], tz='utc')
+
+                # Objects which control the time scale
+                utc = datetime.timezone.utc
+                times = pd.date_range(start=t_start, end=t_end, freq='S',
+                                      tz='utc')
+
+                # scale for cyprus profiles (5 minute resolution):
+                o_TriTime = pf.create_time_scale(
+                    time_scale=f'timescale_training',
+                    time_points=times,
+                    unit="Y",
+                    parent=None,
+                    destination_timezone=utc
+                )
+
+                p_char = pf.create_vector_characteristic(
+                    characteristic=f'p_{element.loc_name}',
+                    # adds first letter of column name to characteristics name > most commonly P, Q or V
+                    # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                    # i].values / factor, index = config.times_household),
+                    vector_nodes=p_profile,
+                    scale=o_TriTime,
+                    usage=2,  # 0,1,2 ... 2 means absolute
+                    approximation="constant",
+                    parent=None
+                )
+
+                chars_dict[element][f'p'] = p_char
+                chars_dict[element][f't_start'] = t_start
+                chars_dict[element][f't_end'] = t_end
+
+                if element_type == 'load':
                     q_char = pf.create_vector_characteristic(
                         characteristic=f'q_{element.loc_name}',
                         # adds first letter of column name to characteristics name > most commonly P, Q or V
@@ -395,8 +502,13 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                 num_data_points = 60 - 36  # 9am to 3pm
                 for sample_no in list(range(len(data.index)%num_data_points)):
                     start_indices = sample_no % (num_data_points)
-                    p_profile = data[element]['p'][start_indices:start_indices+num_data_points]  #edit column names SHOULD BE IN KW!!
-                    q_profile = data[element]['q'][start_indices:start_indices+num_data_points]  #edit column names
+                    element_name = element.loc_name
+                    if element_type == 'load':
+                        p_profile = profiles[element_name + '_P'][start_indices:start_indices+num_data_points+1]  #SHOULD BE IN KW!
+                        q_profile = profiles[element_name + '_Q'][start_indices:start_indices+num_data_points+1]
+                    else:
+                        p_profile = pv_input[start_indices:start_indices+num_data_points+1]
+
 
                     begin = f'{sample_no+1}.01.2022 09:00'
                     end = f'{sample_no+1}.01.2022 15:00'    #check if 15:00 or 15:15 to get all datapoints
@@ -418,7 +530,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                         destination_timezone=utc
                     )
 
-                    if type == 'load':
+                    if element_type == 'load':
                         data = data.round()
 
                     p_char = pf.create_vector_characteristic(
@@ -434,10 +546,10 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                     )
 
                     chars_dict[element][f'p_{sample_no}'] = p_char
-                    chars_dict[element][f'{sample_no}_t_start'] = t_start
-                    chars_dict[element][f'{sample_no}_t_end'] = t_end
+                    chars_dict[element][f't_{sample_no}_start'] = t_start
+                    chars_dict[element][f't_{sample_no}_end'] = t_end
 
-                    if type == 'load':
+                    if element_type == 'load':
                         q_char = pf.create_vector_characteristic(
                             characteristic=f'q_{element.loc_name}_{sample_no}',
                             # adds first letter of column name to characteristics name > most commonly P, Q or V
@@ -460,7 +572,6 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                     if id == 'LV4.101 Load 11': break
                 else:
                     if id == 'LV4.101 Load 30': break
-
 
                 p_profile = profiles[row['profile'] + '_pload']
                 q_profile = profiles[row['profile'] + '_qload']
@@ -488,7 +599,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
 
                         data = sheet_df[2][ start_index:end_index+1]
 
-                        if type == 'load':
+                        if element_type == 'load':
 
                             p_slice = p_profile[begin:end]
                             p_values = p_slice * p_load * 1000  # to have values in kW
@@ -530,7 +641,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                             destination_timezone=utc
                         )
 
-                        if type == 'load':
+                        if element_type == 'load':
                             data = data.round()
 
                         p_char = pf.create_vector_characteristic(
@@ -549,7 +660,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                         chars_dict[element][f'{i}_t_start'] = t_start
                         chars_dict[element][f'{i}_t_end'] = t_end
 
-                        if type == 'load':
+                        if element_type == 'load':
                             q_char = pf.create_vector_characteristic(
                                 characteristic=f'q_{element.loc_name}_{sheet_name}',
                                 # adds first letter of column name to characteristics name > most commonly P, Q or V
@@ -568,8 +679,20 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
 
     return chars_dict
 
+"""def load_profiles():
 
-def prepare_grid(app, file, o_ElmNet, data=None, setup=None, phase=None):
+
+    profiles = {}
+    profiles = create_characteristics(o_ElmLod, profiles, sim_setting=config.sim_setting,
+                                    type='load', data=data, setup=setup,
+                                    extract_profiles=extract_profiles)  # create characteristics
+
+    profiles = create_characteristics(o_PV, profiles, sim_setting=config.sim_setting, type='PV', data=data,
+                                    setup=setup, extract_profiles=extract_profiles)  # create charcteristics
+    return profiles"""
+
+
+def prepare_grid(app, file, o_ElmNet, data=None, setup=None, phase=None, extract_profiles=False, pv_input=None):
     # set path for load and generation profiles
     char_folder = app.GetProjectFolder('chars')
     if config.deeplearning:
@@ -624,29 +747,39 @@ def prepare_grid(app, file, o_ElmNet, data=None, setup=None, phase=None):
 
         if config.detection_methods:
             curves = create_characteristics(o_ElmLod, curves, sim_setting=config.sim_setting,
-                                            type='load')  # create charcteristics
+                                            element_type='load')  # create charcteristics
 
         if config.detection_application:
-            if data == 'sampled':
+            if data is str and data == 'sampled':
 
                 curves = create_characteristics(o_ElmLod, curves, sim_setting=phase.split('_')[-1],
-                                                type='load', data=data, setup=setup)  # create characteristics
+                                                element_type='load', data=data, setup=setup)  # create characteristics
+            elif extract_profiles:
+                curves = create_characteristics(o_ElmLod, curves, sim_setting=config.sim_setting,
+                                                element_type='load', data=data, setup=setup, extract_profiles=extract_profiles)  # create characteristics
+            elif type(data) is list:
+                curves = create_characteristics(o_ElmLod, curves, sim_setting=phase.split('_')[-1],
+                                                element_type='load', data=data, setup=setup)  # create characteristics
             else:
                 curves = create_characteristics(o_ElmLod, curves, sim_setting=config.sim_setting,
-                                                type='load', data=data, setup=setup)  # create characteristics
+                                                element_type='load', data=data, setup=setup)  # create characteristics
 
     if config.detection_methods:
         for o_PV in app.GetCalcRelevantObjects('.ElmPvsys'):
-            curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, type='PV')
+            curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, element_type='PV')
 
     if config.detection_application:
-        if data == 'sampled':
+        if type(data) == str and data == 'sampled':
             for o_PV in app.GetCalcRelevantObjects('.ElmPvsys'):
-                curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, type='PV', data=data,
-                                                setup=setup)  # create charcteristics of no dispatch bc does not matter here for load estimation training data
+                curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, element_type='PV', data=data,
+                                                setup=setup)        # create charcteristics
+        elif extract_profiles:
+            for o_PV in app.GetCalcRelevantObjects('.ElmPvsys'):
+                curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, element_type='PV', data=data,
+                                                setup=setup, extract_profiles=extract_profiles)        # create charcteristics
         else:
             for o_PV in app.GetCalcRelevantObjects('.ElmPvsys'):
-                curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, type='PV', data=data, setup=setup)  # create charcteristics
+                curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, element_type='PV', data=data, setup=setup, pv_input=pv_input)  # create charcteristics
 
     if config.deeplearning:
         # deactivate storages in grid and count PVs for later use

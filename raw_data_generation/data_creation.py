@@ -19,8 +19,7 @@ spec.loader.exec_module(config)
 learning_config = config.learning_config
 
 
-def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=0, step_size=None):
-
+def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=0, step_size=None, marker=None):
     if step_size is None:
         step_size = config.step_size
 
@@ -65,6 +64,23 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=
                 'm:Pgen',  # active power generated at terminal
                 'm:Qgen',  # reactive power generated at terminal
             ],
+        }
+    elif marker == 'load_estimation_training_data':
+        result_variables = {
+            'ElmTerm': [
+                'm:u',
+                'm:phiu',
+                'm:Pflow',
+                'm:Qflow'
+            ],
+            'ElmLod': [
+                'm:P:bus1',
+                'm:Q:bus1'
+            ],
+            'ElmPvsys' : [
+                'm:P:bus1',
+                'm:Q:bus1'
+            ]
         }
     else:
         result_variables = m.mapping()
@@ -187,12 +203,16 @@ def set_times(file, element=None, chars_dict=None, scenario=None):
             """char = pf.get_referenced_characteristics(element, 'pgini')[0]
             t_start = char.scale.scale[0]
             t_end = char.scale.scale[-1]"""
-            t_start = chars_dict[element][f'{scenario}_t_start']
-            t_end = chars_dict[element][f'{scenario}_t_end']
+            t_start = chars_dict[element][f't_{scenario}_start']
+            t_end = chars_dict[element][f't_{scenario}_end']
 
         if config.detection_application:
-            t_start = chars_dict[element][f't_start']
-            t_end = chars_dict[element][f't_end']
+            if scenario:
+                t_start = chars_dict[element][f't_{scenario}_start']
+                t_end = chars_dict[element][f't_{scenario}_end']
+            else:
+                t_start = chars_dict[element][f't_start']
+                t_end = chars_dict[element][f't_end']
 
     else:
         t_start = config.t_start
@@ -272,14 +292,14 @@ def run_QDS(app, run, result):
                                'm:Qsum:bushv', 'm:Psum:buslv', 'm:Qsum:buslv', 'm:Pflow', 'm:Qflow']
     for data in results.columns:
         if data[2] in list_of_power_variables:
-            results[data] = results[data] * 1000 * 1000  # convert all powers from kW to Watts
+            results[data] = results[data] * 1000 * 1000  # convert all powers from MW to Watts
             if config.reduce_result_file_size == True:
                 results[data] = results[data].values.astype('int')
 
     return results
 
 
-def pick_results(results, all=False):
+def pick_results(results, training_data=False):
     test_bay_dfs = {}
 
     if config.sim_setting == 'ERIGrid_phase_1':
@@ -289,34 +309,41 @@ def pick_results(results, all=False):
     else:
         print('undefined sim setup chosen!')
 
-    for test_bay in map:
-        test_bay_df = pd.DataFrame()
-        for element in map[test_bay]:
-            if element == 'lines':
-                # do calc and picking on line data
-                for var in m.map['ElmLne']:
-                    try:
-                        if test_bay.split('_')[0] == 'F2':
-                            test_bay_df[m.map['ElmLne'][var][1]] = results[
-                                (map[test_bay][element][0], 'ElmLne', var)]  # always upstream of terminal value used
-                        else:
-                            test_bay_df[m.map['ElmLne'][var][0]] = results[
-                                (map[test_bay][element][0], 'ElmLne', var)]  # always upstream of terminal value used
-                    except KeyError:
-                        print(f"{(map[test_bay][element][0], 'ElmLne', var)} not defined")
-            if element == 'term':
-                for var in m.map['ElmTerm']:
-                    try:
-                        if test_bay.split('_')[0] == 'F2':
-                            test_bay_df[m.map['ElmTerm'][var][1]] = results[(map[test_bay][element], 'ElmTerm', var)]
-                        else:
-                            test_bay_df[m.map['ElmTerm'][var][0]] = results[(map[test_bay][element], 'ElmTerm', var)]
-                    except KeyError:
-                        print(f"{(map[test_bay][element][0], 'ElmTerm', var)} not defined")
-        test_bay_dfs[test_bay] = test_bay_df
-    if all:
-        test_bays_df = pd.concat(test_bay_dfs.values(),
-                                 ignore_index=True)  # merge all selected data into one DF for training data for load estimation NN
+    if not training_data:
+        for test_bay in map:
+            test_bay_df = pd.DataFrame()
+            for element in map[test_bay]:
+                if element == 'lines':
+                    # do calc and picking on line data
+                    for var in m.map['ElmLne']:
+                        try:
+                            if test_bay.split('_')[0] == 'F2':
+                                test_bay_df[m.map['ElmLne'][var][1]] = results[
+                                    (
+                                    map[test_bay][element][0], 'ElmLne', var)]  # always upstream of terminal value used
+                            else:
+                                test_bay_df[m.map['ElmLne'][var][0]] = results[
+                                    (
+                                    map[test_bay][element][0], 'ElmLne', var)]  # always upstream of terminal value used
+                        except KeyError:
+                            print(f"{(map[test_bay][element][0], 'ElmLne', var)} not defined")
+                if element == 'term':
+                    for var in m.map['ElmTerm']:
+                        try:
+                            if test_bay.split('_')[0] == 'F2':
+                                test_bay_df[m.map['ElmTerm'][var][1]] = results[
+                                    (map[test_bay][element], 'ElmTerm', var)]
+                            else:
+                                test_bay_df[m.map['ElmTerm'][var][0]] = results[
+                                    (map[test_bay][element], 'ElmTerm', var)]
+                        except KeyError:
+                            print(f"{(map[test_bay][element][0], 'ElmTerm', var)} not defined")
+            test_bay_dfs[test_bay] = test_bay_df
+    if training_data:
+        test_bays_df = results
+        """test_bays_df = pd.concat(test_bay_dfs,
+                                 axis=1)  # merge all selected data into one DF for training data for load estimation NN
+        test_bays_df.columns = [' '.join(col).strip() for col in test_bays_df.columns.values]"""
         return test_bays_df
 
     return test_bay_dfs
@@ -324,7 +351,7 @@ def pick_results(results, all=False):
 
 def save_results(count, results, file, t_start, t_end, malfunctioning_devices=None, time_of_malfunction=None,
                  terminals_with_PVs=None, terminals_with_EVCs=None, terminals=None, control_curve=None, marker='',
-                 setup=None, folder=None):
+                 setup=None, folder=None, phase=None):
     if config.deeplearning:
         if malfunctioning_devices:
             if config.type == 'PV':
@@ -376,21 +403,35 @@ def save_results(count, results, file, t_start, t_end, malfunctioning_devices=No
             bay_folder = os.path.join(file_folder, test_bay)
             if not os.path.isdir(bay_folder):
                 os.mkdir(bay_folder)
-            if marker == 'estimated':
+            test_bay_dfs[test_bay.split('_')[2] + '_elements'].to_csv(os.path.join(bay_folder,
+                                                                                   f'scenario_{count}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'),
+                                                                      sep=',', decimal=',')
+    if config.detection_application:
+
+        if marker[:13] == 'training_data' or marker[:21] == 'estimation_input_data':
+            test_bays_df = pick_results(results, training_data=True)
+            if marker.split('_')[0] == 'training':
+                test_bays_df.to_csv(os.path.join(folder,
+                                                 f'load_estimation_training_data_setup_{marker.split("_")[-1]}.csv'))#,
+                                   # sep=',', decimal=',')
+            else:
+                test_bays_df.to_csv(os.path.join(folder,
+                                                 f'load_estimation_input_data_setup_{marker.split("_")[-1]}.csv'))  # ,
+                # sep=',', decimal=',')
+            return
+        else:
+            results_folder, file_folder = create_results_folder(file, phase=phase)
+
+            test_bay_dfs = pick_results(results)
+
+            test_bays = {'Test_Bay_B1': 'B1dataframe', 'Test_Bay_F1': 'F1dataframe', 'Test_Bay_F2': 'F2dataframe'}
+            for test_bay in test_bays:
+                bay_folder = os.path.join(file_folder, test_bay)
+                if not os.path.isdir(bay_folder):
+                    os.mkdir(bay_folder)
                 test_bay_dfs[test_bay.split('_')[2] + '_elements'].to_csv(os.path.join(bay_folder,
                                                                                        f'scenario_{count}_{control_curve}_control_Setup_{setup}_{marker}.csv'),
                                                                           sep=',', decimal=',')
-            else:
-                test_bay_dfs[test_bay.split('_')[2] + '_elements'].to_csv(os.path.join(bay_folder,
-                                                                                       f'scenario_{count}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'),
-                                                                          sep=',', decimal=',')
-    if config.detection_application:
-
-        if marker == 'training_data':
-            test_bays_df = pick_results(results, all=True)
-            test_bays_df.to_csv(os.path.join(folder,
-                                             f'load_estimation_training_data.csv'),
-                                sep=',', decimal=',')
 
     return
 
@@ -423,7 +464,7 @@ def clean_up(app, active_PVs, active_EVCS=None, malfunctioning_devices=None):
     return
 
 
-def create_results_folder(file, phase=None):
+def create_results_folder(file, phase=None, setup=None, estimate_input=False, training_data=False):
     if config.deeplearning:
         penetrations = ''
         for key, value in config.percentage.items():
@@ -436,10 +477,19 @@ def create_results_folder(file, phase=None):
         results_folder = os.path.join(config.raw_data_folder,
                                       (config.sim_setting + '_sim_data'))
     elif config.detection_application:
-        results_folder = os.path.join(config.raw_data_folder, (
+        if estimate_input:
+            results_folder = os.path.join(config.raw_data_folder, (
+                    '_'.join(config.pf_file_dict[phase.split('_')[-1]].split('_')[1:]) + '_estimation_input_data'))
+            file_folder = os.path.join(results_folder, f'Setup_{setup}')
+        elif training_data:
+            results_folder = os.path.join(config.raw_data_folder, (
                     '_'.join(config.pf_file_dict[phase.split('_')[-1]].split('_')[1:]) + '_training_data'))
-
-    file_folder = os.path.join(results_folder, file)
+            file_folder = os.path.join(results_folder, file)
+        else:
+            if phase.split('_')[-1] == 'phase1': phase_num = 'phase_1'
+            results_folder = os.path.join(config.raw_data_folder, (
+                    '_'.join([config.pf_file_dict[phase.split('_')[-1]].split('_')[1:][0], phase_num]) + '_sim_data'))
+            file_folder = os.path.join(results_folder, file)
 
     if not os.path.isdir(results_folder):
         os.mkdir(results_folder)
@@ -520,7 +570,7 @@ def create_deeplearning_data(app, o_ElmNet, grid_data, study_case_obj, file):
     return
 
 
-def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file, setup=None):
+def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file, setup=None, estimation=None, phase=None):
     '''
 
     create all data that was collected in the sim setup defined
@@ -537,11 +587,11 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
     else:
         control_curves = {'correct': [1, 3, 0.9, 6], 'wrong': [1, 3, 0.999999, 6], 'inversed': [0.9, 6, 0.999999, 3]}
 
-    if config.detection_application: control_curves.drop(label='correct')
+    if config.detection_application: del control_curves['correct']
 
     if config.add_data:
         new_chars_dict = {}
-        results_folder, file_folder = create_results_folder(file)
+        results_folder, file_folder = create_results_folder(file, phase=phase)
         for element in chars_dict:
             new_chars_dict[element] = {}
             for char in chars_dict[element]:
@@ -550,22 +600,31 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
                     os.mkdir(bay_folder)
 
                 for control_curve in control_curves:
-                    if not os.path.isfile(os.path.join(bay_folder,
-                                                       f'scenario_{char.split("_")[1]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')) \
-                            and not os.path.isfile(os.path.join(bay_folder,
-                                                                f'scenario_{char.split("_")[0]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
-                        new_chars_dict[element][char] = chars_dict[element][char]
-                    # del new_chars_dict[element][char]
+                    if config.detection_application:
+                            if not os.path.isfile(os.path.join(bay_folder,
+                                                               f'scenario_{str(int(char.split("_")[1])+1)}_{control_curve}_control_Setup_{setup}_{estimation}.csv')) \
+                                    and not os.path.isfile(os.path.join(bay_folder,
+                                                                        f'scenario_{str(int(char.split("_")[1])+1)}_{control_curve}_control_Setup_{setup}_{estimation}.csv')):
+                                new_chars_dict[element][char] = chars_dict[element][char]
+                    else:
+                        if not os.path.isfile(os.path.join(bay_folder,
+                                                           f'scenario_{char.split("_")[1]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')) \
+                                and not os.path.isfile(os.path.join(bay_folder,
+                                                                    f'scenario_{char.split("_")[0]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
+                            new_chars_dict[element][char] = chars_dict[element][char]
+                        # del new_chars_dict[element][char]
         chars_dict = new_chars_dict
 
     PV = app.GetCalcRelevantObjects('*.ElmPvsys')[0]
     if len(app.GetCalcRelevantObjects('*.ElmPvsys')) > 1: print('too many PVs!')
 
-    for scenario in [i.split('_')[1] for i in chars_dict[PV].keys()][0::3]:
+    scenarios = [i.split('_')[1] for i in chars_dict[PV].keys()][0::3]
+    for scenario in scenarios:
         for element in chars_dict.keys():
             if element in app.GetCalcRelevantObjects('.ElmLod'):
                 pf.set_referenced_characteristics(element, 'plini', chars_dict[element][f'p_{scenario}'])
                 pf.set_referenced_characteristics(element, 'qlini', chars_dict[element][f'q_{scenario}'])
+                load = element
             elif element in app.GetCalcRelevantObjects('.ElmPvsys'):
                 pf.set_referenced_characteristics(element, 'pgini', chars_dict[element][f'p_{scenario}'])
 
@@ -576,7 +635,9 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
             if config.add_data:
                 bay_folder = os.path.join(file_folder, 'Test_Bay_F2')
                 if os.path.isfile(os.path.join(bay_folder,
-                                               f'scenario_{scenario}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')):
+                                               f'scenario_{scenario}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'))\
+                        and os.path.isfile(os.path.join(bay_folder,
+                                               f'scenario_{str(int(scenario)+1)}_{control_curve}_control_Setup_{setup}_{estimation}.csv')):
                     do = False
 
             if do:
@@ -585,7 +646,7 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
                 PV.pf_under = control_curves[control_curve][2]
                 PV.p_under = control_curves[control_curve][3]
 
-                t_start, t_end = set_times(file, element=PV, chars_dict=chars_dict, scenario=scenario)
+                t_start, t_end = set_times(file, element=load, chars_dict=chars_dict, scenario=scenario)
 
                 result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=config.step_unit,
                                           balanced=config.balanced)  # set which vars and where!
@@ -595,13 +656,13 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
                 if config.detection_methods:
                     save_results(int(scenario), results, file, t_start, t_end, control_curve=control_curve)
                 if config.detection_application:
-                    save_results(int(scenario), results, file, t_start, t_end, control_curve=control_curve,
-                                 marker='estimated', setup=setup)
+                    save_results(int(scenario)+1, results, file, t_start, t_end, control_curve=control_curve,
+                                 marker=estimation, setup=setup, phase=phase)
 
     return
 
 
-def create_load_estimation_training_data(app, o_ElmNet, grid_data, study_case_obj, file, phase):
+def create_load_estimation_training_data(app, o_ElmNet, grid_data, study_case_obj, file, phase, setup):
     '''
 
     create data used for training the NN for load estimation
@@ -610,13 +671,13 @@ def create_load_estimation_training_data(app, o_ElmNet, grid_data, study_case_ob
 
     chars_dict = grid_data[0]
 
-    results_folder, file_folder = create_results_folder(file, phase=phase)
+    results_folder, file_folder = create_results_folder(file, phase=phase, training_data=True)
     training_data_folder = os.path.join(file_folder, 'Load_estimation_training_data')
     if not os.path.isdir(training_data_folder):
         os.mkdir(training_data_folder)
 
     PV = app.GetCalcRelevantObjects('*.ElmPvsys')[0]
-    if len(app.GetCalcRelevantObjects('*.ElmPvsys')) > 1: print('too many PVs!')
+    #if len(app.GetCalcRelevantObjects('*.ElmPvsys')) > 1: print('too many PVs!')
 
     for element in chars_dict.keys():
         if element in app.GetCalcRelevantObjects('.ElmLod'):
@@ -624,22 +685,63 @@ def create_load_estimation_training_data(app, o_ElmNet, grid_data, study_case_ob
             pf.set_referenced_characteristics(element, 'qlini', chars_dict[element][f'q'])
         elif element in app.GetCalcRelevantObjects('.ElmPvsys'):
             pf.set_referenced_characteristics(element, 'pgini', chars_dict[element][f'p'])
-            element.outserv = 1
 
         # run QDS for the same number of steps as there are load values per load
 
     t_start, t_end = set_times(file, element=PV, chars_dict=chars_dict)
 
-    step_unit = 0 #0 for seconds
+    step_unit = 0  # 0 for seconds
 
     result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=step_unit,
-                              balanced=0, step_size=1)  # set which vars and where!
+                              balanced=0, step_size=1,
+                              marker='load_estimation_training_data')  # set which vars and where!
     results = run_QDS(app, 1, result)
 
-    # save correctly as to be used by rest of framework
-    # STILL GET ALL RESULTS (OR AT LEAST OF ALL TEST BAYS) INTO ONE DATAFRAME!!
+    # save correctly as to be used by load estimation
     if config.detection_application:
         save_results(1, results, file, t_start, t_end,
-                     marker='training_data', folder=training_data_folder)
+                     marker='training_data_setup_' + setup, folder=training_data_folder)
+
+    return
+
+def create_load_estimation_input_data(app, o_ElmNet, grid_data, study_case_obj, file, phase, setup):
+    '''
+
+    create data used for training the NN for load estimation
+
+    '''
+
+    chars_dict = grid_data[0]
+
+    results_folder, file_folder = create_results_folder(file, phase=phase, setup=setup, estimate_input=True)
+    estimation_input_data_folder = os.path.join(file_folder, 'Load_estimation_input_data')
+    if not os.path.isdir(estimation_input_data_folder):
+        os.mkdir(estimation_input_data_folder)
+
+    PV = app.GetCalcRelevantObjects('*.ElmPvsys')[0]
+    #if len(app.GetCalcRelevantObjects('*.ElmPvsys')) > 1: print('too many PVs!')
+
+    for element in chars_dict.keys():
+        if element in app.GetCalcRelevantObjects('.ElmLod'):
+            pf.set_referenced_characteristics(element, 'plini', chars_dict[element][f'p'])
+            pf.set_referenced_characteristics(element, 'qlini', chars_dict[element][f'q'])
+        elif element in app.GetCalcRelevantObjects('.ElmPvsys'):
+            pf.set_referenced_characteristics(element, 'pgini', chars_dict[element][f'p'])
+
+        # run QDS for the same number of steps as there are load values per load
+
+    t_start, t_end = set_times(file, element=PV, chars_dict=chars_dict)
+
+    step_unit = 0  # 0 for seconds
+
+    result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=step_unit,
+                              balanced=0, step_size=1,
+                              marker='load_estimation_training_data')  # set which vars and where!
+    results = run_QDS(app, 1, result)
+
+    # save correctly as to be used by load estimation
+    if config.detection_application:
+        save_results(1, results, file, t_start, t_end,
+                     marker='estimation_input_data_setup_' + setup, folder=estimation_input_data_folder)
 
     return

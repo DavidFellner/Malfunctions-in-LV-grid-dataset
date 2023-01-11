@@ -176,11 +176,12 @@ class Transformer_detection:
 
         return fgs, axs
 
-    def load_data(self, scenario=None, sampling=None, data_source=None, phase_info=None, grid_setup=None, marker=None):
+    def load_data(self, scenario=None, sampling=None, data_source=None, phase_info=None, grid_setup=None, marker='-'):
         if data_source is None:
             data_source = self.data_source
         if phase_info is not None:
             measurements = {key: value for key, value in phase_info[1][1].items() if key.split(' ')[-1] == grid_setup}
+            if marker.split('_')[-1].split(' ')[-1] == 'estimate': measurements = {key: value for key, value in measurements.items() if key.split(' ')[1] != 'correct'}
             data_path = config.data_path_dict[phase_info[0].split('_')[-1]]
             sim_data_path = config.sim_data_path_dict[phase_info[0].split('_')[-1]]
             test_bays = config.test_bays_dict[phase_info[0].split('_')[-1]]
@@ -220,7 +221,7 @@ class Transformer_detection:
                 for measurement in measurements:
                     for test_bay in test_bays:
                         full_path = os.path.join(sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
-                        if marker == 'estimated':
+                        if marker == 'estimated' or marker.split('_')[-1].split(' ')[-1] == 'estimate':
                             data = pd.read_csv(os.path.join(full_path,
                                                             f'scenario_{scenario}_{measurement.split(" ")[1]}_control_Setup_{grid_setup}_{marker}.csv'),
                                                sep=',',
@@ -275,7 +276,7 @@ class Transformer_detection:
                     for scenario in list(range(len(measurements[measurement]))):
                         for test_bay in test_bays:
                             full_path = os.path.join(sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
-                            if marker ==  'estimated':
+                            if marker == 'estimated' or marker.split('_')[-1].split(' ')[-1] == 'estimate':
                                 data = pd.read_csv(os.path.join(full_path,
                                                                 f'scenario_{scenario + 1}_{measurement.split(" ")[1]}_control_Setup_{grid_setup}_{marker}.csv'),
                                                    sep=',',

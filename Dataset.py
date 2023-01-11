@@ -671,8 +671,10 @@ class Sensor_Dataset:
                                      measurement.split(' ')[3] == setup and
                                      measurement.split(' ')[0] == 'wrong']}
 
-            data_dict = {'trafo_correct': self.trafo_data_correct, 'load_correct': self.load_data_correct,
-                         'trafo_wrong': self.trafo_data_wrong, 'load_wrong': self.load_data_wrong}
+            data_dict = {'trafo_correct': self.trafo_data_correct, 'trafo_correct_unflat': self.trafo_data_correct,
+                         'load_correct': self.load_data_correct,
+                         'load_correct_unflat': self.load_data_correct, 'trafo_wrong': self.trafo_data_wrong,
+                         'load_wrong': self.load_data_wrong}
             for data in data_dict:
                 measurements = {}
                 for measurement in data_dict[data]:
@@ -680,16 +682,52 @@ class Sensor_Dataset:
                                                        data=data_dict[data][measurement].data[
                                                            variables[measurement[-2:]][1]].values,
                                                        columns=variables[measurement[-2:]][1])
-                    measurements[measurement] = Sensor_Dataset.flatten_df_into_row(self, reduced_measurement)
+                    if data == 'trafo_correct_unflat' or data == 'load_correct_unflat':
+                        measurements[measurement] = reduced_measurement
+                    else:
+                        measurements[measurement] = Sensor_Dataset.flatten_df_into_row(self, reduced_measurement)
 
-                data_dict[data] = pd.DataFrame(
-                    index=[data_dict[data][measurement].name for measurement in data_dict[data]],
-                    data=[measurements[measurement].values[0] for measurement in measurements],
-                    columns=measurements[list(measurements.keys())[0]].columns).replace(np.nan,
-                                                                                        0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
+                if data == 'trafo_correct_unflat':
+                    index_length = len(
+                        [data_dict[data][measurement].data.index for measurement in data_dict[data]][0]) * len(
+                        [data_dict[data][measurement].data.index for measurement in data_dict[data]])
+                    data_values = np.concatenate([measurements[measurement].values for measurement in measurements])
+                    columns = [column + ' ' + self.trafo_point for column in measurements[list(measurements.keys())[0]].columns]
+                    data_dict[data] = pd.DataFrame(
+                        index=range(index_length),
+                        data=data_values,
+                        columns=columns).replace(np.nan,
+                                                 0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
+                elif data == 'load_correct_unflat':
+                    index_length = int((len(
+                        [data_dict[data][measurement].data.index for measurement in data_dict[data]][0]) * len(
+                        [data_dict[data][measurement].data.index for measurement in data_dict[data]])) / (len(self.test_bays)-1))
+                    columns = []
+                    data_values = []
+                    for test_bay in self.test_bays:
+                        if test_bay == self.trafo_point:
+                            continue
+                        else:
+                            columns += (Sensor_Dataset.deliver_load_column_names(self, measurements[list(measurements.keys())[0]].columns, test_bay))
+                            data_values.append(np.concatenate([measurements[measurement].values for measurement in measurements if measurement.split(' ')[-1] == test_bay]))
+                    data_values = np.concatenate([i for i in data_values], axis=1)
+                    data_dict[data] = pd.DataFrame(
+                        index=range(index_length),
+                        data=data_values,
+                        columns=columns).replace(np.nan,
+                                                 0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
+
+                else:
+                    data_dict[data] = pd.DataFrame(
+                        index=[data_dict[data][measurement].name for measurement in data_dict[data]],
+                        data=[measurements[measurement].values[0] for measurement in measurements],
+                        columns=measurements[list(measurements.keys())[0]].columns).replace(np.nan,
+                                                                                            0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
 
             self.trafo_data_correct = data_dict['trafo_correct']
+            self.trafo_data_correct_unflattened = data_dict['trafo_correct_unflat']
             self.load_data_correct = data_dict['load_correct']
+            self.load_data_correct_unflattened = data_dict['load_correct_unflat']
             self.trafo_data_wrong = data_dict['trafo_wrong']
             self.load_data_wrong = data_dict['load_wrong']
 
@@ -772,6 +810,12 @@ class Sensor_Dataset:
 
         return v
 
+    def deliver_load_column_names(self, data, test_bay):
+
+        column_names = [column_name + ' ' + test_bay for column_name in data]
+
+        return column_names
+
 
 # assemble 14 + 14 + 1 (or 2?) dataset here and then scale all individually first (14c real + 1w real + 1c real; 14w sim) and then all together (maybe have to cut dimensions first) and then do PCA together; then label oc
 # put all combinations in one dataset, or create 15 different ones? > whatever is easier to rotate samples with / have results to store (maybe one dataset per phase?)
@@ -790,8 +834,10 @@ class Application_Dataset:
         self.phase = phase_info[0].split('_')[-1]
         self.trafo_point = phase_info[1][0]
         self.test_bays = config.test_bays_dict[self.phase]
-        self.trafo_data_correct = data[0].trafo_data_correct
-        self.trafo_data_wrong = data[0].trafo_data_wrong
+        #self.trafo_data_correct = data[0].trafo_data_correct
+        #self.trafo_data_wrong = data[0].trafo_data_wrong
+        self.trafo_data_correct = Application_Dataset.df_from_meas_dict(self, data[0], self.variables)
+        self.trafo_data_wrong = Application_Dataset.df_from_meas_dict(self, data[1], self.variables)
         self.sim_data_wrong = None
         self.scenario_combos_data = {}
 
@@ -800,7 +846,7 @@ class Application_Dataset:
         else:
             self.classes = ['correct', 'wrong']
 
-        sim_data_df = Application_Dataset.df_from_meas_dict(self, data[1], self.variables)
+        sim_data_df = Application_Dataset.df_from_meas_dict(self, data[2], self.variables)
         self.sim_data_wrong = sim_data_df
 
     def create_dataset(self):
@@ -824,12 +870,14 @@ class Application_Dataset:
             trafo_wrong_test = self.trafo_data_wrong.iloc[int(combo) - 1]  # use only the 'latest' one
             trafo_test = pd.concat([trafo_correct_test, trafo_wrong_test], axis=1).transpose()
 
-            trafo_test_scaled, scaler = Application_Dataset.scale(self, trafo_test, scaler=scaler) #Reshape your data either using array.reshape(-1, 1) if your data has a single feature or array.reshape(1, -1) if it contains a single sample.
+            trafo_test_scaled, scaler = Application_Dataset.scale(self, trafo_test,
+                                                                  scaler=scaler)  # Reshape your data either using array.reshape(-1, 1) if your data has a single feature or array.reshape(1, -1) if it contains a single sample.
 
-            trafo_pca_data = Application_Dataset.PCA(self, pd.concat([trafo_correct_hist_scaled, trafo_test_scaled]), n_components=len(trafo_correct_hist))  #HAS TO BE DONE TOGETHER WITH REST OF REAL DATA, AS MIN NUM SAMPLES DETERMINES PCs
+            trafo_pca_data = Application_Dataset.PCA(self, pd.concat([trafo_correct_hist_scaled, trafo_test_scaled]),
+                                                     n_components=len(
+                                                         trafo_correct_hist))  # HAS TO BE DONE TOGETHER WITH REST OF REAL DATA, AS MIN NUM SAMPLES DETERMINES PCs
             trafo_test_pca_data = trafo_pca_data[-2:]
             trafo_correct_hist_pca_data = trafo_pca_data[:-2]
-
 
             """trafo_wrong_scaled, scaler = Application_Dataset.scale(self, trafo_wrong_test, scaler=scaler)
             trafo_wrong_pca_data = Application_Dataset.PCA(self, trafo_wrong_scaled,
@@ -837,18 +885,21 @@ class Application_Dataset:
 
             sim_wrong = self.sim_data_wrong.drop(self.sim_data_wrong.index[int(combo) - 1],
                                                  axis=0)  # use only 'historic' ones
-            sim_wrong_scaled, scaler = Application_Dataset.scale(self, sim_wrong)       #scale with its own scaler, since dmesnions differ due to different number of varioables (30 for sim, 84 for real data)
+            sim_wrong_scaled, scaler = Application_Dataset.scale(self,
+                                                                 sim_wrong)  # scale with its own scaler, since dmesnions differ due to different number of varioables (30 for sim, 84 for real data)
             sim_wrong_pca_data = Application_Dataset.PCA(self, sim_wrong_scaled,
                                                          n_components=len(trafo_correct_hist_pca_data))
 
             combined_training_data = np.concatenate((trafo_correct_hist_pca_data,
-                                                    sim_wrong_pca_data))  # df of data of 1 of 15 combos (historic)
-            combined_testing_data = trafo_test_pca_data                  # df of data of 1 of 15 combos (samples to classify/test on)
+                                                     sim_wrong_pca_data))  # df of data of 1 of 15 combos (historic)
+            combined_testing_data = trafo_test_pca_data  # df of data of 1 of 15 combos (samples to classify/test on)
 
-            labelled_training_data = {'X' : combined_training_data, 'y' : [0] * len(trafo_correct_hist) +  [1] * len(sim_wrong)}
-            labelled_test_data = {'X' : combined_testing_data, 'y' : [0,1]}
+            labelled_training_data = {'X': combined_training_data,
+                                      'y': [0] * len(trafo_correct_hist) + [1] * len(sim_wrong)}            #ALTER LABELLING IN CASE NOT JUST CORRECT ADN WRONG > AS FOR DETECTION
+            labelled_test_data = {'X': combined_testing_data, 'y': [0, 1]}
 
-            self.scenario_combos_data['combination_' + combo] = {'training' : labelled_training_data, 'testing' : labelled_test_data}  # training: all historic data (14 real correct + 14 sim wrong samples); testing data : 1 real correct and 1 real wrong sample
+            self.scenario_combos_data['combination_' + combo] = {'training': labelled_training_data,
+                                                                 'testing': labelled_test_data}  # training: all historic data (14 real correct + 14 sim wrong samples); testing data : 1 real correct and 1 real wrong sample
 
         print(f'Datasets of {len(self.scenario_combos_data.keys())} combinations assembled')
 
@@ -857,7 +908,6 @@ class Application_Dataset:
     def dataset_info(self):
         print(
             f'Dataset containing {len(self.scenario_combos_data)} combinations of 28 historic samples (14 correct and 14 corresponding wrong ones) for training and 2 testing samples (one correct one wrong) created')
-
 
     def PCA(self, data, n_components=0.99):
 

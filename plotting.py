@@ -58,28 +58,28 @@ def plot_sample(Y, x=None, label = None, title=None, save=False, figname=None):
 
     return ax
 
-def plot_2D(y, x=None, labels=None, title=None, x_label=None, y_label=None, save=False, figname=None):
+def plot_2D(y, x=None, labels=None, title=None, x_label=None, y_label=None, save=False, figname=None, style='-'):
 
     fig, ax = plt.subplots()
 
     if not x:
         if type(y[0]) == list:
-            x = np.linspace(0, len(y[0]), len(y[0]))
+            x = np.linspace(0, len(y[0])+1, len(y[0]))
         else:
-            x = np.linspace(0, len(y), len(y))
+            x = np.linspace(0, len(y)+1, len(y))
 
     if labels:
         if type(y[0]) == list:
             for i in list(range(len(y))):
-                ax.plot(x, y[i], label=labels[i])
+                ax.plot(x, y[i], style, label=labels[i])
         else:
-            ax.plot(x, y, label=labels)
+            ax.plot(x, y, style, label=labels)
     else:
         if type(y[0]) == list:
             for i in list(range(len(y))):
-                ax.plot(x, y[i])
+                ax.plot(x, y[i], style)
         else:
-            ax.plot(x, y)
+            ax.plot(x, y, style)
 
     fig.show()
     if labels:
@@ -133,3 +133,29 @@ def plot_grid_search():
     Precisions = [float(i.split('\n')[0][:5]) for i in text.split('Precision: ')[1:]]
     Recalls = [float(i.split('\n')[0][:5]) for i in text.split('Recall: ')[1:]]
     plot_2D([F_scores, Precisions, Recalls], x=learning_config["grid search"][1], labels=['F-score', 'Precision', 'Recall'], x_label=learning_config["grid search"][0] + ' Values', y_label = 'Scores', save=True, figname=figure_name) #learning_config["grid search"][0] + ' Values'
+
+def plot_estimate_vs_target_by_load(y, y_pred_nn, y_pred_lr, style='-', phase='phase1', setup='A'):
+    path = config.load_estimation_folder
+
+    for load in list(y.columns)[0::2]:
+        load_name = load.split('_')[0]
+        figure_name = os.path.join(path, f'{phase}_setup_{setup}_estimation_{load_name}')
+        y_load_P = list(y[load_name + '_P'].values)
+        y_load_Q = list(y[load_name + '_Q'].values)
+        y_pred_nn_P = list(y_pred_nn[load_name + '_P'].values)
+        y_pred_nn_Q = list(y_pred_nn[load_name + '_Q'].values)
+        y_pred_lr_P = list(y_pred_lr[load_name + '_P'].values)
+        y_pred_lr_Q = list(y_pred_lr[load_name + '_Q'].values)
+        #labels=['Target P', 'Target Q', 'Prediction NN P', 'Prediction NN Q', 'Prediction LR P', 'Prediction LR Q']
+        labels_P = ['Target P', 'Estimate NN P', 'Estimate LR P']
+        labels_Q = ['Target Q', 'Estimate NN Q', 'Estimate LR Q']
+
+        #plot_2D([y_load_P, y_load_Q,y_pred_nn_P, y_pred_nn_Q,y_pred_lr_P, y_pred_lr_Q], labels=labels, title='Load estimation vs. target values', x_label='Timestep', y_label='Load [kW]', save=True, figname=figure_name)
+        plot_2D([y_load_P, y_pred_nn_P, y_pred_lr_P ], labels=labels_P,
+                title='Load estimation vs. target values', x_label='Timestep', y_label='Load [kW]', save=True,
+                figname=figure_name + '_P', style=style)
+        plot_2D([y_load_Q, y_pred_nn_Q, y_pred_lr_Q], labels=labels_Q,
+                title='Load estimation vs. target values', x_label='Timestep', y_label='Load [kVA]', save=True,
+                figname=figure_name + '_Q', style=style)
+
+
