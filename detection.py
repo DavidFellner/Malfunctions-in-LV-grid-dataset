@@ -23,7 +23,7 @@ from transformer_detection import Transformer_detection
 from disaggregation_module import Disaggregation
 
 from detection_method_settings import measurements_DSM as measurements_phase2
-from detection_method_settings import measurements as measurements_phase1
+from detection_method_settings import measurements_extended as measurements_phase1
 
 from raw_data_generation.grid_preparation import prepare_grid
 
@@ -85,7 +85,7 @@ class Detection_application:
 
         return self.load_data_estimated
 
-    def create_application_dataset(self, phase, setup, estimation):
+    def create_application_dataset(self, phase, setup, estimation, classes, incorrect_classes):
 
         """self.simulation_data = self.detection_module.load_data(self.detection_module.sampling_step_size_in_seconds,
                                                                data_source='simulation',
@@ -102,14 +102,12 @@ class Detection_application:
                                                                data_source='simulation',
                                                                phase_info=[phase, self.phases[phase]], grid_setup=setup, marker=estimation)
 
-        classes = config.setups[learning_config['setup_chosen']]
-        classes.remove('correct')
         self.simulation_trafo_data_wrong = {applicable_measurements.name: self.simulation_data_estimation[applicable_measurements.name] for
                                  applicable_measurements in
                                  [self.simulation_data_estimation[measurement] for measurement in self.simulation_data_estimation if
                                   measurement[-2:] == trafo_point and
                                   measurement.split(' ')[3] == setup and
-                                  measurement.split(' ')[0] in classes]}
+                                  measurement.split(' ')[0] in incorrect_classes]}
 
         self.simulation_trafo_data_correct = {
             applicable_measurements.name: self.simulation_data[applicable_measurements.name] for
@@ -125,13 +123,13 @@ class Detection_application:
             [self.simulation_data[measurement] for measurement in self.simulation_data if
              measurement[-2:] == trafo_point and
              measurement.split(' ')[3] == setup and
-             measurement.split(' ')[0] in classes]}
+             measurement.split(' ')[0] in incorrect_classes]}
 
 
         self.complete_transformer_datasets = create_dataset(type='detection_application', data=[self.simulation_trafo_data_correct, self.simulation_trafo_data_wrong, self.simulation_trafo_data_wrong], phase_info=[phase, self.phases[phase]],
                                           variables=config.sim_variables_dict[phase.split('_')[-1]],
                                           name=phase.split('_')[-1] + '_setup_' + setup,
-                                          Setup=setup, labelling=learning_config['mode'],
+                                          Setup=setup, labelling=incorrect_classes,
                                           classes=classes)
 
         return self.complete_transformer_datasets
@@ -153,7 +151,7 @@ class Detection_application:
 
             y_pred, y_test = self.detection_module.assembly_learner_combined_dataset([X_train, X_test, y_train, y_test],
                                                                             classifiers_and_parameters, cross_val=True)
-            score = self.detection_module.scoring(y_test, y_pred)       #do differently?
+            score = self.detection_module.scoring(y_test, y_pred, average='binary')       #do differently?
             score.append((list(y_pred), list(y_test)))
             scores.append(score)
             #print(f'Pred vs Test{(list(y_pred), list(y_test))}')
@@ -165,17 +163,16 @@ class Detection_application:
 
 
 
-    def detection(self, phase, setup):
+    def detection(self, phase, setup, mode):
 
         scores_by_clfs = {}
+        print(f"\nResults for {mode} of {phase} in setup {setup}")
         for classifier in self.detection_module.classifier_combos:
             key = f'{classifier}'
-            if key == "{'DT': {'gini': []}}":
-                a = 1
             scores_by_clfs[key] = self.cross_val(classifiers_and_parameters=classifier)
 
             print(
-                f"\n########## Metrics for {classifier} classifier on data of {phase} in setup {setup} ##########")
+                f"\n########## Metrics for {classifier} classifier ##########")
             for score in scores_by_clfs[key]:
                 if score == 'Pred_vs_Test':
                     print((f"%s: {scores_by_clfs[key][score]}" % (score)))

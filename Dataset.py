@@ -825,7 +825,7 @@ class Application_Dataset:
     then pca is done reduce to the most important variables on the most important timesteps
     '''
 
-    def __init__(self, data, phase_info, variables, name, classes=None, setup='A', labelling='classification'):
+    def __init__(self, data, phase_info, variables, name, classes=None, setup='A', labelling=['wrong']):
 
         self.name = name
         self.variables = variables
@@ -867,8 +867,13 @@ class Application_Dataset:
                                                                   n_components=learning_config['components'])"""
 
             trafo_correct_test = self.trafo_data_correct.iloc[int(combo) - 1]  # use only the 'latest' one
-            trafo_wrong_test = self.trafo_data_wrong.iloc[int(combo) - 1]  # use only the 'latest' one
-            trafo_test = pd.concat([trafo_correct_test, trafo_wrong_test], axis=1).transpose()
+            if len(self.labelling) > 1:
+                trafo_wrong_test =  self.trafo_data_wrong.iloc[int(combo) - 1] # use only the 'latest' one for all abnormal classes
+                trafo_inv_test = self.trafo_data_wrong.iloc[int(combo) - 1 + len(self.trafo_data_correct)]
+                trafo_test = pd.concat([trafo_correct_test, trafo_wrong_test, trafo_inv_test], axis=1).transpose()
+            else:
+                trafo_wrong_test = self.trafo_data_wrong.iloc[int(combo) - 1]  # use only the 'latest' one
+                trafo_test = pd.concat([trafo_correct_test, trafo_wrong_test], axis=1).transpose()
 
             trafo_test_scaled, scaler = Application_Dataset.scale(self, trafo_test,
                                                                   scaler=scaler)  # Reshape your data either using array.reshape(-1, 1) if your data has a single feature or array.reshape(1, -1) if it contains a single sample.
@@ -876,8 +881,8 @@ class Application_Dataset:
             trafo_pca_data = Application_Dataset.PCA(self, pd.concat([trafo_correct_hist_scaled, trafo_test_scaled]),
                                                      n_components=len(
                                                          trafo_correct_hist))  # HAS TO BE DONE TOGETHER WITH REST OF REAL DATA, AS MIN NUM SAMPLES DETERMINES PCs
-            trafo_test_pca_data = trafo_pca_data[-2:]
-            trafo_correct_hist_pca_data = trafo_pca_data[:-2]
+            trafo_test_pca_data = trafo_pca_data[-trafo_test_scaled.shape[0]:]
+            trafo_correct_hist_pca_data = trafo_pca_data[:-trafo_test_scaled.shape[0]]
 
             """trafo_wrong_scaled, scaler = Application_Dataset.scale(self, trafo_wrong_test, scaler=scaler)
             trafo_wrong_pca_data = Application_Dataset.PCA(self, trafo_wrong_scaled,
@@ -885,8 +890,9 @@ class Application_Dataset:
 
             sim_wrong = self.sim_data_wrong.drop(self.sim_data_wrong.index[int(combo) - 1],
                                                  axis=0)  # use only 'historic' ones
-            sim_wrong_scaled, scaler = Application_Dataset.scale(self,
-                                                                 sim_wrong)  # scale with its own scaler, since dmesnions differ due to different number of varioables (30 for sim, 84 for real data)
+            """sim_wrong_scaled, scaler = Application_Dataset.scale(self,
+                                                                sim_wrong)"""  # scale with its own scaler, since dimesnions differ due to different number of variables (30 for sim, 84 for real data)
+            sim_wrong_scaled, scaler = Application_Dataset.scale(self, sim_wrong, scaler=scaler)
             sim_wrong_pca_data = Application_Dataset.PCA(self, sim_wrong_scaled,
                                                          n_components=len(trafo_correct_hist_pca_data))
 
@@ -896,7 +902,10 @@ class Application_Dataset:
 
             labelled_training_data = {'X': combined_training_data,
                                       'y': [0] * len(trafo_correct_hist) + [1] * len(sim_wrong)}            #ALTER LABELLING IN CASE NOT JUST CORRECT ADN WRONG > AS FOR DETECTION
-            labelled_test_data = {'X': combined_testing_data, 'y': [0, 1]}
+            if len(self.labelling) > 1:
+                labelled_test_data = {'X': combined_testing_data, 'y': [0, 1, 1]}
+            else:
+                labelled_test_data = {'X': combined_testing_data, 'y': [0, 1]}
 
             self.scenario_combos_data['combination_' + combo] = {'training': labelled_training_data,
                                                                  'testing': labelled_test_data}  # training: all historic data (14 real correct + 14 sim wrong samples); testing data : 1 real correct and 1 real wrong sample
@@ -904,6 +913,44 @@ class Application_Dataset:
         print(f'Datasets of {len(self.scenario_combos_data.keys())} combinations assembled')
 
         return self.scenario_combos_data
+
+    def label(self):
+
+        self.X = np.array(self.principalComponents_selection)
+
+        """self.X = np.array([self.data[measurement] for measurement in self.data if
+                           measurement[-2:] == self.name.split('_')[2] and measurement.split(' ')[3] == self.name.split('_')[
+                               1] and measurement.split(' ')[0] in self.classes])"""
+        self.y = []
+        if config.use_case == 'DSM':
+            self.labels = {'no DSM': 0, 'DSM': 0}
+            for measurement in self.data:
+                if self.data[measurement].name.split(' ')[0] == 'DSM':
+                    self.y = self.y + [0]
+                    self.labels['DSM'] = self.labels['DSM'] + 1
+                elif self.data[measurement].name.split(' ')[0] == 'no':
+                    self.y = self.y + [1]
+                    self.labels['no DSM'] = self.labels['no DSM'] + 1
+        else:
+            self.labels = {'correct': 0, 'wrong': 0, 'inversed': 0}
+            for measurement in self.data:
+                if measurement[-2:] == self.bay and measurement.split(' ')[3] == self.setup:
+                    if measurement.split(' ')[0] in self.classes and self.labelling == 'classification':
+                        self.y = self.y + [self.classes.index(measurement.split(' ')[0])]
+                        self.labels['correct'] = self.y.count(0)
+                        self.labels['wrong'] = self.y.count(1)
+                        self.labels['inversed'] = self.y.count(2)
+                    elif self.labelling == 'detection':
+                        if self.data[measurement].name.split(' ')[0] == 'correct':
+                            self.y = self.y + [0]
+                            self.labels['correct'] = self.labels['correct'] + 1
+                        elif self.data[measurement].name.split(' ')[0] == 'wrong':
+                            self.y = self.y + [1]
+                            self.labels['wrong'] = self.labels['wrong'] + 1
+                        elif self.data[measurement].name.split(' ')[0] == 'inversed':
+                            self.y = self.y + [1]
+                            self.labels['wrong'] = self.labels['wrong'] + 1
+        self.y = np.array(self.y)
 
     def dataset_info(self):
         print(

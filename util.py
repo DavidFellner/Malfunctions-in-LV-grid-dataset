@@ -472,6 +472,23 @@ def create_dataset(type='raw', data=None, variables=None, name=None, classes=Non
 
     return dataset
 
+def pick_classes(phase, setup):
+
+    classes = config.setups[phase][setup]
+    if type(learning_config['setup_chosen']) is dict and type(learning_config['setup_chosen'][phase]) is dict:
+        for omitted_class in learning_config['setup_chosen'][phase][setup]: classes.remove(omitted_class)
+
+    incorrect_classes = classes.copy()
+    incorrect_classes.remove('correct')
+
+    if phase == 'phase1':
+        modes = {f'correct_vs_{case}' : [case] for case in incorrect_classes}
+        if len(classes) > 2: modes['correct_vs_abnormal'] = incorrect_classes
+    else:
+        modes = ['DSM_vs_no_DSM']
+
+    return classes, modes
+
 '''def load_test_data(config):
 
     pd.read_hdf(config.results_folder + learning_config['dataset'] + '_' + 'test' + '.h5', key = 'test/data', mode='a')

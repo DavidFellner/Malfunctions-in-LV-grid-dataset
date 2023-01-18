@@ -727,8 +727,8 @@ class Transformer_detection:
 
         return y_pred, y_test
 
-    def scoring(self, y_test, y_pred):
-        metrics = precision_recall_fscore_support(y_test, y_pred, average='macro', zero_division=0)
+    def scoring(self, y_test, y_pred, average='macro'):
+        metrics = precision_recall_fscore_support(y_test, y_pred, average=average, zero_division=0)
         accuracy = accuracy_score(y_test, y_pred)
 
         return [accuracy, metrics]

@@ -57,7 +57,7 @@ if not config.raw_data_available or config.detection_application:
     from load_estimation.neurallelf.runner import load_estimation as training
     from load_estimation.neurallelf.evaluator import eval as estimate
 
-from util import create_dataset
+from util import create_dataset, pick_classes
 from deeplearning import Deeplearning
 from transformer_detection import Transformer_detection
 import plotting
@@ -215,6 +215,9 @@ if __name__ == '__main__':  # see config file for settings
         for phase in application.phases:
 
             for setup in application.setups:
+                if learning_config['setup_chosen'] != 'all' and setup in learning_config['setup_chosen'][phase.split('_')[-1]]:
+                    if type(learning_config['setup_chosen'][phase.split('_')[-1]]) is set or learning_config['setup_chosen'][phase.split('_')[-1]][setup] == config.setups[phase.split('_')[-1]][setup][1:]:
+                        continue
 
                 if config.raw_data_available is False:
                     if not config.load_estimation_training_data_available:
@@ -248,16 +251,19 @@ if __name__ == '__main__':  # see config file for settings
                     application.load_data_estimated = {'NN estimate': 'in file', 'LR estimate': 'in file'}
 
                 for estimation in application.load_data_estimated:
+                    if estimation.split(" ")[0] not in learning_config['disaggregation algorithm']:
+                        continue
                     if config.raw_data_available is False:
                         #generate (wrong) samples using simulation
                         generate_detectionmethods_raw_data(data=application.load_data_estimated[estimation].iloc[::application.pad_factor, :], phase=phase, setup=setup, estimation=estimation, pv_input=application.pv_input[::240])
 
-                    application.sensor_data = application.load_sensor_data(phase, setup)
-                    application.complete_transformer_data = application.create_application_dataset(phase, setup, estimation)
-                    application.score_dict[phase + '_setup_' + setup] = application.detection(phase, setup)    #try to classify one correct and one incorrect real sample from the same scenario with the classifier built on the rest of the 14 real correct and 14 simulated incorrect samples
-
-
-
-
+                    print(f'Data estimated with {estimation.split(" ")[0]} used to generate malicious samples')
+                    #application.sensor_data = application.load_sensor_data(phase, setup)
+                    classes, modes = pick_classes(phase.split('_')[-1], setup)
+                    for mode in modes:
+                        print(f'mode: {mode}')
+                        #if mode == 'correct_vs_wrong' or mode == 'correct_vs_inversed': continue
+                        application.complete_transformer_data = application.create_application_dataset(phase, setup, estimation, classes, modes[mode])
+                        application.score_dict[phase + '_setup_' + setup] = application.detection(phase, setup, mode)    #try to classify one correct and one incorrect real sample from the same scenario with the classifier built on the rest of the 14 real correct and 14 simulated incorrect samples
 
     plt.show()
