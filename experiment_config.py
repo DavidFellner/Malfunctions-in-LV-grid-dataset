@@ -39,9 +39,11 @@ import sys
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_c_vs_w_simulation'
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_c_vs_w_vs_i_real_world'
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_c_vs_w_vs_i_simulation'
+#chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_A_DSM_vs_no_DSM_real_world'
+chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_DSM_vs_no_DSM_real_world'
 
 #Detection Application:
-chosen_experiment = 'malfunctions_in_LV_grid_detection_application_template'
+#chosen_experiment = 'malfunctions_in_LV_grid_detection_application_template'
 
 
 

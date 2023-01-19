@@ -74,6 +74,22 @@ class Transformer_detection:
 
         self.approach = learning_config['approach']
 
+    def import_measurements(self):
+
+        try:
+            try:
+                if config.use_case == 'DSM':
+                    from detection_method_settings import measurements_DSM as measurements
+            except AttributeError:
+                if config.extended and learning_config['data_source'] == 'simulation':
+                    from detection_method_settings import measurements_extended as measurements
+                else:
+                    from detection_method_settings import measurements as measurements
+        except AttributeError:
+            pass
+
+        return measurements
+
     def plotting_data(self):
         fgs_test_bay, axs_test_bay = self.scenario_plotting_test_bay(self.variables, plot_all=self.plot_all,
                                                                      scenario=self.scenario,
@@ -84,8 +100,10 @@ class Transformer_detection:
                                                          sampling=self.sampling_step_size_in_seconds)
 
         if config.save_figures:
-            if not os.path.isdir(os.path.join(config.raw_data_folder, 'Graphs')):
-                os.mkdir(os.path.join(config.raw_data_folder, 'Graphs'))
+            if config.use_case == 'DSM': phase = 'phase2'
+            else: phase = 'phase1'
+            if not os.path.isdir(os.path.join(config.raw_data_folder, f'Graphs_{phase}')):
+                os.mkdir(os.path.join(config.raw_data_folder, f'Graphs_{phase}'))
 
             if config.extended:
                 extended = '_extended'
@@ -94,21 +112,21 @@ class Transformer_detection:
             for fig in fgs_test_bay:
                 fgs_test_bay[fig].set_size_inches(12, 12, forward=True)
                 fgs_test_bay[fig].subplots_adjust(hspace=0.275, top=0.925)
-                fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
+                fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, f'Graphs_{phase}',
                                                        'scenario_' + fig + '_test_bay_' + learning_config[
                                                            'data_source'] + extended), dpi=fgs_test_bay[fig].dpi,
                                           bbox_inches='tight')
-                fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
+                fgs_test_bay[fig].savefig(os.path.join(config.raw_data_folder, f'Graphs_{phase}',
                                                        'scenario_' + fig + '_test_bay_' + learning_config[
                                                            'data_source'] + extended + '.pdf'), dpi=fgs_test_bay[fig].dpi,
                                           bbox_inches='tight', format='pdf')
             for fig in fgs_case:
                 fgs_case[fig].set_size_inches(12, 12, forward=True)
                 fgs_case[fig].subplots_adjust(hspace=0.275, top=0.925)
-                fgs_case[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
+                fgs_case[fig].savefig(os.path.join(config.raw_data_folder, f'Graphs_{phase}',
                                                    'scenario_' + fig + '_case_' + learning_config['data_source'] + extended),
                                       dpi=fgs_case[fig].dpi, bbox_inches='tight')
-                fgs_case[fig].savefig(os.path.join(config.raw_data_folder, 'Graphs',
+                fgs_case[fig].savefig(os.path.join(config.raw_data_folder, f'Graphs_{phase}',
                                                    'scenario_' + fig + '_case_' + learning_config[
                                                        'data_source'] + extended + '.pdf'),
                                       dpi=fgs_case[fig].dpi, bbox_inches='tight', format='pdf')
@@ -131,8 +149,12 @@ class Transformer_detection:
                 print(f"The variable  defined is not available")
                 return fgs, axs
 
-        vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]),
-                'F2': (vars['F2'], var_numbers[2])}
+        if config.use_case == 'DSM':
+            vars = {'B2': (vars['B2'], var_numbers[0]), 'A1': (vars['A1'], var_numbers[1]),
+                    'B1': (vars['B1'], var_numbers[2]), 'C1': (vars['C1'], var_numbers[3])}
+        else:
+            vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]),
+                    'F2': (vars['F2'], var_numbers[2])}
         if plot_all:
             for scenario in range(1, 16):
                 relevant_measurements = self.load_data(scenario, sampling=sampling)
@@ -161,11 +183,13 @@ class Transformer_detection:
                 print(f"The variable  defined is not available")
                 return fgs, axs
 
-        vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]),
-                'F2': (vars['F2'], var_numbers[2])}
+        if config.use_case == 'DSM':
+            vars = {'B2': (vars['B2'], var_numbers[0]), 'A1': (vars['A1'], var_numbers[1]),
+                    'B1': (vars['B1'], var_numbers[2]), 'C1': (vars['C1'], var_numbers[3])}
+        else:
+            vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]),
+                    'F2': (vars['F2'], var_numbers[2])}
 
-        vars = {'B1': (vars['B1'], var_numbers[0]), 'F1': (vars['F1'], var_numbers[1]),
-                'F2': (vars['F2'], var_numbers[2])}
         if plot_all:
             for scenario in range(1, 16):
                 relevant_measurements = self.load_data(scenario, sampling=sampling)
@@ -187,6 +211,7 @@ class Transformer_detection:
             sim_data_path = config.sim_data_path_dict[phase_info[0].split('_')[-1]]
             test_bays = config.test_bays_dict[phase_info[0].split('_')[-1]]
         else:
+            measurements = self.import_measurements()
             test_bays = self.test_bays
             data_path = self.data_path
             sim_data_path = self.sim_data_path

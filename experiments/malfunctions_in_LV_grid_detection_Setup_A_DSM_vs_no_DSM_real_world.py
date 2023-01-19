@@ -19,13 +19,12 @@ sim_data_path_DSM = os.path.join(os.getcwd(), raw_data_folder, 'ERIGrid_phase_2_
 datasets_folder = os.path.join(os.getcwd(), 'datasets')
 test_data_folder = os.path.join(os.getcwd(), 'test')
 models_folder = os.path.join(os.getcwd(), 'models')
-load_estimation_folder = os.path.join(os.getcwd(), 'load_estimation')
 local_machine_tz = 'Europe/Berlin'  # timezone; it's important for Powerfactory
 
 # Deep learning settings
 learning_config = {
     'data_source': 'real_world', #real_world, simulation
-    'setup_chosen' : {"phase1": {"A", "B"}},  # either 'all' for phase 1 setup A+B and phase 2 setup A+B or enter setups to be ommited such as: if phase 1, setup A should be omitted enter {"phase1": {"A"}} to omit the entire phase 1 enter {"phase1": {"A", "B"}}, if only class 'inversed' should be omitted for setup A enter {"phase1": {"A": ["inversed"]}}
+    'setup_chosen' : 'Setup_A_B2_DSM',  # for assembly or clustering
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
@@ -38,7 +37,6 @@ learning_config = {
     'weights' : ['uniform', 'distance'],        #for kNN
     'classifier_combos' : 'general', # detection, c_vs_w, c_vs_inv, A, c_vs_w_combined_dataset not all work for all!
     'components' : 0.99, #for combined dataset: percentage of variance that is to be retained by primary components
-    'disaggregation algorithm' : '[NN, LR]',  #[NN, LR], [NN], [LR]
 }
 
 #########################################################################
@@ -46,78 +44,39 @@ learning_config = {
 #########################################################################
 
 # Dataset settings
-raw_data_available = False  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWERFACTORY is not available
+raw_data_available = True  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True  # raw_data_available = False has to be set for this! set add_data = True to add more data to raw data or fill gaps i scenarios that are not done yet;
 #dataset_available = True  # set to False to recreate instances from raw data
-load_estimation_training_data_available = True #create input for training of NN for load estimation
-pretrained = False #to skip training if training set hasn't changed
-load_estimation_input_data_available = True #create input for estimation using NN/LR for load estimation
-use_saved_load_estimation_input_data = True
-load_estimation_training_data_distributions_dict = {'phase1': {'LB 7 8' : (10, 10/3, 2, -0.095), 'LB 2' : (4, 3.5/3, 2, -0.14),'PV' : (4, 6/3), 'p_low':1}, 'phase2': {}, 'PV' : {'mu':
-    6, 'sigma': 6 / 3}}       #mean and std for gaussian normal distributions to be sampled from for load values; for uniform dist: min: p_low or for q max*4th para / 3rd para, max mu+3*sigma
-#p_low = 1   #absolute value in kW for uniform dist.
-#q_low = -0.035    #percent of p value; e.g. 0.1 means 10% of maximum value for uniform dist.
-print_loss_and_y_vs_pred = True
-plot_real_vs_estimate = False
-training_data_dist = 'uniform' #uniform, standard
-num_training_samples = 10000 + 1 #+1 in order for PowerFactory to yield the desired number of samples
-power_unit_sensor_data = 'KW'
-average_estimation_results = True #if false only use results of best model found
-detection_methods = False
+detection_methods = True
 deeplearning = False
-#disaggregation = False
-detection_application = True
-plot_data = True
-use_case = 'DSM' # 'DSM', 'q_control'
-test_bays_dict = {'phase1' : ['B1', 'F1', 'F2'], 'phase2' : ['A1', 'B1', 'B2', 'C1']}
-load_test_bays_map_dict = {'phase1' : {'LB 2': 'B1', 'LB 7 8': 'F1'}, 'phase2' : {'A1', 'B1', 'B2', 'C1'}}
-PV_test_bays_map_dict = {'phase1' : {'A': 'F1', 'B': 'B1'}, 'phase2' : {'A1', 'B1', 'B2', 'C1'}}
-data_path_dict = {'phase1' : data_path, 'phase2': data_path_DSM}
-sim_data_path_dict = {'phase1' : sim_data_path, 'phase2': sim_data_path_DSM}
+detection_application = False
+plot_data = False
+use_case = 'DSM' # 'DSM', 'q_control'       #phase1 ... q control; phase2 ... DSM
 if use_case == 'DSM':
     test_bays = ['A1', 'B1', 'B2', 'C1']
     data_path = data_path_DSM
     sim_data_path = sim_data_path_DSM
 else:
     test_bays = ['B1', 'F1', 'F2']
-extended = True #also add inversed curve to Setup A simulations
+extended = False #also add inversed curve to Setup A simulations
 save_figures = True # save figures of data
 scenario = 14  # 1 to 15 as there is 15 scenarios (profiles)
 plot_all = True # whether to plot all scenarios
 plot_only_trafo_and_pv = True # whether only the data of the trafo and PV connection test bay should be plotted in 'plot_scenario_test_bay' in 'plot_measurements'
 note_avg_and_std = False # whether average and standard deviation should be annotated in 'plot_scenario_test_bay' and 'plot_scenario_case' in 'plot_measurements'
-plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
-                      'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
+if use_case == 'DSM':
+    plotting_variables = {'B2': 'Vrms ph-n AN Avg', 'A1': 'Vrms ph-n L1N Avg',
+                          'B1': 'Vrms ph-n AN Avg', 'C1': 'Vrms ph-n AN Avg'}  # see dictionary above
+else:
+    plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
+                          'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
 if learning_config['data_source'] == 'real_world':
-    variables_dict = {'phase1' : {'B1': [v.variables_B1, v.pca_variables_B1], 'F1': [v.variables_F1, v.pca_variables_F1],
-                     'F2': [v.variables_F2, v.pca_variables_F2]}, 'phase2': {'B2': [v.variables_B2, v.pca_variables_B2]}}
-    disaggregation_variables_dict = {'phase1' : {'B1': v.disaggregation_variables_B1,
-                                   'F1': v.disaggregation_variables_F1,
-                                   'F2': v.disaggregation_variables_F2}, 'phase2': {'A1': v.disaggregation_variables_A1,
-                                   'B1': v.disaggregation_variables_B1,
-                                   'B2': v.disaggregation_variables_B2,
-                                   'C1': v.disaggregation_variables_C1,
-                                    'inputs': v.disaggregation_input_variables}}
-
-    pf_to_fluke_map = m.map
-    B1_F1_vars = [[k[0] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]
-    B1_F1_vars = B1_F1_vars[0] + B1_F1_vars[1]
-    F2_vars = [[k[1] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]
-    F2_vars = F2_vars[0] + F2_vars[1]
-    B2_vars = [[k[1] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]    #same for all trafo points?
-    B2_vars = B2_vars[0] + B2_vars[1]
-
-    sim_variables_dict = {'phase1' : {'B1': [v.variables_B1, B1_F1_vars], 'F1': [v.variables_F1, B1_F1_vars],
-                     'F2': [v.variables_F2, F2_vars]}, 'phase2': {'B2': [v.variables_B2, B2_vars]}}
-
     if use_case == 'DSM':
-        variables = variables_dict['phase2']
-        disaggregation_variables = disaggregation_variables_dict['phase2']
-
+        variables = {'B2': [v.variables_B2, v.pca_variables_B2], 'A1': [v.disaggregation_variables_A1, v.disaggregation_variables_A1],
+                     'B1': [v.variables_B1, v.pca_variables_B1], 'C1': [v.disaggregation_variables_C1, v.disaggregation_variables_C1]}
     else:
-        variables = variables_dict['phase1']
-        disaggregation_variables = disaggregation_variables_dict['phase1']
-
+        variables = {'B1': [v.variables_B1, v.pca_variables_B1], 'F1': [v.variables_F1, v.pca_variables_F1],
+                     'F2': [v.variables_F2, v.pca_variables_F2]}
 elif learning_config['data_source'] == 'simulation':
     pf_to_fluke_map = m.map
     B1_F1_vars = [[k[0] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]
@@ -130,9 +89,7 @@ else:
     variables = plotting_variables
 sampling_step_size_in_seconds = None  # None or 0 to use all data, 1, 20 to sample once every n seconds ....
 
-if detection_application:
-    setups = {'phase1': {'A': ['correct', 'wrong', 'inversed'], 'B': ['correct', 'wrong', 'inversed']}, 'phase2': {'A': ['no_DSM', 'DSM'], 'B': ['no_DSM', 'DSM']}}
-elif extended:
+if extended:
     setups = {'Setup_A_F2_data1_3c': ['correct', 'wrong', 'inversed'],
               'Setup_A_F2_data2_2c': ['correct', 'wrong'],
               'Setup_A_F2_data3_2c': ['correct', 'inversed'],
@@ -164,7 +121,6 @@ just_voltages = False  # if variables defined in file are used
 # Simulation settings
 sim_setting = 'ERIGrid_phase_1'
 if sim_setting == 'ERIGrid_phase_1': pf_file = 'PNDC_ERIGrid_phase1'
-pf_file_dict = {'phase1': 'PNDC_ERIGrid_phase1', 'phase2': 'PNDC_ERIGrid_phase2'}
 resolution = '15T' #resolution of load/generation profiles to be used
 t_start = None  # default(None): times inferred from profiles in data
 t_end = None

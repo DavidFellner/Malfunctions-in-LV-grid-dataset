@@ -61,7 +61,7 @@ from util import create_dataset, pick_classes
 from deeplearning import Deeplearning
 from transformer_detection import Transformer_detection
 import plotting
-from disaggregation_module import Disaggregation
+#from disaggregation_module import Disaggregation
 from detection import Detection_application
 
 
@@ -202,13 +202,14 @@ if __name__ == '__main__':  # see config file for settings
 
     elif config.detection_methods:
         detection = Transformer_detection(config, learning_config)
-        if detection.plot_data and config.use_case != 'DSM': detection.plotting_data()
+        #if detection.plot_data and config.use_case != 'DSM': detection.plotting_data()
+        if detection.plot_data: detection.plotting_data()
         if detection.approach == 'clustering': detection.clustering()
         if detection.approach == 'PCA+clf': detection.detection()
 
-    elif config.disaggregation:
-        disaggregation = Disaggregation(config, learning_config)
-        disaggregation.disaggregation()
+        """elif config.disaggregation:
+            disaggregation = Disaggregation(config, learning_config)
+            disaggregation.disaggregation()"""
 
     elif config.detection_application:
         application = Detection_application()
