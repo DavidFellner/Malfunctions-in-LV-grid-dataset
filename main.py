@@ -223,14 +223,16 @@ if __name__ == '__main__':  # see config file for settings
                     if not config.load_estimation_training_data_available:
                         generate_load_estimation_training_data(phase=phase, setup=setup)
                     else:
-                        print('training data found')
+                        print('\nTraining data found')
                     if not config.pretrained:
                         training(phase, setup=setup)  # train NN with generated data
+                    else:
+                        print('Pretrained Network used')
 
-                    if not config.load_estimation_input_data_available:
+                    if not config.load_estimation_input_data_available or config.use_saved_load_estimation_input_data:
                         application.profiles = \
                             generate_detectionmethods_raw_data(phase=phase, setup=setup, extract_profiles=True)[
-                                0]  # extract load and pv data used in lab setting
+                                0]  # extract load and pv data used in lab setting"""
                         application.sensor_data = application.load_sensor_data(phase, setup)
                         if not config.use_saved_load_estimation_input_data:
                             inputs = application.pick_estimation_input_data()
@@ -257,7 +259,8 @@ if __name__ == '__main__':  # see config file for settings
                         #generate (wrong) samples using simulation
                         generate_detectionmethods_raw_data(data=application.load_data_estimated[estimation].iloc[::application.pad_factor, :], phase=phase, setup=setup, estimation=estimation, pv_input=application.pv_input[::240])
 
-                    print(f'Data estimated with {estimation.split(" ")[0]} used to generate malicious samples')
+                    print('\n-----------------------------------------------------------')
+                    print(f'\nData estimated with {estimation.split(" ")[0]} used to generate malicious samples\n')
                     #application.sensor_data = application.load_sensor_data(phase, setup)
                     classes, modes = pick_classes(phase.split('_')[-1], setup)
                     for mode in modes:

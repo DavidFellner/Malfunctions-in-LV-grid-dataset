@@ -181,6 +181,7 @@ class Transformer_detection:
             data_source = self.data_source
         if phase_info is not None:
             measurements = {key: value for key, value in phase_info[1][1].items() if key.split(' ')[-1] == grid_setup}
+            if data_source == 'real_world' and phase_info[0].split('_')[-1] == 'phase1' and grid_setup == 'A': measurements = {key: value for key, value in measurements.items() if key != 'measurements inversed control Setup A'}
             if marker.split('_')[-1].split(' ')[-1] == 'estimate': measurements = {key: value for key, value in measurements.items() if key.split(' ')[1] != 'correct'}
             data_path = config.data_path_dict[phase_info[0].split('_')[-1]]
             sim_data_path = config.sim_data_path_dict[phase_info[0].split('_')[-1]]

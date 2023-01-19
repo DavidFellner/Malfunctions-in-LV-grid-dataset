@@ -578,7 +578,7 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
     '''
 
     chars_dict = grid_data[0]
-    if learning_config['setup_chosen'].split('_')[1] == 'A':
+    if estimation is not None or learning_config['setup_chosen'].split('_')[1] == 'A':
         if config.extended:
             control_curves = {'correct': [1, 3, 0.9, 6], 'wrong': [1, 3, 0.999999, 6],
                               'inversed': [0.9, 6, 0.999999, 3]}
@@ -634,11 +634,14 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
             do = True
             if config.add_data:
                 bay_folder = os.path.join(file_folder, 'Test_Bay_F2')
-                if os.path.isfile(os.path.join(bay_folder,
-                                               f'scenario_{scenario}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'))\
-                        and os.path.isfile(os.path.join(bay_folder,
-                                               f'scenario_{str(int(scenario)+1)}_{control_curve}_control_Setup_{setup}_{estimation}.csv')):
-                    do = False
+                if config.detection_application:
+                    if os.path.isfile(os.path.join(bay_folder,
+                                                   f'scenario_{str(int(scenario)+1)}_{control_curve}_control_Setup_{setup}_{estimation}.csv')):
+                        do = False
+                else:
+                    if os.path.isfile(os.path.join(bay_folder,
+                                       f'scenario_{scenario}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv')) :
+                        do = False
 
             if do:
                 PV.pf_over = control_curves[control_curve][0]

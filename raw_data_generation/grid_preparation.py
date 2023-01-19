@@ -318,7 +318,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
 
     if sim_setting == 'ERIGrid_phase_1' or config.detection_application:
 
-        if config.detection_application and data is str and data == 'sampled' or type(data) is list:
+        if config.detection_application and type(data) is str and data == 'sampled' or type(data) is list:
             variation = setup
             pf.activate_variations('Training data Setup')     #activate both PVs here
 
@@ -326,7 +326,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                 pf.activate_variations('Test Setup A')     #activate both PVs here
             if 'Test Setup B' not in [var.loc_name for var in pf.app.GetActiveNetworkVariations()]:
                 pf.activate_variations('Test Setup B')"""
-        elif type(data) is pd.DataFrame:
+        elif type(data) is pd.DataFrame or extract_profiles:
             variation = setup
         else:
             variation = learning_config['setup_chosen'].split('_')[1]
@@ -750,7 +750,7 @@ def prepare_grid(app, file, o_ElmNet, data=None, setup=None, phase=None, extract
                                             element_type='load')  # create charcteristics
 
         if config.detection_application:
-            if data is str and data == 'sampled':
+            if type(data) is str and data == 'sampled':
 
                 curves = create_characteristics(o_ElmLod, curves, sim_setting=phase.split('_')[-1],
                                                 element_type='load', data=data, setup=setup)  # create characteristics

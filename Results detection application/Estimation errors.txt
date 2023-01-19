@@ -1,0 +1,14 @@
+Phase 1: 
+		Setup A: Training: 0.02
+			 Test: 	Prediction MSE NN: 0.024083105917187965
+				Prediction MSE LR: 0.016768828233740277
+
+		Setup B: Training: 0.019
+			 Test: 	Prediction MSE NN: 0.01675069124112878
+				Prediction MSE LR: 0.015235887373472567
+
+Phase 2:
+
+				
+
+		
