@@ -23,8 +23,8 @@ local_machine_tz = 'Europe/Berlin'  # timezone; it's important for Powerfactory
 
 # Deep learning settings
 learning_config = {
-    'data_source': 'real_world', #real_world, simulation
-    'setup_chosen' : 'Setup_A_B2_DSM',  # for assembly or clustering
+    'data_source': 'simulation', #real_world, simulation
+    'setup_chosen' : 'Setup_B_B2_DSM',  # for assembly or clustering
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
@@ -51,7 +51,7 @@ detection_methods = True
 deeplearning = False
 detection_application = False
 plot_data = False
-use_case = 'DSM' # 'DSM', 'q_control'       #phase1 ... q control; phase2 ... DSM
+use_case = 'DSM' # 'DSM', 'q_control'
 if use_case == 'DSM':
     test_bays = ['A1', 'B1', 'B2', 'C1']
     data_path = data_path_DSM
@@ -66,16 +66,18 @@ plot_only_trafo_and_pv = True # whether only the data of the trafo and PV connec
 note_avg_and_std = False # whether average and standard deviation should be annotated in 'plot_scenario_test_bay' and 'plot_scenario_case' in 'plot_measurements'
 if use_case == 'DSM':
     """plotting_variables = {'B2': 'Vrms ph-n AN Avg', 'A1': 'Vrms ph-n L1N Avg',
-                              'B1': 'Vrms ph-n AN Avg', 'C1': 'Vrms ph-n AN Avg'}  # see dictionary above"""
+                          'B1': 'Vrms ph-n AN Avg', 'C1': 'Vrms ph-n AN Avg'}  # see dictionary above"""
     plotting_variables = {'B2': 'Wirkleistung Total Avg', 'A1': 'Wirkleistung Total Avg',
-                          'B1': 'Wirkleistung Total Avg', 'C1': 'Wirkleistung Total Avg'}  # see dictionary above
+                         'B1': 'Wirkleistung Total Avg', 'C1': 'Wirkleistung Total Avg'}  # see dictionary above
 else:
     plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
                           'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
 if learning_config['data_source'] == 'real_world':
     if use_case == 'DSM':
-        variables = {'B2': [v.variables_B2, v.pca_variables_B2], 'A1': [v.disaggregation_variables_A1, v.disaggregation_variables_A1],
-                     'B1': [v.variables_B1, v.pca_variables_B1], 'C1': [v.disaggregation_variables_C1, v.disaggregation_variables_C1]}
+        variables = {'B2': [v.variables_B2, v.pca_variables_B2],
+                     'A1': [v.disaggregation_variables_A1, v.disaggregation_variables_A1],
+                     'B1': [v.variables_B1, v.pca_variables_B1],
+                     'C1': [v.disaggregation_variables_C1, v.disaggregation_variables_C1]}
     else:
         variables = {'B1': [v.variables_B1, v.pca_variables_B1], 'F1': [v.variables_F1, v.pca_variables_F1],
                      'F2': [v.variables_F2, v.pca_variables_F2]}
@@ -121,8 +123,9 @@ reduce_result_file_size = True  # save results as integers to save memory in csv
 just_voltages = False  # if variables defined in file are used
 
 # Simulation settings
-sim_setting = 'ERIGrid_phase_1'
+sim_setting = 'ERIGrid_phase_2'
 if sim_setting == 'ERIGrid_phase_1': pf_file = 'PNDC_ERIGrid_phase1'
+else: pf_file = 'PNDC_ERIGrid_phase2'
 resolution = '15T' #resolution of load/generation profiles to be used
 t_start = None  # default(None): times inferred from profiles in data
 t_end = None

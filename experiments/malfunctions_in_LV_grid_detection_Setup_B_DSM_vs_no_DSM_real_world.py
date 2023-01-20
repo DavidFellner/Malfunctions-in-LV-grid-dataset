@@ -65,8 +65,10 @@ plot_all = True # whether to plot all scenarios
 plot_only_trafo_and_pv = True # whether only the data of the trafo and PV connection test bay should be plotted in 'plot_scenario_test_bay' in 'plot_measurements'
 note_avg_and_std = False # whether average and standard deviation should be annotated in 'plot_scenario_test_bay' and 'plot_scenario_case' in 'plot_measurements'
 if use_case == 'DSM':
-    plotting_variables = {'B2': 'Vrms ph-n AN Avg', 'A1': 'Vrms ph-n L1N Avg',
-                          'B1': 'Vrms ph-n AN Avg', 'C1': 'Vrms ph-n AN Avg'}  # see dictionary above
+    """plotting_variables = {'B2': 'Vrms ph-n AN Avg', 'A1': 'Vrms ph-n L1N Avg',
+                          'B1': 'Vrms ph-n AN Avg', 'C1': 'Vrms ph-n AN Avg'}  # see dictionary above"""
+    plotting_variables = {'B2': 'Wirkleistung Total Avg', 'A1': 'Wirkleistung Total Avg',
+                         'B1': 'Wirkleistung Total Avg', 'C1': 'Wirkleistung Total Avg'}  # see dictionary above
 else:
     plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
                           'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above

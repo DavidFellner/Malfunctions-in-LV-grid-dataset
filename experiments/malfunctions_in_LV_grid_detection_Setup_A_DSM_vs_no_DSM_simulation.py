@@ -23,7 +23,7 @@ local_machine_tz = 'Europe/Berlin'  # timezone; it's important for Powerfactory
 
 # Deep learning settings
 learning_config = {
-    'data_source': 'real_world', #real_world, simulation
+    'data_source': 'simulation', #real_world, simulation
     'setup_chosen' : 'Setup_A_B2_DSM',  # for assembly or clustering
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
@@ -44,13 +44,13 @@ learning_config = {
 #########################################################################
 
 # Dataset settings
-raw_data_available = True  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
+raw_data_available = False  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWRFACTORY is not available
 add_data = True  # raw_data_available = False has to be set for this! set add_data = True to add more data to raw data or fill gaps i scenarios that are not done yet;
 #dataset_available = True  # set to False to recreate instances from raw data
 detection_methods = True
 deeplearning = False
 detection_application = False
-plot_data = False
+plot_data = True
 use_case = 'DSM' # 'DSM', 'q_control'       #phase1 ... q control; phase2 ... DSM
 if use_case == 'DSM':
     test_bays = ['A1', 'B1', 'B2', 'C1']
@@ -121,8 +121,9 @@ reduce_result_file_size = True  # save results as integers to save memory in csv
 just_voltages = False  # if variables defined in file are used
 
 # Simulation settings
-sim_setting = 'ERIGrid_phase_1'
+sim_setting = 'ERIGrid_phase_2'
 if sim_setting == 'ERIGrid_phase_1': pf_file = 'PNDC_ERIGrid_phase1'
+else: pf_file = 'PNDC_ERIGrid_phase2'
 resolution = '15T' #resolution of load/generation profiles to be used
 t_start = None  # default(None): times inferred from profiles in data
 t_end = None
