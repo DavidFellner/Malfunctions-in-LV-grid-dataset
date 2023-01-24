@@ -1,0 +1,57 @@
+' Project ERI-Grid - Scenario 11
+Instrumentation Full
+Capture On
+Delay 00:00:05
+Load 9kW 0.96cosÿ 00:00:05
+Delay 00:2:55
+Load 25kW 1.00cosÿ 00:00:05
+Delay 00:0:55
+Load 20kW 1.00cosÿ 00:00:05
+Delay 00:0:55
+Load 7kW 0.99cosÿ 00:00:05
+Delay 00:0:55
+Load 4kW 1.00cosÿ 00:00:05
+Delay 00:0:55
+Load 6kW 0.90cosÿ 00:00:05
+Delay 00:0:55
+Load 7kW 0.90cosÿ 00:00:05
+Delay 00:0:55
+Load 3kW 0.95cosÿ 00:00:05
+Delay 00:0:55
+Load 2kW 0.79cosÿ 00:00:05
+Delay 00:0:55
+Load 2kW 0.85cosÿ 00:00:05
+Delay 00:0:55
+Load 5kW 0.97cosÿ 00:00:05
+Delay 00:0:55
+Load 10kW 0.99cosÿ 00:00:05
+Delay 00:0:55
+Load 5kW 0.84cosÿ 00:00:05
+Delay 00:0:55
+Load 2kW 0.77cosÿ 00:00:05
+Delay 00:0:55
+Load 18kW 0.95cosÿ 00:00:05
+Delay 00:0:55
+Load 28kW 0.99cosÿ 00:00:05
+Delay 00:0:55
+Load 29kW 1.00cosÿ 00:00:05
+Delay 00:0:55
+Load 17kW 0.99cosÿ 00:00:05
+Delay 00:0:55
+Load 10kW 0.99cosÿ 00:00:05
+Delay 00:0:55
+Load 8kW 0.83cosÿ 00:00:05
+Delay 00:0:55
+Load 11kW 0.78cosÿ 00:00:05
+Delay 00:0:55
+Load 10kW 0.98cosÿ 00:00:05
+Delay 00:0:55
+Load 9kW 0.96cosÿ 00:00:05
+Delay 00:0:55
+Load 23kW 1.00cosÿ 00:00:05
+Delay 00:0:55
+Load 23kW 0.97cosÿ 00:00:05
+Delay 00:0:55
+   
+Reject  
+Capture Off

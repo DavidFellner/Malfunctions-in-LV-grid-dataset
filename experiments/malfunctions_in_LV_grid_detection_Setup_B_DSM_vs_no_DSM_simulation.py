@@ -50,7 +50,7 @@ add_data = True  # raw_data_available = False has to be set for this! set add_da
 detection_methods = True
 deeplearning = False
 detection_application = False
-plot_data = False
+plot_data = True
 use_case = 'DSM' # 'DSM', 'q_control'
 if use_case == 'DSM':
     test_bays = ['A1', 'B1', 'B2', 'C1']

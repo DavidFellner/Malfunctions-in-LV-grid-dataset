@@ -1,0 +1,18 @@
+' Project ERI-Grid - Scenario manual
+Profile for manual application on hand held load control device
+1 4%  0.88cosÿ 00:03:00
+2 3%  0.96cosÿ 00:02:00
+3 5%  0.98cosÿ 00:01:00
+4 5%  0.99cosÿ 00:02:00
+5 5%  0.95cosÿ 00:01:00
+6 5%  0.99cosÿ 00:02:00
+7 6%  1.00cosÿ 00:01:00
+8 6%  0.98cosÿ 00:02:00
+9 7%  0.93cosÿ 00:01:00
+10 4%  0.97cosÿ 00:02:00
+11 4%  0.94cosÿ 00:01:00
+12 4%  0.98cosÿ 00:02:00
+13 5%  0.92cosÿ 00:01:00
+14 3%  0.88cosÿ 00:02:00
+15 3%  1.00cosÿ 00:01:00
+16 4%  0.98cosÿ 00:03:00

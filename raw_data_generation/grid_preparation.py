@@ -302,6 +302,10 @@ def convert_to_unix_timestamp(pd_timestamp):
 def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, element_type='load', data=None, setup=None, extract_profiles=False, pv_input=None):
     if sim_setting in ['ERIGrid_phase_1', 'phase1']:
         folder = 'ERIGrid_Profiles_phase1'
+    elif sim_setting in ['ERIGrid_phase_2', 'phase2']:
+        folder = 'ERIGrid_Profiles_phase2'
+        #profiles_path = os.path.join(config.grid_data_folder, folder)
+        import raw_data_generation.input.ERIGrid_Profiles_phase2.load_script as load_script
     else:
         print('Undefined simulation setting!')
 
@@ -316,7 +320,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
         profiles = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'LoadProfile.csv'), sep=';', index_col='time')
         pv_profiles = load_workbook(os.path.join(config.grid_data_folder, folder, r"PV_Profiles.xlsx"))
 
-    if sim_setting == 'ERIGrid_phase_1' or config.detection_application:
+    if config.detection_methods or config.detection_application:
 
         if config.detection_application and type(data) is str and data == 'sampled' or type(data) is list:
             variation = setup
@@ -566,6 +570,12 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
 
         else:
 
+            if config.sim_setting == 'ERIGrid_phase_2':
+                if element_type == 'load':
+                    profiles_dict = load_script.finalize_profiles()
+                else:
+                    pv_profiles_dict = load_script.create_PV_profiles(save_profile=False)
+
             for id, row in loads.iterrows():
 
                 if element.loc_name == 'LB 2':
@@ -644,38 +654,146 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                         if element_type == 'load':
                             data = data.round()
 
-                        p_char = pf.create_vector_characteristic(
-                            characteristic=f'p_{element.loc_name}_{sheet_name}',
-                            # adds first letter of column name to characteristics name > most commonly P, Q or V
-                            # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
-                            # i].values / factor, index = config.times_household),
-                            vector_nodes=data,
-                            scale=o_TriTime,
-                            usage=2,  # 0,1,2 ... 2 means absolute
-                            approximation="constant",
-                            parent=None
-                        )
+                        if config.sim_setting == 'ERIGrid_phase_2' and element_type == 'load':
+                            name = ''.join(element.loc_name.split(' '))
+                            if name != 'LB3':
+                                data_p_no_DSM = profiles_dict[''.join(element.loc_name.split(' ')) + '_no_DSM']['p'][str(i)]
+                                data_q_no_DSM = profiles_dict[''.join(element.loc_name.split(' ')) + '_no_DSM']['q'][str(i)]
+                                data_p_DSM = \
+                                profiles_dict[''.join(element.loc_name.split(' ')) + '_DSM']['p'][str(i)]
+                                data_q_DSM = \
+                                profiles_dict[''.join(element.loc_name.split(' ')) + '_DSM']['q'][str(i)]
 
-                        chars_dict[element][f'p_{i}'] = p_char
-                        chars_dict[element][f'{i}_t_start'] = t_start
-                        chars_dict[element][f'{i}_t_end'] = t_end
+                                p_char = pf.create_vector_characteristic(
+                                    characteristic=f'p_{element.loc_name}_{sheet_name}_no_DSM',
+                                    # adds first letter of column name to characteristics name > most commonly P, Q or V
+                                    # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                                    # i].values / factor, index = config.times_household),
+                                    vector_nodes=data_p_no_DSM,
+                                    scale=o_TriTime,
+                                    usage=2,  # 0,1,2 ... 2 means absolute
+                                    approximation="constant",
+                                    parent=None
+                                )
 
-                        if element_type == 'load':
-                            q_char = pf.create_vector_characteristic(
-                                characteristic=f'q_{element.loc_name}_{sheet_name}',
+                                chars_dict[element][f'p_{i}_noDSM'] = p_char
+                                chars_dict[element][f'{i}_noDSM_t_start'] = t_start
+                                chars_dict[element][f'{i}_noDSM_t_end'] = t_end
+
+                                q_char = pf.create_vector_characteristic(
+                                    characteristic=f'q_{element.loc_name}_{sheet_name}_no_DSM',
+                                    # adds first letter of column name to characteristics name > most commonly P, Q or V
+                                    # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                                    # i].values / factor, index = config.times_household),
+                                    vector_nodes=data_q_no_DSM,
+                                    scale=o_TriTime,
+                                    usage=2,  # 0,1,2 ... 2 means absolute
+                                    approximation="constant",
+                                    parent=None
+                                )
+
+                                chars_dict[element][f'q_{i}_noDSM'] = q_char
+
+                                p_char = pf.create_vector_characteristic(
+                                    characteristic=f'p_{element.loc_name}_{sheet_name}_DSM',
+                                    # adds first letter of column name to characteristics name > most commonly P, Q or V
+                                    # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                                    # i].values / factor, index = config.times_household),
+                                    vector_nodes=data_p_DSM,
+                                    scale=o_TriTime,
+                                    usage=2,  # 0,1,2 ... 2 means absolute
+                                    approximation="constant",
+                                    parent=None
+                                )
+
+                                chars_dict[element][f'p_{i}_DSM'] = p_char
+                                chars_dict[element][f'{i}_DSM_t_start'] = t_start
+                                chars_dict[element][f'{i}_DSM_t_end'] = t_end
+
+                                q_char = pf.create_vector_characteristic(
+                                    characteristic=f'q_{element.loc_name}_{sheet_name}_DSM',
+                                    # adds first letter of column name to characteristics name > most commonly P, Q or V
+                                    # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                                    # i].values / factor, index = config.times_household),
+                                    vector_nodes=data_q_DSM,
+                                    scale=o_TriTime,
+                                    usage=2,  # 0,1,2 ... 2 means absolute
+                                    approximation="constant",
+                                    parent=None
+                                )
+
+                                chars_dict[element][f'q_{i}_DSM'] = q_char
+
+                            else:
+                                data_p = profiles_dict[''.join(element.loc_name.split(' '))]['p'][str(i)]
+                                data_q = profiles_dict[''.join(element.loc_name.split(' '))]['q'][str(i)]
+
+                                p_char = pf.create_vector_characteristic(
+                                    characteristic=f'p_{element.loc_name}_{sheet_name}',
+                                    # adds first letter of column name to characteristics name > most commonly P, Q or V
+                                    # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                                    # i].values / factor, index = config.times_household),
+                                    vector_nodes=data_p,
+                                    scale=o_TriTime,
+                                    usage=2,  # 0,1,2 ... 2 means absolute
+                                    approximation="constant",
+                                    parent=None
+                                )
+
+                                chars_dict[element][f'p_{i}'] = p_char
+                                chars_dict[element][f'{i}_t_start'] = t_start
+                                chars_dict[element][f'{i}_t_end'] = t_end
+
+                                q_char = pf.create_vector_characteristic(
+                                    characteristic=f'q_{element.loc_name}_{sheet_name}',
+                                    # adds first letter of column name to characteristics name > most commonly P, Q or V
+                                    # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                                    # i].values / factor, index = config.times_household),
+                                    vector_nodes=data_q,
+                                    scale=o_TriTime,
+                                    usage=2,  # 0,1,2 ... 2 means absolute
+                                    approximation="constant",
+                                    parent=None
+                                )
+
+                                chars_dict[element][f'q_{i}'] = q_char
+
+                        else:
+                            if config.sim_setting == 'ERIGrid_phase_2': data = pv_profiles_dict[str(i)]['absolute P (10kWp)']
+                            p_char = pf.create_vector_characteristic(
+                                characteristic=f'p_{element.loc_name}_{sheet_name}',
                                 # adds first letter of column name to characteristics name > most commonly P, Q or V
                                 # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
                                 # i].values / factor, index = config.times_household),
-                                vector_nodes=q_values,
+                                vector_nodes=data,
                                 scale=o_TriTime,
                                 usage=2,  # 0,1,2 ... 2 means absolute
                                 approximation="constant",
                                 parent=None
                             )
 
-                            chars_dict[element][f'q_{i}'] = q_char
+                            chars_dict[element][f'p_{i}'] = p_char
+                            chars_dict[element][f'{i}_t_start'] = t_start
+                            chars_dict[element][f'{i}_t_end'] = t_end
+
+                            if element_type == 'load':
+                                q_char = pf.create_vector_characteristic(
+                                    characteristic=f'q_{element.loc_name}_{sheet_name}',
+                                    # adds first letter of column name to characteristics name > most commonly P, Q or V
+                                    # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                                    # i].values / factor, index = config.times_household),
+                                    vector_nodes=q_values,
+                                    scale=o_TriTime,
+                                    usage=2,  # 0,1,2 ... 2 means absolute
+                                    approximation="constant",
+                                    parent=None
+                                )
+
+                                chars_dict[element][f'q_{i}'] = q_char
 
                         i += 1
+                if config.sim_setting == 'ERIGrid_phase_2':
+                    break
 
     return chars_dict
 

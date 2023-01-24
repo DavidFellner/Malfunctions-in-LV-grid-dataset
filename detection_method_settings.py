@@ -36,19 +36,19 @@ measurements_extended = {'measurements correct control Setup A':
                               'Meas_98', 'Meas_99', 'Meas_100', 'Meas_101', 'Meas_102', 'Meas_103', 'Meas_104'],
                          }
 
-measurements_DSM = {'measurements no DSM Setup A':
+measurements_DSM = {'measurements noDSM control Setup A':
                         ['Meas_11', 'Meas_12', 'Meas_13', 'Meas_14', 'Meas_15', 'Meas_16', 'Meas_17', 'Meas_18',
                          'Meas_19',
                          'Meas_20', 'Meas_21', 'Meas_22', 'Meas_23', 'Meas_24', 'Meas_25'],
-                    'measurements DSM Setup A':
+                    'measurements DSM control Setup A':
                         ['Meas_26', 'Meas_27', 'Meas_28', 'Meas_29', 'Meas_30', 'Meas_31', 'Meas_32', 'Meas_33',
                          'Meas_34',
                          'Meas_35', 'Meas_36', 'Meas_37', 'Meas_38', 'Meas_39', 'Meas_41'],
-                    'measurements no DSM Setup B':
+                    'measurements noDSM control Setup B':
                         ['Meas_42', 'Meas_43', 'Meas_44', 'Meas_45', 'Meas_46', 'Meas_47', 'Meas_48', 'Meas_49',
                          'Meas_50',
                          'Meas_51', 'Meas_52', 'Meas_53', 'Meas_54', 'Meas_55', 'Meas_56'],
-                    'measurements DSM Setup B':
+                    'measurements DSM control Setup B':
                         ['Meas_57', 'Meas_58', 'Meas_59', 'Meas_60', 'Meas_61', 'Meas_62', 'Meas_63', 'Meas_64',
                          'Meas_65',
                          'Meas_66', 'Meas_67', 'Meas_68', 'Meas_69', 'Meas_70', 'Meas_71'],
