@@ -49,7 +49,9 @@ add_data = True  # raw_data_available = False has to be set for this! set add_da
 #dataset_available = True  # set to False to recreate instances from raw data
 detection_methods = True
 deeplearning = False
+detection_application = False
 plot_data = True
+plot_V_or_P = 'V'
 use_case = 'DSM' # 'DSM', 'q_control'
 if use_case == 'DSM':
     test_bays = ['A1', 'B1', 'B2', 'C1']
@@ -63,8 +65,26 @@ scenario = 14  # 1 to 15 as there is 15 scenarios (profiles)
 plot_all = True # whether to plot all scenarios
 plot_only_trafo_and_pv = True # whether only the data of the trafo and PV connection test bay should be plotted in 'plot_scenario_test_bay' in 'plot_measurements'
 note_avg_and_std = False # whether average and standard deviation should be annotated in 'plot_scenario_test_bay' and 'plot_scenario_case' in 'plot_measurements'
-plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
-                      'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
+if use_case == 'DSM':
+    if learning_config['data_source'] == 'real_world':
+        if plot_V_or_P == 'V':
+            plotting_variables = {'B2': 'Vrms ph-n AN Avg', 'A1': 'Vrms ph-n AN Avg',
+                                      'B1': 'Vrms ph-n AN Avg', 'C1': 'Vrms ph-n L1N Avg', 'B2_num': 4, 'A1_num': 4, 'B1_num': 4, 'C1_num': 4}  # see dictionary above
+        else:
+            plotting_variables = {'B2': 'Wirkleistung Total Avg', 'A1': 'Wirkleistung Total Avg',
+                                  'B1': 'Wirkleistung Total Avg', 'C1': 'Wirkleistung Total Avg', 'B2_num': 248, 'A1_num': 296, 'B1_num': 280, 'C1_num': 296}  # see dictionary above
+    else:
+        if plot_V_or_P == 'V':
+            plotting_variables = {'B2': 'Vrms ph-n AN Avg', 'A1': 'Vrms ph-n AN Avg',
+                                  'B1': 'Vrms ph-n AN Avg', 'C1': 'Vrms ph-n AN Avg', 'B2_num': 20, 'A1_num': 20,
+                                  'B1_num': 20, 'C1_num': 20}  # see dictionary above
+        else:
+            plotting_variables = {'B2': 'Wirkleistung Total Avg', 'A1': 'Wirkleistung Total Avg',
+                                  'B1': 'Wirkleistung Total Avg', 'C1': 'Wirkleistung Total Avg', 'B2_num': 11,
+                                  'A1_num': 11, 'B1_num': 11, 'C1_num': 11}  # see dictionary above
+else:
+    plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
+                          'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
 if learning_config['data_source'] == 'real_world':
     if use_case == 'DSM':
         variables = {'B2': [v.variables_B2, v.pca_variables_B2]}
@@ -93,7 +113,7 @@ if extended:
 else:
     setups = {'Setup_A_F2_data': ['correct', 'wrong'], 'Setup_B_F2_data1_3c': ['correct', 'wrong', 'inversed'],
               'Setup_B_F2_data2_2c': ['correct', 'wrong'], 'Setup_B_F2_data3_2c': ['correct', 'inversed'],
-              'Setup_A_B2_DSM': ['no_DSM', 'DSM'], 'Setup_B_B2_DSM': ['no_DSM', 'DSM']}
+              'Setup_A_B2_DSM': ['DSM', 'noDSM'], 'Setup_B_B2_DSM': ['DSM', 'noDSM']}
 
 
 # additional settings : necessary here after?

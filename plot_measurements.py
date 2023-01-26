@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+
 plt.rcParams.update({'font.size': 15})
 import matplotlib.ticker as ticker
 from statistics import mean, pstdev
@@ -11,25 +12,32 @@ config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 learning_config = config.learning_config
 
+
 def adjust_yticks(ax, step_size=0.01, format='%0.2f'):
-
-
     start, end = ax.get_ylim()
     if len(np.arange(start, end, step_size)) < 3:
-        ticks = np.append(np.arange(start, end, step_size), np.arange(start, end, step_size)[-1]+step_size)
-    else: ticks = np.arange(start, end, step_size)
+        ticks = np.append(np.arange(start, end, step_size), np.arange(start, end, step_size)[-1] + step_size)
+    elif step_size >= 1:
+        start = round(start)
+        end = round(end)
+        if len(np.arange(start, end, step_size)) >= 6:
+            step_size = abs(start - end) / 6
+        ticks = np.arange(start, end, step_size, dtype=int)
+    else:
+        ticks = np.arange(start, end, step_size)
     ax.yaxis.set_ticks(ticks)
     ax.yaxis.set_major_formatter(ticker.FormatStrFormatter(format))
 
     return ax
 
-def adjust_xticks(ax,start_end, step_size=2000, format='%0.f'):
 
-
+def adjust_xticks(ax, start_end, step_size=2000, format='%0.f'):
     start = start_end[0]
-    end = round(start_end[1], -3) #round to full 1000 (6000 instead of 5999)
-    if len(np.arange(start, end, step_size)) < 4: ticks = np.append(np.arange(start, end, step_size), end)
-    else: ticks = np.arange(start, end, step_size)
+    end = round(start_end[1], -3)  # round to full 1000 (6000 instead of 5999)
+    if len(np.arange(start, end, step_size)) < 4:
+        ticks = np.append(np.arange(start, end, step_size), end)
+    else:
+        ticks = np.arange(start, end, step_size)
     ax.xaxis.set_ticks(ticks)
     ax.xaxis.set_major_formatter(ticker.FormatStrFormatter(format))
 
@@ -37,7 +45,6 @@ def adjust_xticks(ax,start_end, step_size=2000, format='%0.f'):
 
 
 def plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=True):
-
     if vars is None:
         vars = {'B1': ('Vrms ph-n AN Avg', 4), 'F1': ('Vrms ph-n AN Avg', 4), 'F2': ('Vrms ph-n AN Avg', 4)}
 
@@ -47,20 +54,24 @@ def plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=True
     numbers = {}
     for number in list(range(len(Y))):
         if config.use_case == 'DSM':
-            name = Y[number][0].split(' ')[2] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[
+            name = Y[number][0].split(' ')[3] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[
                 0]
-            if name.split('_')[-1] == 'no':
+            """if name.split('_')[-1] == 'no':
                 name = Y[number][0].split(' ')[3] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[
-                0] + '_DSM'
+                0] + '_DSM'"""
             numbers[name] = number
         else:
-            numbers[Y[number][0].split(' ')[3] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[0]] = number
+            numbers[Y[number][0].split(' ')[3] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[
+                0]] = number
 
+    if config.use_case == 'DSM' and config.learning_config['data_source'] == 'real_world' and config.plot_V_or_P == 'P':
+        data = [i[1][config.plotting_variables[i[0].split(' ')[-1]]] for i in Y]
+        data = [i / 1000 for i in data]  # to have in kW
+    else:
+        data = [i[1][i[1].columns[vars[i[0][-2:]][1]]] for i in Y]  # voltages_phase_1_avg
 
-    data = [i[1][i[1].columns[vars[i[0][-2:]][1]]] for i in Y]  # voltages_phase_1_avg
-
-    if learning_config['data_source'] == 'simulation':
-        data = [i *1000 for i in data]
+    """if learning_config['data_source'] == 'simulation' and config.use_case != 'DSM':
+        data = [i * 1000 for i in data]"""
     if pu == True and vars['B1'][1] <= 126 and vars['B1'][0][0] == 'V':  # only for voltages
         data = [i / 230 for i in data]
 
@@ -68,25 +79,32 @@ def plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=True
         fig, ((ax1, ax2), (ax4, ax5)) = plt.subplots(2, 2)
     else:
         fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
-    #fgs[str(len(fgs.keys()) + 1)] = fig
+    # fgs[str(len(fgs.keys()) + 1)] = fig
     fgs[[i.split(' ')[5][:-1] for i in measurements.keys()][0]] = fig
 
-    if pu:
-        fig.suptitle(f"Variable: {vars['B1'][0]} in per unit")
+    if pu == True and vars['B1'][1] <= 126 and vars['B1'][0][0] == 'V':
+        fig.suptitle(f"Variable: voltage in per unit")
+        y_label = 'Vrms [p.u.]'
+        step_size = 0.01
+    elif pu == True and vars['B1'][0][0] == 'W':
+        fig.suptitle(f"Variable: active power flow in kW")
+        y_label = 'Active power flow [kW]'
+        step_size = 1
     else:
         fig.suptitle(f"Variable: {vars['B1'][0]}")
+        y_label = vars['B1'][0]
 
     axs[str(len(fgs.keys())) + '_ax1'] = plt.subplot2grid(shape=(3, 4), loc=(0, 0), colspan=2, fig=fig)
-    #axs[str(len(fgs.keys())) + '_ax1'].set_xlabel('timestep')
-    axs[str(len(fgs.keys())) + '_ax1'].set_ylabel(vars['B1'][0])
+    # axs[str(len(fgs.keys())) + '_ax1'].set_xlabel('timestep')
+    axs[str(len(fgs.keys())) + '_ax1'].set_ylabel(ylabel=y_label)
 
     axs[str(len(fgs.keys())) + '_ax2'] = plt.subplot2grid((3, 4), (1, 0), colspan=2, fig=fig)
     if config.plot_only_trafo_and_pv: axs[str(len(fgs.keys())) + '_ax2'].set_xlabel('timestep')
-    axs[str(len(fgs.keys())) + '_ax2'].set_ylabel(vars['B1'][0])
+    axs[str(len(fgs.keys())) + '_ax2'].set_ylabel(ylabel=y_label)
 
     axs[str(len(fgs.keys())) + '_ax4'] = plt.subplot2grid((3, 4), (0, 2), colspan=2, fig=fig)
-    #axs[str(len(fgs.keys())) + '_ax4'].set_xlabel('timestep')
-    #axs[str(len(fgs.keys())) + '_ax4'].set_ylabel(var[0])
+    # axs[str(len(fgs.keys())) + '_ax4'].set_xlabel('timestep')
+    # axs[str(len(fgs.keys())) + '_ax4'].set_ylabel(var[0])
     axs[str(len(fgs.keys())) + '_ax4'].yaxis.tick_right()
 
     axs[str(len(fgs.keys())) + '_ax5'] = plt.subplot2grid((3, 4), (1, 2), colspan=2, fig=fig)
@@ -94,15 +112,14 @@ def plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=True
     # axs[str(len(fgs.keys())) + '_ax5'].set_ylabel(var[0])
     axs[str(len(fgs.keys())) + '_ax5'].yaxis.tick_right()
 
-
     if not config.plot_only_trafo_and_pv:
         axs[str(len(fgs.keys())) + '_ax3'] = plt.subplot2grid((3, 4), (2, 0), colspan=2, fig=fig)
         axs[str(len(fgs.keys())) + '_ax3'].set_xlabel('timestep')
-        axs[str(len(fgs.keys())) + '_ax3'].set_ylabel(vars['B1'][0])
+        axs[str(len(fgs.keys())) + '_ax3'].set_ylabel(ylabel=y_label)
 
         axs[str(len(fgs.keys())) + '_ax6'] = plt.subplot2grid((3, 4), (2, 2), colspan=2, fig=fig)
         axs[str(len(fgs.keys())) + '_ax6'].set_xlabel('timestep')
-        #axs[str(len(fgs.keys())) + '_ax6'].set_ylabel(var[0])
+        # axs[str(len(fgs.keys())) + '_ax6'].set_ylabel(var[0])
         axs[str(len(fgs.keys())) + '_ax6'].yaxis.tick_right()
 
     if config.note_avg_and_std:
@@ -113,66 +130,68 @@ def plot_scenario_test_bay(measurements, fgs, axs, vars=None, phase='1', pu=True
 
     start_end = lambda x: [X[x][0], X[x][-1]]
 
-    if config.use_case == 'DSM': fgs, axs = plot_scenario_test_bay_phase2(axs, fgs, X, numbers, data, label, measurements, start_end)
-    else: fgs, axs = plot_scenario_test_bay_phase1(axs, fgs, X, numbers, data, label, measurements, start_end)
+    if config.use_case == 'DSM':
+        fgs, axs = plot_scenario_test_bay_phase2(axs, fgs, X, numbers, data, label, measurements, start_end, step_size)
+    else:
+        fgs, axs = plot_scenario_test_bay_phase1(axs, fgs, X, numbers, data, label, measurements, start_end)
 
-    #plt.show()
+    # plt.show()
     return fgs, axs
 
 
-def plot_scenario_test_bay_phase2(axs, fgs, X, numbers, data, label, measurements, start_end):
-
+def plot_scenario_test_bay_phase2(axs, fgs, X, numbers, data, label, measurements, start_end, step_size):
     # Setup A Scenario x: Test Bay B1
     axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_B1_DSM']], data[numbers['A_B1_DSM']], 'tab:blue',
                                             label=label(numbers['A_B1_DSM'], 3))
-    axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_B1_no_DSM']], data[numbers['A_B1_no_DSM']], 'tab:red',
-                                            label=' '.join((label(numbers['A_B1_no_DSM'], 6).split('_'))))
-    axs[str(len(fgs.keys())) + '_ax1'].set_title(list(measurements.keys())[numbers['A_B1_DSM']][4:].split(':')[
-                                                     0] + ': Load and PV ' + f'({list(measurements.keys())[numbers["A_B1_DSM"]][16:].split(":")[1].split(" ")[-1]})')
+    axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_B1_noDSM']], data[numbers['A_B1_noDSM']], 'tab:red',
+                                            label=' '.join((label(numbers['A_B1_noDSM'], 6).split('_'))))
+    title = list(measurements.keys())[numbers['A_B1_DSM']][12:].split(':')[
+                0] + ': Load and PV ' + f'({list(measurements.keys())[numbers["A_B1_DSM"]][16:].split(":")[1].split(" ")[-1]})'
+    axs[str(len(fgs.keys())) + '_ax1'].set_title(title)
     axs[str(len(fgs.keys())) + '_ax1'].legend()
     adjust_xticks(axs[str(len(fgs.keys())) + '_ax1'], start_end=start_end(numbers['A_B1_DSM']))
-    adjust_yticks(axs[str(len(fgs.keys())) + '_ax1'])
+    adjust_yticks(axs[str(len(fgs.keys())) + '_ax1'], step_size=step_size)
 
     # Setup A Scenario x: Test Bay B2
     axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_B2_DSM']], data[numbers['A_B2_DSM']], 'tab:blue',
                                             label=label(numbers['A_B2_DSM'], 3))
-    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_B2_no_DSM']], data[numbers['A_B2_no_DSM']], 'tab:red',
-                                            label=' '.join((label(numbers['A_B2_no_DSM'], 6).split('_'))))
-    axs[str(len(fgs.keys())) + '_ax2'].set_title(list(measurements.keys())[numbers['A_B2_DSM']][4:].split(':')[
-                                                     0] + ': Transformer ' + f'({list(measurements.keys())[numbers["A_B2_DSM"]][16:].split(":")[1].split(" ")[-1]})')
+    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_B2_noDSM']], data[numbers['A_B2_noDSM']], 'tab:red',
+                                            label=' '.join((label(numbers['A_B2_noDSM'], 6).split('_'))))
+    title = '  ' + list(measurements.keys())[numbers['A_B2_DSM']][12:].split(':')[
+        0] + ': Transformer ' + f'({list(measurements.keys())[numbers["A_B2_DSM"]][16:].split(":")[1].split(" ")[-1]})'
+    axs[str(len(fgs.keys())) + '_ax2'].set_title(title)
     axs[str(len(fgs.keys())) + '_ax2'].legend()
     adjust_xticks(axs[str(len(fgs.keys())) + '_ax2'], start_end=start_end(numbers['A_B2_DSM']))
-    adjust_yticks(axs[str(len(fgs.keys())) + '_ax2'])
+    adjust_yticks(axs[str(len(fgs.keys())) + '_ax2'], step_size=step_size)
 
     # Setup B Scenario x: Test Bay A1
     axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_A1_DSM']], data[numbers['B_A1_DSM']], 'tab:blue',
                                             label=label(numbers['B_A1_DSM'], 3))
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_A1_no_DSM']], data[numbers['B_A1_no_DSM']], 'tab:red',
-                                            label=' '.join((label(numbers['B_A1_no_DSM'], 6).split('_'))))
-    axs[str(len(fgs.keys())) + '_ax4'].set_title(
-        '  ' + list(measurements.keys())[numbers['B_A1_DSM']][4:].split(':')[
-            0] + ': Load and PV ' + f'({list(measurements.keys())[numbers["B_A1_DSM"]][16:].split(":")[1].split(" ")[-1]})')
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_A1_noDSM']], data[numbers['B_A1_noDSM']], 'tab:red',
+                                            label=' '.join((label(numbers['B_A1_noDSM'], 6).split('_'))))
+    title = list(measurements.keys())[numbers['B_A1_DSM']][12:].split(':')[
+                0] + ': Load and PV ' + f'({list(measurements.keys())[numbers["B_A1_DSM"]][16:].split(":")[1].split(" ")[-1]})'
+    axs[str(len(fgs.keys())) + '_ax4'].set_title(title)
     axs[str(len(fgs.keys())) + '_ax4'].legend()
     adjust_xticks(axs[str(len(fgs.keys())) + '_ax4'], start_end=start_end(numbers['B_A1_DSM']))
-    adjust_yticks(axs[str(len(fgs.keys())) + '_ax4'])
+    adjust_yticks(axs[str(len(fgs.keys())) + '_ax4'], step_size=step_size)
 
     # Setup B Scenario x: Test Bay B2
     axs[str(len(fgs.keys())) + '_ax5'].plot(X[numbers['B_B2_DSM']], data[numbers['B_B2_DSM']], 'tab:blue',
                                             label=label(numbers['B_B2_DSM'], 3))
-    axs[str(len(fgs.keys())) + '_ax5'].plot(X[numbers['B_B2_no_DSM']], data[numbers['B_B2_no_DSM']], 'tab:red',
-                                            label=' '.join((label(numbers['B_B2_no_DSM'], 6).split('_'))))
-    axs[str(len(fgs.keys())) + '_ax5'].set_title(
-        '  ' + list(measurements.keys())[numbers['B_B2_DSM']][4:].split(':')[
-            0] + ': Transformer ' + f'({list(measurements.keys())[numbers["B_B2_DSM"]][16:].split(":")[1].split(" ")[-1]})')
+    axs[str(len(fgs.keys())) + '_ax5'].plot(X[numbers['B_B2_noDSM']], data[numbers['B_B2_noDSM']], 'tab:red',
+                                            label=' '.join((label(numbers['B_B2_noDSM'], 6).split('_'))))
+    title = '  ' + list(measurements.keys())[numbers['B_B2_DSM']][12:].split(':')[
+        0] + ': Transformer ' + f'({list(measurements.keys())[numbers["B_B2_DSM"]][16:].split(":")[1].split(" ")[-1]})'
+    axs[str(len(fgs.keys())) + '_ax5'].set_title(title)
     axs[str(len(fgs.keys())) + '_ax5'].legend()
     adjust_xticks(axs[str(len(fgs.keys())) + '_ax5'], start_end=start_end(numbers['B_B2_DSM']))
-    adjust_yticks(axs[str(len(fgs.keys())) + '_ax5'])
+    adjust_yticks(axs[str(len(fgs.keys())) + '_ax5'], step_size=step_size)
 
     return fgs, axs
 
 
 def plot_scenario_test_bay_phase1(axs, fgs, X, numbers, data, label, measurements, start_end):
-
     # Setup A Scenario x: Test Bay F1
     axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_F1_correct']], data[numbers['A_F1_correct']], 'tab:blue',
                                             label=label(numbers['A_F1_correct'], 15))
@@ -266,30 +285,36 @@ def plot_scenario_test_bay_phase1(axs, fgs, X, numbers, data, label, measurement
 
 
 def plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
-
-
     if vars is None:
         vars = {'B1': ('Vrms ph-n AN Avg', 4), 'F1': ('Vrms ph-n AN Avg', 4), 'F2': ('Vrms ph-n AN Avg', 4)}
     X = [measurements[i].data.index for i in measurements]
-    Y = [(measurements[i].name ,measurements[i].data) for i in measurements]
+    Y = [(measurements[i].name, measurements[i].data) for i in measurements]
 
     numbers = {}
     for number in list(range(len(Y))):
         if config.use_case == 'DSM':
-            name = Y[number][0].split(' ')[2] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[
+            name = Y[number][0].split(' ')[3] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[
                 0]
             if name.split('_')[-1] == 'no':
                 name = Y[number][0].split(' ')[3] + '_' + Y[number][0].split(' ')[
-                -1] + '_' + Y[number][0].split(' ')[
-                                                       0] + '_DSM'
+                    -1] + '_' + Y[number][0].split(' ')[
+                           0] + '_DSM'
             numbers[name] = number
         else:
             numbers[
-                Y[number][0].split(' ')[3] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[0]] = number
+                Y[number][0].split(' ')[3] + '_' + Y[number][0].split(' ')[-1] + '_' + Y[number][0].split(' ')[
+                    0]] = number
 
-    data = [i[1][i[1].columns[vars[i[0][-2:]][1]]] for i in Y]  # voltages_phase_1_avg
-    if learning_config['data_source'] == 'simulation':
-        data = [i *1000 for i in data]
+
+    if config.use_case == 'DSM' and config.learning_config['data_source'] == 'real_world' and config.plot_V_or_P == 'P':
+        data = [i[1][config.plotting_variables[i[0].split(' ')[-1]]] for i in Y]
+        data = [i / 1000 for i in data]  # to have in kW
+    else:
+        data = [i[1][i[1].columns[vars[i[0][-2:]][1]]] for i in Y]  # voltages_phase_1_avg
+
+    """if learning_config['data_source'] == 'simulation' and config.use_case != 'DSM':
+        data = [i * 1000 for i in data]"""
+
     if pu == True and vars['B1'][1] <= 126 and vars['B1'][0][0] == 'V':  # only for voltages
         data = [i / 230 for i in data]
 
@@ -297,37 +322,44 @@ def plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
         fig, ((ax1, ax2), (ax4, ax5)) = plt.subplots(2, 2)
     else:
         fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
-    #fgs[str(len(fgs.keys())+1)] = fig
+    # fgs[str(len(fgs.keys())+1)] = fig
     fgs[[i.split(' ')[5][:-1] for i in measurements.keys()][0]] = fig
 
-    if pu:
-        fig.suptitle(f"Variable: {vars['B1'][0][0]} in per unit")
+    if pu == True and vars['B1'][1] <= 126 and vars['B1'][0][0] == 'V':
+        fig.suptitle(f"Variable: voltage in per unit")
+        y_label = 'Vrms [p.u.]'
+        step_size = 0.01
+    elif pu == True and vars['B1'][0][0] == 'W':
+        fig.suptitle(f"Variable: active power flow in kW")
+        y_label = 'Active power flow [kW]'
+        step_size = 1
     else:
         fig.suptitle(f"Variable: {vars['B1'][0][0]}")
+        y_label = vars['B1'][0]
 
     axs[str(len(fgs.keys())) + '_ax1'] = plt.subplot2grid(shape=(3, 4), loc=(0, 0), colspan=2, fig=fig)
-    #axs[str(len(fgs.keys())) + '_ax1'].set_xlabel('timestep')
-    axs[str(len(fgs.keys())) + '_ax1'].set_ylabel(vars['B1'][0])
+    # axs[str(len(fgs.keys())) + '_ax1'].set_xlabel('timestep')
+    axs[str(len(fgs.keys())) + '_ax1'].set_ylabel(ylabel=y_label)
 
     axs[str(len(fgs.keys())) + '_ax2'] = plt.subplot2grid((3, 4), (1, 0), colspan=2, fig=fig)
     if not (learning_config['data_source'] == 'simulation' and config.extended) or config.use_case == 'DSM':
         axs[str(len(fgs.keys())) + '_ax2'].set_xlabel('timestep')
-    axs[str(len(fgs.keys())) + '_ax2'].set_ylabel(vars['B1'][0])
+    axs[str(len(fgs.keys())) + '_ax2'].set_ylabel(ylabel=y_label)
 
     axs[str(len(fgs.keys())) + '_ax3'] = plt.subplot2grid((3, 4), (0, 2), colspan=2, fig=fig)
-    #axs[str(len(fgs.keys())) + '_ax3'].set_xlabel('timestep')
-    #axs[str(len(fgs.keys())) + '_ax3'].set_ylabel(var[0])
+    # axs[str(len(fgs.keys())) + '_ax3'].set_xlabel('timestep')
+    # axs[str(len(fgs.keys())) + '_ax3'].set_ylabel(var[0])
     axs[str(len(fgs.keys())) + '_ax3'].yaxis.tick_right()
 
     axs[str(len(fgs.keys())) + '_ax4'] = plt.subplot2grid((3, 4), (1, 2), colspan=2, fig=fig)
-    #axs[str(len(fgs.keys())) + '_ax4'].set_xlabel('timestep')
-    #axs[str(len(fgs.keys())) + '_ax4'].set_ylabel(var[0])
+    # axs[str(len(fgs.keys())) + '_ax4'].set_xlabel('timestep')
+    # axs[str(len(fgs.keys())) + '_ax4'].set_ylabel(var[0])
     axs[str(len(fgs.keys())) + '_ax4'].yaxis.tick_right()
 
     if learning_config['data_source'] == 'simulation' and config.extended and config.use_case != 'DSM':
         axs[str(len(fgs.keys())) + '_ax5'] = plt.subplot2grid((3, 4), (2, 0), colspan=2, fig=fig)
         axs[str(len(fgs.keys())) + '_ax5'].set_xlabel('timestep')
-        axs[str(len(fgs.keys())) + '_ax5'].set_ylabel(vars['B1'][0])
+        axs[str(len(fgs.keys())) + '_ax5'].set_ylabel(ylabel=y_label)
 
     if config.use_case != 'DSM':
         axs[str(len(fgs.keys())) + '_ax6'] = plt.subplot2grid((3, 4), (2, 2), colspan=2, fig=fig)
@@ -338,22 +370,23 @@ def plot_scenario_case(measurements, fgs, axs, vars=None, phase='1', pu=True):
 
     if config.note_avg_and_std:
         label = lambda x: list(measurements.keys())[x].split(': ')[1] + ' avg: ' + str(
-                                                format(mean(data[x]), ".3f")) + ' std: ' + str(
-                                                format(pstdev(data[x]), ".3f"))
+            format(mean(data[x]), ".3f")) + ' std: ' + str(
+            format(pstdev(data[x]), ".3f"))
     else:
         label = lambda x: list(measurements.keys())[x].split(': ')[1]
 
     start_end = lambda x: [X[x][0], X[x][-1]]
 
-    if config.use_case == 'DSM': fgs, axs = plot_scenario_case_phase2(axs, fgs, X, numbers, data, measurements, start_end, label)
-    else: fgs, axs = plot_scenario_case_phase1(axs, fgs, X, numbers, data, measurements, start_end, label, ax5)
+    if config.use_case == 'DSM':
+        fgs, axs = plot_scenario_case_phase2(axs, fgs, X, numbers, data, measurements, start_end, label, step_size)
+    else:
+        fgs, axs = plot_scenario_case_phase1(axs, fgs, X, numbers, data, measurements, start_end, label, ax5)
 
-    #plt.show()
+    # plt.show()
     return fgs, axs
 
 
-def plot_scenario_case_phase2(axs, fgs, X, numbers, data, measurements, start_end, label):
-
+def plot_scenario_case_phase2(axs, fgs, X, numbers, data, measurements, start_end, label, step_size):
     # DSM Setup A Scenario x: Test Bays A1,B1,B2,C1
     axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_B1_DSM']], data[numbers['A_B1_DSM']], 'tab:blue',
                                             label=label(numbers['A_B1_DSM']))
@@ -363,24 +396,28 @@ def plot_scenario_case_phase2(axs, fgs, X, numbers, data, measurements, start_en
                                             label=label(numbers['A_B2_DSM']))
     axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_C1_DSM']], data[numbers['A_C1_DSM']], 'tab:red',
                                             label=label(numbers['A_C1_DSM']))
-    axs[str(len(fgs.keys())) + '_ax1'].set_title(list(measurements.keys())[numbers['A_B2_DSM']].split(': ')[0])
+    title = list(measurements.keys())[numbers['A_B2_DSM']].split(' ')[0] + \
+            (list(measurements.keys())[numbers['A_B2_DSM']].split('l')[1]).split(': ')[0]
+    axs[str(len(fgs.keys())) + '_ax1'].set_title(title)
     axs[str(len(fgs.keys())) + '_ax1'].legend()
     adjust_xticks(axs[str(len(fgs.keys())) + '_ax1'], start_end=start_end(numbers['A_B2_DSM']))
-    adjust_yticks(axs[str(len(fgs.keys())) + '_ax1'])
+    adjust_yticks(axs[str(len(fgs.keys())) + '_ax1'], step_size=step_size)
 
     # no DSM Setup A Scenario x: Test Bays A1,B1,B2,C1
-    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_B1_no_DSM']], data[numbers['A_B1_no_DSM']], 'tab:blue',
-                                            label=label(numbers['A_B1_no_DSM']))
-    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_A1_no_DSM']], data[numbers['A_A1_no_DSM']], 'tab:green',
-                                            label=label(numbers['A_A1_no_DSM']))
-    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_B2_no_DSM']], data[numbers['A_B2_no_DSM']], 'tab:orange',
-                                            label=label(numbers['A_B2_no_DSM']))
-    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_C1_no_DSM']], data[numbers['A_C1_no_DSM']], 'tab:red',
-                                            label=label(numbers['A_C1_no_DSM']))
-    axs[str(len(fgs.keys())) + '_ax2'].set_title(' '.join(list(measurements.keys())[numbers['A_B2_no_DSM']].split(': ')[0].split('_')))
+    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_B1_noDSM']], data[numbers['A_B1_noDSM']], 'tab:blue',
+                                            label=label(numbers['A_B1_noDSM']))
+    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_A1_noDSM']], data[numbers['A_A1_noDSM']], 'tab:green',
+                                            label=label(numbers['A_A1_noDSM']))
+    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_B2_noDSM']], data[numbers['A_B2_noDSM']], 'tab:orange',
+                                            label=label(numbers['A_B2_noDSM']))
+    axs[str(len(fgs.keys())) + '_ax2'].plot(X[numbers['A_C1_noDSM']], data[numbers['A_C1_noDSM']], 'tab:red',
+                                            label=label(numbers['A_C1_noDSM']))
+    title = list(measurements.keys())[numbers['A_B2_noDSM']].split(' ')[0] + \
+            (list(measurements.keys())[numbers['A_B2_noDSM']].split('l')[1]).split(': ')[0]
+    axs[str(len(fgs.keys())) + '_ax2'].set_title(title)
     axs[str(len(fgs.keys())) + '_ax2'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax2'], start_end=start_end(numbers['A_B2_no_DSM']))
-    adjust_yticks(axs[str(len(fgs.keys())) + '_ax2'])
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax2'], start_end=start_end(numbers['A_B2_noDSM']))
+    adjust_yticks(axs[str(len(fgs.keys())) + '_ax2'], step_size=step_size)
 
     # DSM Setup B Scenario x: Test Bays A1,B1,B2,C1
     axs[str(len(fgs.keys())) + '_ax3'].plot(X[numbers['B_B1_DSM']], data[numbers['B_B1_DSM']], 'tab:blue',
@@ -391,30 +428,33 @@ def plot_scenario_case_phase2(axs, fgs, X, numbers, data, measurements, start_en
                                             label=label(numbers['B_B2_DSM']))
     axs[str(len(fgs.keys())) + '_ax3'].plot(X[numbers['B_C1_DSM']], data[numbers['B_C1_DSM']], 'tab:red',
                                             label=label(numbers['B_C1_DSM']))
-    axs[str(len(fgs.keys())) + '_ax3'].set_title(list(measurements.keys())[numbers['B_B2_DSM']].split(': ')[0])
+    title = list(measurements.keys())[numbers['B_B2_DSM']].split(' ')[0] + \
+            (list(measurements.keys())[numbers['B_B2_DSM']].split('l')[1]).split(': ')[0]
+    axs[str(len(fgs.keys())) + '_ax3'].set_title(title)
     axs[str(len(fgs.keys())) + '_ax3'].legend()
     adjust_xticks(axs[str(len(fgs.keys())) + '_ax3'], start_end=start_end(numbers['B_B2_DSM']))
-    adjust_yticks(axs[str(len(fgs.keys())) + '_ax3'])
+    adjust_yticks(axs[str(len(fgs.keys())) + '_ax3'], step_size=step_size)
 
     # no DSM Setup B Scenario x: Test Bays A1,B1,B2,C1
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_B1_no_DSM']], data[numbers['B_B1_no_DSM']], 'tab:blue',
-                                            label=label(numbers['B_B1_no_DSM']))
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_A1_no_DSM']], data[numbers['B_A1_no_DSM']], 'tab:green',
-                                            label=label(numbers['B_A1_no_DSM']))
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_B2_no_DSM']], data[numbers['B_B2_no_DSM']], 'tab:orange',
-                                            label=label(numbers['B_B2_no_DSM']))
-    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_C1_no_DSM']], data[numbers['B_C1_no_DSM']], 'tab:red',
-                                            label=label(numbers['B_C1_no_DSM']))
-    axs[str(len(fgs.keys())) + '_ax4'].set_title(' '.join(list(measurements.keys())[numbers['B_B2_no_DSM']].split(': ')[0].split('_')))
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_B1_noDSM']], data[numbers['B_B1_noDSM']], 'tab:blue',
+                                            label=label(numbers['B_B1_noDSM']))
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_A1_noDSM']], data[numbers['B_A1_noDSM']], 'tab:green',
+                                            label=label(numbers['B_A1_noDSM']))
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_B2_noDSM']], data[numbers['B_B2_noDSM']], 'tab:orange',
+                                            label=label(numbers['B_B2_noDSM']))
+    axs[str(len(fgs.keys())) + '_ax4'].plot(X[numbers['B_C1_noDSM']], data[numbers['B_C1_noDSM']], 'tab:red',
+                                            label=label(numbers['B_C1_noDSM']))
+    title = list(measurements.keys())[numbers['B_B2_noDSM']].split(' ')[0] + \
+            (list(measurements.keys())[numbers['B_B2_noDSM']].split('l')[1]).split(': ')[0]
+    axs[str(len(fgs.keys())) + '_ax4'].set_title(title)
     axs[str(len(fgs.keys())) + '_ax4'].legend()
-    adjust_xticks(axs[str(len(fgs.keys())) + '_ax4'], start_end=start_end(numbers['B_B2_no_DSM']))
-    adjust_yticks(axs[str(len(fgs.keys())) + '_ax4'])
+    adjust_xticks(axs[str(len(fgs.keys())) + '_ax4'], start_end=start_end(numbers['B_B2_noDSM']))
+    adjust_yticks(axs[str(len(fgs.keys())) + '_ax4'], step_size=step_size)
 
     return fgs, axs
 
 
 def plot_scenario_case_phase1(axs, fgs, X, numbers, data, measurements, start_end, label, ax5):
-
     # correct Setup A Scenario x: Test Bays B1,F1,F2
     axs[str(len(fgs.keys())) + '_ax1'].plot(X[numbers['A_B1_correct']], data[numbers['A_B1_correct']], 'tab:blue',
                                             label=label(numbers['A_B1_correct']))
@@ -496,9 +536,7 @@ def plot_scenario_case_phase1(axs, fgs, X, numbers, data, measurements, start_en
     return fgs, axs
 
 
-
 def scatter(number, colors, data, ax):
-
     if number == 0:
         label = 'correct'
     elif number == 1:
@@ -510,15 +548,14 @@ def scatter(number, colors, data, ax):
 
     s = 25
     for point in data[:-1]:
-
-        ax.scatter(point[0],point[1],c = colors[number], s = s)
+        ax.scatter(point[0], point[1], c=colors[number], s=s)
 
     ax.scatter(data[-1][0], data[-1][1], c=colors[number], s=s, label=label)
 
     return ax
 
-def plot_pca(data, type='PCA', number_of_vars=15):
 
+def plot_pca(data, type='PCA', number_of_vars=15):
     fgs = {}
     axs = {}
 
@@ -533,7 +570,6 @@ def plot_pca(data, type='PCA', number_of_vars=15):
     else:
         y_label = 'expl. variance by 2nd PC'
         x_label = 'expl. variance by 1st PC'
-
 
     axs[str(len(fgs.keys())) + '_ax1'] = plt.subplot2grid(shape=(3, 4), loc=(0, 0), colspan=2, fig=fig)
     # axs[str(len(fgs.keys())) + '_ax1'].set_xlabel(x_label)
@@ -564,8 +600,10 @@ def plot_pca(data, type='PCA', number_of_vars=15):
 
     colors = ['g', 'r', 'orange']
     # Setup A Scenario x: Test Bay B1
-    axs[str(len(fgs.keys())) + '_ax1'] = scatter(0, colors, data['correct control Setup A: Test Bay B1'], axs[str(len(fgs.keys())) + '_ax1'])
-    axs[str(len(fgs.keys())) + '_ax1'] = scatter(1, colors, data['wrong control Setup A: Test Bay B1'], axs[str(len(fgs.keys())) + '_ax1'])
+    axs[str(len(fgs.keys())) + '_ax1'] = scatter(0, colors, data['correct control Setup A: Test Bay B1'],
+                                                 axs[str(len(fgs.keys())) + '_ax1'])
+    axs[str(len(fgs.keys())) + '_ax1'] = scatter(1, colors, data['wrong control Setup A: Test Bay B1'],
+                                                 axs[str(len(fgs.keys())) + '_ax1'])
     axs[str(len(fgs.keys())) + '_ax1'].set_title('Setup A: Test Bay B1 (Load at end of feeder)')
     axs[str(len(fgs.keys())) + '_ax1'].legend()
 
@@ -618,17 +656,18 @@ def plot_pca(data, type='PCA', number_of_vars=15):
     # plt.show()
     return fgs, axs
 
-def plot_grid_search(var, scores, x_label='number of PCA components', y_label='score', title='SVM with a polynomial kernel'):
 
+def plot_grid_search(var, scores, x_label='number of PCA components', y_label='score',
+                     title='SVM with a polynomial kernel'):
     fig, ax = plt.subplots()
     y = {}
     for score in scores[0].keys():
-        y[score] = [scores[point-1][score] for point in var]
+        y[score] = [scores[point - 1][score] for point in var]
     for score in y:
         ax.plot(var, np.array(y[score]).mean(axis=1), label=score)
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
-        #ax.set_xticks(var)
+        # ax.set_xticks(var)
         ax.set_title(title)
         ax.legend()
 

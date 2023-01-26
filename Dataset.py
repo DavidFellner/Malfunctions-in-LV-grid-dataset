@@ -195,6 +195,8 @@ class Raw_Dataset:
 
         if classes is not None:
             self.classes = classes
+        elif config.use_case == 'DSM':
+            self.classes = ['DSM', 'noDSM']
         else:
             self.classes = ['correct', 'wrong']
 
@@ -208,10 +210,12 @@ class Raw_Dataset:
         if config.use_case == 'DSM':
             self.labels = {'no DSM': 0, 'DSM': 0}
             for measurement in self.X:
-                if self.data[measurement].name.split(' ')[0] == 'DSM':
+                try: name = self.data[measurement].name
+                except KeyError: name = measurement.name
+                if name.split(' ')[0] == 'DSM':
                     self.y = self.y + [0]
                     self.labels['DSM'] = self.labels['DSM'] + 1
-                elif self.data[measurement].name.split(' ')[0] == 'no':
+                elif name.split(' ')[0] == 'noDSM':
                     self.y = self.y + [1]
                     self.labels['no DSM'] = self.labels['no DSM'] + 1
         else:
@@ -236,8 +240,12 @@ class Raw_Dataset:
         self.y = np.array(self.y)
 
     def dataset_info(self):
-        print(
-            f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created')
+        if config.use_case == 'DSM':
+            print(
+                f'Dataset containing {len(self.X)} samples, {self.labels["DSM"]} of which with DSM, {self.labels["no DSM"]} of which without DSM created')
+        else:
+            print(
+                f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created')
 
 
 class Combined_Dataset:
@@ -256,6 +264,8 @@ class Combined_Dataset:
 
         if classes is not None:
             self.classes = classes
+        elif config.use_case == 'DSM':
+            self.classes = ['DSM', 'noDSM']
         else:
             self.classes = ['correct', 'wrong']
 
@@ -269,8 +279,7 @@ class Combined_Dataset:
             measurements = {}
             for measurement in data:
                 if measurement[-2:] == name.split('_')[2] and (
-                        measurement.split(' ')[2] == name.split('_')[1] or measurement.split(' ')[3] == name.split('_')[
-                    1]):
+                        measurement.split(' ')[3] == name.split('_')[1]):
                     reduced_measurement = pd.DataFrame(index=data[measurement].data.index,
                                                        data=data[measurement].data[variables].values,
                                                        columns=variables)
@@ -304,7 +313,7 @@ class Combined_Dataset:
     def dataset_info(self):
         if config.use_case == 'DSM':
             print(
-                f'Dataset containing {len(self.X)} samples, {self.labels["DSM"]} of which implementing DSM and {self.labels["no DSM"]} of which not implementing DSM')
+                f'Dataset containing {len(self.X)} samples, {self.labels["DSM"]} of which implementing DSM and {self.labels["noDSM"]} of which not implementing DSM')
         else:
             print(
                 f'Dataset containing {len(self.X)} samples, {self.labels["correct"]} of which correct, {self.labels["wrong"]} of which wrong, and {self.labels["inversed"]} of which inversed created (if only 2 classes inversed is called wrong)')
@@ -318,14 +327,14 @@ class Combined_Dataset:
                                1] and measurement.split(' ')[0] in self.classes])"""
         self.y = []
         if config.use_case == 'DSM':
-            self.labels = {'no DSM': 0, 'DSM': 0}
+            self.labels = {'noDSM': 0, 'DSM': 0}
             for measurement in self.data:
                 if self.data[measurement].name.split(' ')[0] == 'DSM':
                     self.y = self.y + [0]
                     self.labels['DSM'] = self.labels['DSM'] + 1
-                elif self.data[measurement].name.split(' ')[0] == 'no':
+                elif self.data[measurement].name.split(' ')[0] == 'noDSM':
                     self.y = self.y + [1]
-                    self.labels['no DSM'] = self.labels['no DSM'] + 1
+                    self.labels['noDSM'] = self.labels['noDSM'] + 1
         else:
             self.labels = {'correct': 0, 'wrong': 0, 'inversed': 0}
             for measurement in self.data:

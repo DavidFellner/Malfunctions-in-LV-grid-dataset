@@ -143,8 +143,13 @@ class Transformer_detection:
                            vars_in_data.keys()]
         else:
             try:
-                var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
-                               vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
+                if config.use_case == 'DSM':
+                    """var_numbers = [variables[i][0].index(vars[i]) for i in
+                                   vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list"""
+                    var_numbers = [config.plotting_variables[f'{i}'] for i in vars.keys() if i.split('_')[-1] == 'num']
+                else:
+                    var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
+                                   vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
             except ValueError:
                 print(f"The variable  defined is not available")
                 return fgs, axs
@@ -177,8 +182,13 @@ class Transformer_detection:
                            vars_in_data.keys()]
         else:
             try:
-                var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
-                               vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
+                if config.use_case == 'DSM':
+                    """var_numbers = [variables[i][0].index(vars[i]) for i in
+                                   vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list"""
+                    var_numbers = [config.plotting_variables[f'{i}'] for i in vars.keys() if i.split('_')[-1] == 'num']
+                else:
+                    var_numbers = [variables[i][0].index(vars[i]) + 1 for i in
+                                   vars.keys()]  # +1 bc first column of data is useless and therefore not in variable list
             except ValueError:
                 print(f"The variable  defined is not available")
                 return fgs, axs

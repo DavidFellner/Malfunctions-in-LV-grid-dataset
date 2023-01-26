@@ -28,7 +28,7 @@ learning_config = {
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
-    'approach' : 'PCA+clf',  # 'PCA+clf', 'clustering'
+    'approach' : 'clustering',  # 'PCA+clf', 'clustering'
     'clf' : 'Assembly', # SVM, NuSVM, kNN, Assembly
     'kernels' : ['linear', 'poly', 'rbf', 'sigmoid'],   # ['linear', 'poly', 'rbf', 'sigmoid'] SVM kernels
     'gammas' : ['scale'],  # , 'auto']#[1/(i+1) for i in range(15)] #['scale', 'auto'] ; regularization for rbf kernels
@@ -51,6 +51,7 @@ detection_methods = True
 deeplearning = False
 detection_application = False
 plot_data = False
+plot_V_or_P = 'P' # either plot voltages or active powers
 use_case = 'DSM' # 'DSM', 'q_control'       #phase1 ... q control; phase2 ... DSM
 if use_case == 'DSM':
     test_bays = ['A1', 'B1', 'B2', 'C1']
@@ -65,10 +66,23 @@ plot_all = True # whether to plot all scenarios
 plot_only_trafo_and_pv = True # whether only the data of the trafo and PV connection test bay should be plotted in 'plot_scenario_test_bay' in 'plot_measurements'
 note_avg_and_std = False # whether average and standard deviation should be annotated in 'plot_scenario_test_bay' and 'plot_scenario_case' in 'plot_measurements'
 if use_case == 'DSM':
-    """plotting_variables = {'B2': 'Vrms ph-n AN Avg', 'A1': 'Vrms ph-n L1N Avg',
-                              'B1': 'Vrms ph-n AN Avg', 'C1': 'Vrms ph-n AN Avg'}  # see dictionary above"""
-    plotting_variables = {'B2': 'Wirkleistung Total Avg', 'A1': 'Wirkleistung Total Avg',
-                          'B1': 'Wirkleistung Total Avg', 'C1': 'Wirkleistung Total Avg'}  # see dictionary above
+    if learning_config['data_source'] == 'real_world':
+        if plot_V_or_P == 'V':
+            plotting_variables = {'B2': 'Vrms ph-n AN Avg', 'A1': 'Vrms ph-n AN Avg',
+                                      'B1': 'Vrms ph-n AN Avg', 'C1': 'Vrms ph-n L1N Avg', 'B2_num': 4, 'A1_num': 4, 'B1_num': 4, 'C1_num': 4}  # see dictionary above
+        else:
+            plotting_variables = {'B2': 'Wirkleistung Total Avg', 'A1': 'Wirkleistung Total Avg',
+                                  'B1': 'Wirkleistung Total Avg', 'C1': 'Wirkleistung Total Avg', 'B2_num': 248, 'A1_num': 296, 'B1_num': 280, 'C1_num': 296}  # see dictionary above
+    else:
+        if plot_V_or_P == 'V':
+            plotting_variables = {'B2': 'Vrms ph-n AN Avg', 'A1': 'Vrms ph-n AN Avg',
+                                  'B1': 'Vrms ph-n AN Avg', 'C1': 'Vrms ph-n AN Avg', 'B2_num': 20, 'A1_num': 20,
+                                  'B1_num': 20, 'C1_num': 20}  # see dictionary above
+        else:
+            plotting_variables = {'B2': 'Wirkleistung Total Avg', 'A1': 'Wirkleistung Total Avg',
+                                  'B1': 'Wirkleistung Total Avg', 'C1': 'Wirkleistung Total Avg', 'B2_num': 11,
+                                  'A1_num': 11, 'B1_num': 11, 'C1_num': 11}  # see dictionary above
+
 else:
     plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
                           'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
@@ -101,7 +115,7 @@ if extended:
 else:
     setups = {'Setup_A_F2_data': ['correct', 'wrong'], 'Setup_B_F2_data1_3c': ['correct', 'wrong', 'inversed'],
               'Setup_B_F2_data2_2c': ['correct', 'wrong'], 'Setup_B_F2_data3_2c': ['correct', 'inversed'],
-              'Setup_A_B2_DSM': ['no_DSM', 'DSM'], 'Setup_B_B2_DSM': ['no_DSM', 'DSM']}
+              'Setup_A_B2_DSM': ['DSM', 'noDSM'], 'Setup_B_B2_DSM': ['DSM', 'noDSM']}
 
 
 # additional settings : necessary here after?
