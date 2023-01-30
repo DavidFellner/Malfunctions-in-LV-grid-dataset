@@ -95,7 +95,7 @@ def generate_detectionmethods_raw_data(data=None, phase=None, setup=None, extrac
     else:
         print('Creating data using the grid %s' % file)
     app, study_case_obj, ldf, o_ElmNet = start_powerfactory(file)
-    grid_data = prepare_grid(app, study_case_obj, o_ElmNet, data=data, setup=setup, extract_profiles=extract_profiles, pv_input=pv_input)
+    grid_data = prepare_grid(app, study_case_obj, o_ElmNet, data=data, setup=setup, extract_profiles=extract_profiles, pv_input=pv_input, phase=phase, estimation=estimation)
     if not extract_profiles:
         create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file, setup, estimation=estimation, phase=phase)
 
@@ -236,18 +236,18 @@ if __name__ == '__main__':  # see config file for settings
                                 0]  # extract load and pv data used in lab setting"""
                         application.sensor_data = application.load_sensor_data(phase, setup)
                         if not config.use_saved_load_estimation_input_data:
-                            inputs = application.pick_estimation_input_data()
+                            inputs = application.pick_estimation_input_data(phase)
                             compile_load_estimation_input_data(data=[application.sensor_data, inputs], phase=phase, setup=setup)
                             inputs = 'from_file'
                         else:
-                            application.pick_estimation_input_data(just_pv=True)
+                            application.pick_estimation_input_data(phase, just_pv=True)
                             inputs = 'from_file'
                     else:
                         application.profiles = \
                             generate_detectionmethods_raw_data(phase=phase, setup=setup, extract_profiles=True)[
                                 0]  # extract load and pv data used in lab setting
                         application.sensor_data = application.load_sensor_data(phase, setup)
-                        inputs = application.pick_estimation_input_data()
+                        inputs = application.pick_estimation_input_data(phase)
 
                     application.load_data_estimated, load_data = estimate(phase, setup, X=inputs, pad_factor=application.pad_factor, config=config) #predict the loads using selected sensor data; returns both the estimation using a NN as well as LR
                 else:

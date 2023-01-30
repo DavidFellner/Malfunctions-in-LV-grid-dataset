@@ -632,6 +632,8 @@ class Sensor_Dataset:
 
         if classes is not None:
             self.classes = classes
+        elif self.phase == 'phase2':
+            self.classes = ['DSM', 'noDSM']
         else:
             self.classes = ['correct', 'wrong']
 
@@ -651,6 +653,96 @@ class Sensor_Dataset:
                                                        data=data[measurement].data[variables].values,
                                                        columns=variables)
                     measurements[measurement] = Sensor_Dataset.flatten_df_into_row(self, reduced_measurement)
+
+            self.trafo_data_DSM = {applicable_measurements.name: data[applicable_measurements.name] for
+                                       applicable_measurements in
+                                       [data[measurement] for measurement in data if
+                                        measurement[-2:] == self.trafo_point and
+                                        measurement.split(' ')[3] == setup and
+                                        measurement.split(' ')[0] == 'DSM']}
+
+            self.load_data_DSM = {applicable_measurements.name: data[applicable_measurements.name] for
+                                      applicable_measurements in
+                                      [data[measurement] for measurement in data if not
+                                      measurement[-2:] == self.trafo_point and
+                                       measurement.split(' ')[3] == setup and
+                                       measurement.split(' ')[0] == 'DSM']}
+
+            self.trafo_data_noDSM = {applicable_measurements.name: data[applicable_measurements.name] for
+                                     applicable_measurements in
+                                     [data[measurement] for measurement in data if
+                                      measurement[-2:] == self.trafo_point and
+                                      measurement.split(' ')[3] == setup and
+                                      measurement.split(' ')[0] == 'noDSM']}
+
+            self.load_data_noDSM = {applicable_measurements.name: data[applicable_measurements.name] for
+                                    applicable_measurements in
+                                    [data[measurement] for measurement in data if not
+                                    measurement[-2:] == self.trafo_point and
+                                     measurement.split(' ')[3] == setup and
+                                     measurement.split(' ')[0] == 'noDSM']}
+
+            data_dict = {'trafo_DSM': self.trafo_data_DSM, 'trafo_DSM_unflat': self.trafo_data_DSM,
+                         'load_DSM': self.load_data_DSM,
+                         'load_DSM_unflat': self.load_data_DSM, 'trafo_noDSM': self.trafo_data_noDSM,
+                         'load_noDSM': self.load_data_noDSM}
+
+            for data in data_dict:
+                measurements = {}
+                for measurement in data_dict[data]:
+                    reduced_measurement = pd.DataFrame(index=data_dict[data][measurement].data.index,
+                                                       data=data_dict[data][measurement].data[
+                                                           variables[measurement[-2:]][1]].values,
+                                                       columns=variables[measurement[-2:]][1])
+                    if data == 'trafo_DSM_unflat' or data == 'load_DSM_unflat':
+                        measurements[measurement] = reduced_measurement
+                    else:
+                        measurements[measurement] = Sensor_Dataset.flatten_df_into_row(self, reduced_measurement)
+
+                if data == 'trafo_DSM_unflat':
+                    index_length = len(
+                        [data_dict[data][measurement].data.index for measurement in data_dict[data]][0]) * len(
+                        [data_dict[data][measurement].data.index for measurement in data_dict[data]])
+                    data_values = np.concatenate([measurements[measurement].values for measurement in measurements])
+                    columns = [column + ' ' + self.trafo_point for column in measurements[list(measurements.keys())[0]].columns]
+                    data_dict[data] = pd.DataFrame(
+                        index=range(index_length),
+                        data=data_values,
+                        columns=columns).replace(np.nan,
+                                                 0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
+                elif data == 'load_DSM_unflat':
+                    index_length = int((len(
+                        [data_dict[data][measurement].data.index for measurement in data_dict[data]][0]) * len(
+                        [data_dict[data][measurement].data.index for measurement in data_dict[data]])) / (len(self.test_bays)-1))
+                    columns = []
+                    data_values = []
+                    for test_bay in self.test_bays:
+                        if test_bay == self.trafo_point:
+                            continue
+                        else:
+                            columns += (Sensor_Dataset.deliver_load_column_names(self, measurements[list(measurements.keys())[0]].columns, test_bay))
+                            data_values.append(np.concatenate([measurements[measurement].values for measurement in measurements if measurement.split(' ')[-1] == test_bay]))
+                    data_values = np.concatenate([i for i in data_values], axis=1)
+                    data_dict[data] = pd.DataFrame(
+                        index=range(index_length),
+                        data=data_values,
+                        columns=columns).replace(np.nan,
+                                                 0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
+
+                else:
+                    data_dict[data] = pd.DataFrame(
+                        index=[data_dict[data][measurement].name for measurement in data_dict[data]],
+                        data=[measurements[measurement].values[0] for measurement in measurements],
+                        columns=measurements[list(measurements.keys())[0]].columns).replace(np.nan,
+                                                                                            0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
+
+            self.trafo_data_DSM = data_dict['trafo_DSM']
+            self.trafo_data_DSM_unflattened = data_dict['trafo_DSM_unflat']
+            self.load_data_DSM = data_dict['load_DSM']
+            self.load_data_DSM_unflattened = data_dict['load_DSM_unflat']
+            self.trafo_data_noDSM = data_dict['trafo_noDSM']
+            self.load_data_noDSM = data_dict['load_noDSM']
+
         else:
             self.trafo_data_correct = {applicable_measurements.name: data[applicable_measurements.name] for
                                        applicable_measurements in

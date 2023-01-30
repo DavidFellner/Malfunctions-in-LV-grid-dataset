@@ -37,9 +37,11 @@ def eval(dir_results=None, setup=None, X=None, pad_factor=240, config=None):
     from datetime import date
     # specify the directory for the run results:
     dir = f"ERIGrid_{dir_results.split('_')[-1]}"
+    dir_results = f"ERIGrid_{dir_results.split('_')[-1]}_Setup_{setup}"
     if dir_results is None:
         # specify the directory for the run results:
-        dir = "ERIGrid_phase1"
+        dir = "ERIGrid_phase1_Setup_A"
+        dir_results = "ERIGrid_phase1"
     mode = 'LE'                                 # either of 'LE','DLEF','DLF','BusLF','LF' or 'LFfromLE'
     date = date.today()
     le_model_dir = f"{date.year}_{date.month}_{date.day}_LE_base"  # required only for mode 'LFfromLE'
@@ -64,11 +66,14 @@ def eval(dir_results=None, setup=None, X=None, pad_factor=240, config=None):
 
     # specify always 'known' buses by original dataset name
     # (known includes: voltage, pflow and qflow at that bus)
-    if dir.split('_')[1] == 'phase1':
+    if dir_results.split('_')[1] == 'phase1':
         trafo_point = 'F2'  # pv use case
+        known_buses = ['Test Bay ' + trafo_point, "Test Bay B1", "Test Bay F1"]  # [trafo_point,'node_57']
     else:
         trafo_point = 'B2'  # dsm use case
-    known_buses = ['Test Bay ' + trafo_point, "Test Bay B1", "Test Bay F1"]                   # these are not included in mode 'LF'
+        known_buses = ['Test Bay ' + trafo_point, "Test Bay B1", "Test Bay A1",
+                       "Test Bay C1"]  # [trafo_point,'node_57']                    #e.g. 'node01' these are not included in mode 'LF'
+
     exlude_buses_in_evaluation = []       # these buses are not considered for metrics evaluations e.g. node_144_V
 
     # specify parameters for evaluation run
@@ -81,7 +86,7 @@ def eval(dir_results=None, setup=None, X=None, pad_factor=240, config=None):
     # specify important paths
     data_path = Path("data")
     results_path = Path("model summaries")
-    run_path = results_path / dir
+    run_path = results_path / dir_results
 
 
 
@@ -249,7 +254,7 @@ def eval(dir_results=None, setup=None, X=None, pad_factor=240, config=None):
                     y = y
                     y_plot= y[::pad_factor]
                 if config.plot_real_vs_estimate:
-                    plot_estimate_vs_target_by_load(y_plot,y_pred_nn,y_pred_lr, style='-.', phase=dir_results.split('_')[-1], setup=setup)
+                    plot_estimate_vs_target_by_load(y_plot,y_pred_nn,y_pred_lr, style='-.', phase=dir_results.split('_')[-3], setup=setup)
 
                 return {'NN estimate': ypredict_nn, 'LR estimate': ypredict_lr}, y
 

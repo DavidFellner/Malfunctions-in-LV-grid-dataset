@@ -446,10 +446,10 @@ def create_dataset(type='raw', data=None, variables=None, name=None, classes=Non
             dataset =PCA_Dataset(data, name, classes=classes, bay=bay, Setup=Setup, labelling=labelling)
         if type=='combined':
             dataset = Combined_Dataset(data, variables, name, classes=classes, bay=bay, setup=Setup, labelling=labelling)
-    elif config.disaggregation:
-        if type=='complete':
-            dataset = Complete_Dataset(data, variables, name, trafo_point=trafo_point, classes=classes, bay=bay, setup=Setup,
-                                       labelling=labelling)
+        """elif config.disaggregation:
+            if type=='complete':
+                dataset = Complete_Dataset(data, variables, name, trafo_point=trafo_point, classes=classes, bay=bay, setup=Setup,
+                                           labelling=labelling)"""
     elif config.detection_application:
         if type=='sensor':
             dataset = Sensor_Dataset(data, phase_info, variables, name, classes=classes,
@@ -476,16 +476,20 @@ def pick_classes(phase, setup):
 
     classes = config.setups[phase][setup]
     if type(learning_config['setup_chosen']) is dict and type(learning_config['setup_chosen'][phase]) is dict:
-        for omitted_class in learning_config['setup_chosen'][phase][setup]: classes.remove(omitted_class)
+        if len(learning_config['setup_chosen'][phase]) > 0:
+            for omitted_class in learning_config['setup_chosen'][phase][setup]: classes.remove(omitted_class)
 
     incorrect_classes = classes.copy()
-    incorrect_classes.remove('correct')
+    if phase == 'phase1':
+        incorrect_classes.remove('correct')
+    else:
+        incorrect_classes.remove('DSM')
 
     if phase == 'phase1':
         modes = {f'correct_vs_{case}' : [case] for case in incorrect_classes}
         if len(classes) > 2: modes['correct_vs_abnormal'] = incorrect_classes
     else:
-        modes = ['DSM_vs_no_DSM']
+        modes = {'DSM_vs_no_DSM' :  [case] for case in incorrect_classes}
 
     return classes, modes
 

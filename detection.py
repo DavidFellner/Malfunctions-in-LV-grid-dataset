@@ -102,7 +102,7 @@ class Detection_application:
                                                                data_source='simulation',
                                                                phase_info=[phase, self.phases[phase]], grid_setup=setup, marker=estimation)
 
-        self.simulation_trafo_data_wrong = {applicable_measurements.name: self.simulation_data_estimation[applicable_measurements.name] for
+        self.simulation_trafo_data_wrong_estimated = {applicable_measurements.name: self.simulation_data_estimation[applicable_measurements.name] for
                                  applicable_measurements in
                                  [self.simulation_data_estimation[measurement] for measurement in self.simulation_data_estimation if
                                   measurement[-2:] == trafo_point and
@@ -115,7 +115,7 @@ class Detection_application:
             [self.simulation_data[measurement] for measurement in self.simulation_data if
              measurement[-2:] == trafo_point and
              measurement.split(' ')[3] == setup and
-             measurement.split(' ')[0] == 'correct']}
+             measurement.split(' ')[0] in ['correct', 'DSM']]}
 
         self.simulation_trafo_data_wrong = {
             applicable_measurements.name: self.simulation_data[applicable_measurements.name] for
@@ -126,7 +126,7 @@ class Detection_application:
              measurement.split(' ')[0] in incorrect_classes]}
 
 
-        self.complete_transformer_datasets = create_dataset(type='detection_application', data=[self.simulation_trafo_data_correct, self.simulation_trafo_data_wrong, self.simulation_trafo_data_wrong], phase_info=[phase, self.phases[phase]],
+        self.complete_transformer_datasets = create_dataset(type='detection_application', data=[self.simulation_trafo_data_correct, self.simulation_trafo_data_wrong, self.simulation_trafo_data_wrong_estimated], phase_info=[phase, self.phases[phase]],
                                           variables=config.sim_variables_dict[phase.split('_')[-1]],
                                           name=phase.split('_')[-1] + '_setup_' + setup,
                                           Setup=setup, labelling=incorrect_classes,
@@ -183,20 +183,32 @@ class Detection_application:
 
         return scores_by_clfs
 
-    def pick_estimation_input_data(self, just_pv=False):
+    def pick_estimation_input_data(self, phase, just_pv=False,):
 
         data = self.sensor_data
         test_bays = data.test_bays
         trafo_point = data.trafo_point
         setup = data.setup
         columns = []
-        num_columns_smart_meter_data = int(len(data.load_data_correct_unflattened.columns) / (len(test_bays)-1))
+
+        if phase.split('_')[-1] == 'phase2':
+            load_data_unflattened = data.load_data_DSM_unflattened
+            trafo_data_unflattened = data.trafo_data_DSM_unflattened
+        else:
+            load_data_unflattened = data.load_data_correct_unflattened
+            trafo_data_unflattened = data.trafo_data_corrrect_unflattened
+
+        num_columns_smart_meter_data = int(len(load_data_unflattened.columns) / (len(test_bays) - 1))
+
         if config.power_unit_sensor_data == 'MW':
             pv_and_load_factor = 1000
             flows_factor = 1/1000
         elif config.power_unit_sensor_data == 'KW':
             pv_and_load_factor = 1
-            flows_factor = 1/1000
+            if phase.split('_')[-1] == 'phase2':
+                flows_factor = 1
+            else:
+                flows_factor = 1/1000
         else:
             pv_and_load_factor = 0.001
             flows_factor = 1/1000
@@ -213,7 +225,7 @@ class Detection_application:
         pv_p = []
         pv_q = []
 
-        self.pad_factor = int(len(data.load_data_correct_unflattened.index) / (len(p_s) * len(p_s[0])))
+        self.pad_factor = int(len(load_data_unflattened.index) / (len(p_s) * len(p_s[0])))
 
         minus = 1
         for day in p_s:
@@ -247,12 +259,38 @@ class Detection_application:
         columns.append(f'PV B_Q')
 
         # Load input > to be estimated, therefore, used as test labels
-        LB_data = pd.DataFrame(index=data.load_data_correct_unflattened.index)
+        LB_data = pd.DataFrame(index=load_data_unflattened.index)
         for load in list(self.profiles.keys())[:-1]:
-            lb_ps = [self.profiles[load][day_data].vector for day_data in self.profiles[load] if
-               day_data[0] == 'p']
-            lb_qs  = [self.profiles[load][day_data].vector for day_data in self.profiles[load] if
-                                             day_data[0] == 'q']
+            if phase.split('_')[-1] == 'phase2' and load.loc_name != 'LB 3':
+                lb_ps = [self.profiles[load][day_data].vector for day_data in self.profiles[load] if
+                         day_data[0] == 'p' and day_data.split('_')[
+                             -1] == 'noDSM']
+                lb_qs = [self.profiles[load][day_data].vector for day_data in self.profiles[load] if
+                         day_data[0] == 'q' and day_data.split('_')[
+                             -1] == 'noDSM']
+                """if setup == 'A':
+                    dsm_load = 'LB 2'
+                else: 
+                    dsm_load = 'LB 1'
+                if load.loc_name == dsm_load:
+                    lb_ps = [self.profiles[load][day_data].vector for day_data in self.profiles[load] if
+                             day_data[0] == 'p' and day_data.split('_')[
+                                 -1] == 'DSM'] #correct input is DSM
+                    lb_qs = [self.profiles[load][day_data].vector for day_data in self.profiles[load] if
+                             day_data[0] == 'q' and day_data.split('_')[
+                                 -1] == 'DSM']
+                else:
+                    lb_ps = [self.profiles[load][day_data].vector for day_data in self.profiles[load] if
+                             day_data[0] == 'p' and day_data.split('_')[
+                                 -1] == 'noDSM']
+                    lb_qs = [self.profiles[load][day_data].vector for day_data in self.profiles[load] if
+                             day_data[0] == 'q' and day_data.split('_')[
+                                 -1] == 'noDSM']"""
+            else:
+                lb_ps = [self.profiles[load][day_data].vector for day_data in self.profiles[load] if
+                   day_data[0] == 'p']
+                lb_qs  = [self.profiles[load][day_data].vector for day_data in self.profiles[load] if
+                                                 day_data[0] == 'q']
 
             p_merged = []
             q_merged = []
@@ -273,39 +311,39 @@ class Detection_application:
             LB_data[load.loc_name + '_Q'] = q_merged
 
         #voltages
-        trafo_voltage = data.trafo_data_correct_unflattened.iloc[:, :3].mean(axis=1) / 230
+        trafo_voltage = trafo_data_unflattened.iloc[:, :3].mean(axis=1) / 230
         columns.append(f'Test Bay {trafo_point}_V')
         smart_meter_voltages = {}
         n = 0
         for test_bay  in test_bays:
             if test_bay is not trafo_point:
-                smart_meter_voltages[f'Test Bay {test_bay}_V'] = data.load_data_correct_unflattened.iloc[:, n*num_columns_smart_meter_data:3+n*num_columns_smart_meter_data].mean(axis=1) / 230
+                smart_meter_voltages[f'Test Bay {test_bay}_V'] = load_data_unflattened.iloc[:, n*num_columns_smart_meter_data:3+n*num_columns_smart_meter_data].mean(axis=1) / 230
                 columns.append(f'Test Bay {test_bay}_V')
                 n +=1
 
         #active power(s)
-        trafo_p = abs(data.trafo_data_correct_unflattened.iloc[:, 44:47].mean(axis=1)/flows_factor)
+        trafo_p = abs(trafo_data_unflattened.iloc[:, 44:47].mean(axis=1)/flows_factor)
         columns.append(f'Test Bay {trafo_point}_p')
 
         smart_meter_ps = {}
         n = 0
         for test_bay in test_bays:
             if test_bay is not trafo_point:
-                smart_meter_ps[f'Test Bay {test_bay}_p'] = abs(data.load_data_correct_unflattened.iloc[:,
+                smart_meter_ps[f'Test Bay {test_bay}_p'] = abs(load_data_unflattened.iloc[:,
                                            52+(n * num_columns_smart_meter_data):55+(n * num_columns_smart_meter_data)].mean(
                     axis=1)/flows_factor)
                 columns.append(f'Test Bay {test_bay}_p')
                 n += 1
 
         #reactive power(s)
-        trafo_q = abs(data.trafo_data_correct_unflattened.iloc[:, 56:59].mean(axis=1)/(flows_factor))
+        trafo_q = abs(trafo_data_unflattened.iloc[:, 56:59].mean(axis=1)/(flows_factor))
         columns.append(f'Test Bay {trafo_point}_q')
 
         smart_meter_qs = {}
         n = 0
         for test_bay in test_bays:
             if test_bay is not trafo_point:
-                smart_meter_qs[f'Test Bay {test_bay}_q'] = abs(data.load_data_correct_unflattened.iloc[:,
+                smart_meter_qs[f'Test Bay {test_bay}_q'] = abs(load_data_unflattened.iloc[:,
                                            64+(n * num_columns_smart_meter_data):67+(n * num_columns_smart_meter_data)].mean(
                     axis=1)/(flows_factor))
                 columns.append(f'Test Bay {test_bay}_q')
@@ -313,7 +351,7 @@ class Detection_application:
 
 
 
-        X = pd.DataFrame(index=data.load_data_correct_unflattened.index)
+        X = pd.DataFrame(index=load_data_unflattened.index)
 
         if setup == 'A':
             X[columns[0]] = pv_p

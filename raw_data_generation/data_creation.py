@@ -453,7 +453,11 @@ def save_results(count, results, file, t_start, t_end, malfunctioning_devices=No
 
             test_bay_dfs = pick_results(results, phase=phase)
 
-            test_bays = {'Test_Bay_B1': 'B1dataframe', 'Test_Bay_F1': 'F1dataframe', 'Test_Bay_F2': 'F2dataframe'}
+            if phase.split('_')[-1] == 'phase1':
+                test_bays = {'Test_Bay_B1': 'B1dataframe', 'Test_Bay_F1': 'F1dataframe', 'Test_Bay_F2': 'F2dataframe'}
+            else:
+                test_bays = {'Test_Bay_B2': 'B2dataframe', 'Test_Bay_B1': 'B1dataframe', 'Test_Bay_A1': 'A1dataframe',
+                             'Test_Bay_C1': 'C1dataframe'}
             for test_bay in test_bays:
                 bay_folder = os.path.join(file_folder, test_bay)
                 if not os.path.isdir(bay_folder):
@@ -517,6 +521,7 @@ def create_results_folder(file, phase=None, setup=None, estimate_input=False, tr
             file_folder = os.path.join(results_folder, file)
         else:
             if phase.split('_')[-1] == 'phase1': phase_num = 'phase_1'
+            else: phase_num = 'phase_2'
             results_folder = os.path.join(config.raw_data_folder, (
                     '_'.join([config.pf_file_dict[phase.split('_')[-1]].split('_')[1:][0], phase_num]) + '_sim_data'))
             file_folder = os.path.join(results_folder, file)
@@ -609,8 +614,8 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
     '''
 
     chars_dict = grid_data[0]
-    if config.sim_setting == 'ERIGrid_phase_2':
-        control_curves = {'DSM', 'noDSM'}
+    if config.sim_setting == 'ERIGrid_phase_2' or phase.split('_')[-1] == 'phase2':
+        control_curves = {'DSM' : [], 'noDSM' : []}
         if config.detection_application: del control_curves['DSM']
     else:
         if estimation is not None or learning_config['setup_chosen'].split('_')[1] == 'A':
@@ -626,34 +631,39 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
         if config.detection_application: del control_curves['correct']
 
     if config.add_data:
-        if config.sim_setting == 'ERIGrid_phase_2':
+        if config.sim_setting == 'ERIGrid_phase_2' or phase.split('_')[-1] == 'phase2':
             new_chars_dict = chars_dict
+            results_folder, file_folder = create_results_folder(file, phase=phase)
+            bay_folder = os.path.join(file_folder, 'Test_Bay_B2')
+            if not os.path.isdir(bay_folder):
+                os.mkdir(bay_folder)
 
-        new_chars_dict = {}
-        results_folder, file_folder = create_results_folder(file, phase=phase)
-        for element in chars_dict:
-            new_chars_dict[element] = {}
-            for char in chars_dict[element]:
-                bay_folder = os.path.join(file_folder, 'Test_Bay_F2')
-                if not os.path.isdir(bay_folder):
-                    os.mkdir(bay_folder)
+        else:
+            new_chars_dict = {}
+            results_folder, file_folder = create_results_folder(file, phase=phase)
+            for element in chars_dict:
+                new_chars_dict[element] = {}
+                for char in chars_dict[element]:
+                    bay_folder = os.path.join(file_folder, 'Test_Bay_F2')
+                    if not os.path.isdir(bay_folder):
+                        os.mkdir(bay_folder)
 
-                for control_curve in control_curves:
-                    if config.detection_application:
-                        if not os.path.isfile(os.path.join(bay_folder,
-                                                           f'scenario_{str(int(char.split("_")[1]) + 1)}_{control_curve}_control_Setup_{setup}_{estimation}.csv')) \
-                                and not os.path.isfile(os.path.join(bay_folder,
-                                                                    f'scenario_{str(int(char.split("_")[1]) + 1)}_{control_curve}_control_Setup_{setup}_{estimation}.csv')):
-                            new_chars_dict[element][char] = chars_dict[element][char]
-                    else:
-                        name_1 = f'scenario_{char.split("_")[1]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'
-                        name_2 = f'scenario_{char.split("_")[0]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'
+                    for control_curve in control_curves:
+                        if config.detection_application:
+                            if not os.path.isfile(os.path.join(bay_folder,
+                                                               f'scenario_{str(int(char.split("_")[1]) + 1)}_{control_curve}_control_Setup_{setup}_{estimation}.csv')) \
+                                    and not os.path.isfile(os.path.join(bay_folder,
+                                                                        f'scenario_{str(int(char.split("_")[1]) + 1)}_{control_curve}_control_Setup_{setup}_{estimation}.csv')):
+                                new_chars_dict[element][char] = chars_dict[element][char]
+                        else:
+                            name_1 = f'scenario_{char.split("_")[1]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'
+                            name_2 = f'scenario_{char.split("_")[0]}_{control_curve}_control_Setup_{learning_config["setup_chosen"].split("_")[1]}.csv'
 
-                        if not os.path.isfile(os.path.join(bay_folder, name_1)) \
-                                and not os.path.isfile(os.path.join(bay_folder,
-                                                                    name_2)):
-                            new_chars_dict[element][char] = chars_dict[element][char]
-                        # del new_chars_dict[element][char]
+                            if not os.path.isfile(os.path.join(bay_folder, name_1)) \
+                                    and not os.path.isfile(os.path.join(bay_folder,
+                                                                        name_2)):
+                                new_chars_dict[element][char] = chars_dict[element][char]
+                            # del new_chars_dict[element][char]
         chars_dict = new_chars_dict
 
     PV = app.GetCalcRelevantObjects('*.ElmPvsys')[0]
@@ -664,7 +674,7 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
         for element in chars_dict.keys():
 
             if element in app.GetCalcRelevantObjects('.ElmLod'):
-                if config.sim_setting == 'ERIGrid_phase_2' and element.loc_name != 'LB 3':
+                if (config.sim_setting == 'ERIGrid_phase_2' or phase.split('_')[-1] == 'phase2') and element.loc_name != 'LB 3':
                     pf.set_referenced_characteristics(element, 'plini', chars_dict[element][f'p_{scenario}_noDSM'])
                     pf.set_referenced_characteristics(element, 'qlini', chars_dict[element][f'q_{scenario}_noDSM'])
                 else:
@@ -679,10 +689,13 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
         for control_curve in control_curves:
             do = True
             if config.add_data:
-                bay_folder = os.path.join(file_folder, 'Test_Bay_F2')
+
+                if (config.sim_setting == 'ERIGrid_phase_2' or phase.split('_')[-1] == 'phase2'): bay_folder = os.path.join(file_folder, 'Test_Bay_B2')
+                else: bay_folder = os.path.join(file_folder, 'Test_Bay_F2')
+
                 if config.detection_application:
                     if os.path.isfile(os.path.join(bay_folder,
-                                                   f'scenario_{str(int(scenario) + 1)}_{control_curve}_control_Setup_{setup}_{estimation}.csv')):
+                                                   f'scenario_{scenario}_{control_curve}_control_Setup_{setup}_{estimation}.csv')):
                         do = False
                 else:
                     if os.path.isfile(os.path.join(bay_folder,
@@ -691,16 +704,19 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
 
             if do:
 
-                if config.sim_setting == 'ERIGrid_phase_2':
+                if (config.sim_setting == 'ERIGrid_phase_2' or phase.split('_')[-1] == 'phase2'):
                     for element in chars_dict.keys():
-                        if learning_config["setup_chosen"].split("_")[1] == 'A' or setup == 'A':
+                        if config.detection_application:
+                            criteria = setup
+                        else: criteria = learning_config["setup_chosen"].split("_")[1]
+                        if criteria == 'A' :
                             if element.loc_name == 'LB 2':
                                 pf.set_referenced_characteristics(element, 'plini',
                                                                   chars_dict[element][f'p_{scenario}_{control_curve}'])
                                 pf.set_referenced_characteristics(element, 'qlini',
                                                                   chars_dict[element][f'q_{scenario}_{control_curve}'])
                                 load = element
-                        if learning_config["setup_chosen"].split("_")[1] == 'B' or setup == 'B':
+                        if criteria == 'B' :
                             if element.loc_name == 'LB 1':
                                 pf.set_referenced_characteristics(element, 'plini',
                                                                   chars_dict[element][f'p_{scenario}_{control_curve}'])
@@ -714,7 +730,7 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
                     PV.pf_under = control_curves[control_curve][2]
                     PV.p_under = control_curves[control_curve][3]
 
-                t_start, t_end = set_times(file, element=load, chars_dict=chars_dict, scenario=scenario, control=control_curve, phase=phase)
+                t_start, t_end = set_times(file, element=load, chars_dict=chars_dict, scenario=scenario, control=control_curve, phase=phase.split('_')[-1])
 
                 result = set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=config.step_unit,
                                           balanced=config.balanced)  # set which vars and where!
@@ -724,7 +740,7 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
                 if config.detection_methods:
                     save_results(int(scenario), results, file, t_start, t_end, control_curve=control_curve)
                 if config.detection_application:
-                    save_results(int(scenario) + 1, results, file, t_start, t_end, control_curve=control_curve,
+                    save_results(int(scenario), results, file, t_start, t_end, control_curve=control_curve,
                                  marker=estimation, setup=setup, phase=phase)
 
     return

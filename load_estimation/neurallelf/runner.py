@@ -111,9 +111,11 @@ def load_estimation(dir_results=None, setup='A'):
     from datetime import date
 
     dir_results = f"ERIGrid_{dir_results.split('_')[-1]}"
+    dir_results_models = f"ERIGrid_{dir_results.split('_')[-1]}_Setup_{setup}"
     if dir_results is None:
         # specify the directory for the run results:
         dir_results = "ERIGrid_phase1"
+        dir_results_models = "ERIGrid_phase1_Setup_A"
 
     mode = 'LE'           # either of 'LE','DLEF','DLF','BusLF','LF' or 'LFfromLE'
     date = date.today()
@@ -134,12 +136,15 @@ def load_estimation(dir_results=None, setup='A'):
     # (known includes: voltage, pflow and qflow)
     if dir_results.split('_')[1] == 'phase1':
         trafo_point = 'F2'  # pv use case
+        known_buses = ['Test Bay ' + trafo_point, "Test Bay B1", "Test Bay F1"]  # [trafo_point,'node_57']
     else:
         trafo_point = 'B2'  # dsm use case
-    known_buses =  ['Test Bay ' + trafo_point, "Test Bay B1", "Test Bay F1"] #[trafo_point,'node_57']                    #e.g. 'node01' these are not included in mode 'LF'
+        known_buses =  ['Test Bay ' + trafo_point, "Test Bay B1", "Test Bay A1", "Test Bay C1"] #[trafo_point,'node_57']                    #e.g. 'node01' these are not included in mode 'LF'
     #scen_string = "[ [\"Test Bay F2_q\", \"Test Bay F2_p\", \"Test Bay F2_V\", \"Test Bay B1_V\", \"Test Bay F1_V\"], []]"
     scen_string = "[[\"PV A_P\", \"PV A_Q\", \"PV B_P\", \"PV B_Q\"]]"#"[ [\"LB 2_P\", \"LB 2_Q\", \"LB 7 8_P\", \"LB 7 8_Q\"]]"
     jsonString = json.dumps(scen_string)
+    if not os.path.isdir(os.path.join(os.getcwd(), 'model summaries', dir_results)):
+        os.mkdir(os.path.join(os.getcwd(), 'model summaries', dir_results))
     jsonFile = open(f"{os.path.join(os.getcwd(), 'model summaries', dir_results, 'scenarios gridtraining_data')}.json", "w")
     jsonFile.write(jsonString)
     jsonFile.close()
@@ -183,7 +188,7 @@ def load_estimation(dir_results=None, setup='A'):
     results_path = Path("model summaries")
     results_path.mkdir(exist_ok=True)
 
-    run_path = results_path / dir_results
+    run_path = results_path / dir_results_models
     run_path.mkdir(exist_ok=True)
 
 
