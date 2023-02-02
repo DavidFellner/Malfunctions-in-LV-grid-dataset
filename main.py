@@ -233,7 +233,7 @@ if __name__ == '__main__':  # see config file for settings
                     if not config.load_estimation_input_data_available or config.use_saved_load_estimation_input_data:
                         application.profiles = \
                             generate_detectionmethods_raw_data(phase=phase, setup=setup, extract_profiles=True)[
-                                0]  # extract load and pv data used in lab setting"""
+                                0]  # extract load and pv data used in lab setting
                         application.sensor_data = application.load_sensor_data(phase, setup)
                         if not config.use_saved_load_estimation_input_data:
                             inputs = application.pick_estimation_input_data(phase)

@@ -196,7 +196,7 @@ class Detection_application:
             trafo_data_unflattened = data.trafo_data_DSM_unflattened
         else:
             load_data_unflattened = data.load_data_correct_unflattened
-            trafo_data_unflattened = data.trafo_data_corrrect_unflattened
+            trafo_data_unflattened = data.trafo_data_correct_unflattened
 
         num_columns_smart_meter_data = int(len(load_data_unflattened.columns) / (len(test_bays) - 1))
 

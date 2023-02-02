@@ -143,9 +143,9 @@ def load_estimation(dir_results=None, setup='A'):
     #scen_string = "[ [\"Test Bay F2_q\", \"Test Bay F2_p\", \"Test Bay F2_V\", \"Test Bay B1_V\", \"Test Bay F1_V\"], []]"
     scen_string = "[[\"PV A_P\", \"PV A_Q\", \"PV B_P\", \"PV B_Q\"]]"#"[ [\"LB 2_P\", \"LB 2_Q\", \"LB 7 8_P\", \"LB 7 8_Q\"]]"
     jsonString = json.dumps(scen_string)
-    if not os.path.isdir(os.path.join(os.getcwd(), 'model summaries', dir_results)):
-        os.mkdir(os.path.join(os.getcwd(), 'model summaries', dir_results))
-    jsonFile = open(f"{os.path.join(os.getcwd(), 'model summaries', dir_results, 'scenarios gridtraining_data')}.json", "w")
+    if not os.path.isdir(os.path.join(os.getcwd(), 'model summaries', dir_results_models)):
+        os.mkdir(os.path.join(os.getcwd(), 'model summaries', dir_results_models))
+    jsonFile = open(f"{os.path.join(os.getcwd(), 'model summaries', dir_results_models, 'scenarios gridtraining_data')}.json", "w")
     jsonFile.write(jsonString)
     jsonFile.close()
 

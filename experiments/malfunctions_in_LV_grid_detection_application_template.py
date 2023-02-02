@@ -25,7 +25,7 @@ local_machine_tz = 'Europe/Berlin'  # timezone; it's important for Powerfactory
 # Deep learning settings
 learning_config = {
     'data_source': 'real_world', #real_world, simulation
-    'setup_chosen' : {"phase1": {"A", "B"}},  # either 'all' for phase 1 setup A+B and phase 2 setup A+B or enter setups to be ommited such as: if phase 1, setup A should be omitted enter {"phase1": {"A"}} to omit the entire phase 1 enter {"phase1": {"A", "B"}}, if only class 'inversed' should be omitted for setup A enter {"phase1": {"A": ["inversed"]}}
+    'setup_chosen' : {"phase1": {}, "phase2": {"A", "B"}},  # either 'all' for phase 1 setup A+B and phase 2 setup A+B or enter setups to be ommited such as: if phase 1, setup A should be omitted enter {"phase1": {"A"}, "phase2": {}} to omit the entire phase 1 enter {"phase1": {"A", "B"}, "phase2": {}}, if only class 'inversed' should be omitted for setup A enter {"phase1": {"A": ["inversed"]}, "phase2": {}}
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
@@ -50,14 +50,16 @@ raw_data_available = False  # set to False to generate raw data using the simula
 add_data = True  # raw_data_available = False has to be set for this! set add_data = True to add more data to raw data or fill gaps i scenarios that are not done yet;
 #dataset_available = True  # set to False to recreate instances from raw data
 load_estimation_training_data_available = True #create input for training of NN for load estimation
-pretrained = False #to skip training if training set hasn't changed
+pretrained = True #to skip training if training set hasn't changed
 load_estimation_input_data_available = True #create input for estimation using NN/LR for load estimation
 use_saved_load_estimation_input_data = True
-load_estimation_training_data_distributions_dict = {'phase1': {'LB 7 8' : (10, 10/3, 2, -0.095), 'LB 2' : (4, 3.5/3, 2, -0.14),'PV' : (4, 6/3), 'p_low':1}, 'phase2': {}, 'PV' : {'mu':
-    6, 'sigma': 6 / 3}}       #mean and std for gaussian normal distributions to be sampled from for load values; for uniform dist: min: p_low or for q max*4th para / 3rd para, max mu+3*sigma
-#p_low = 1   #absolute value in kW for uniform dist.
+load_estimation_training_data_distributions_dict = {'phase1': {'LB 7 8' : (10, 10/3, 2, -0.095, 0.25), 'LB 2' : (4, 3.5/3, 2, -0.14, 0.25),'PV' : (4, 6/3), 'p_low':1},
+                                                    'phase2': {'LB 1' : (3, 21/3, 1.25, -0.375, -4), 'LB 2' : (11, 74/3, 1.75, -0.115, -4), 'LB 3' : (4, 21/3, 1.75, -0.4375, -3.5),'PV' : (4, 6/3), 'p_low': -2}, 'PV' : {'mu':6, 'sigma': 6 / 3}}       #mean and std for gaussian normal distributions to be sampled from for load values; for uniform dist: min: p_low or for q max*4th para / 3rd para, max mu+3*sigma
+"""load_estimation_training_data_distributions_dict = {'phase1': {'LB 7 8' : (10, 10/3, 2, -0.095), 'LB 2' : (4, 3.5/3, 2, -0.14),'PV' : (4, 6/3), 'p_low':1},
+                                                    'phase2': {'LB 1' : (3, 21/3, 1.25, -0.325, -4), 'LB 2' : (11, 74/3, 2, -0.125, -3.5), 'LB 3' : (4, 21/3, 1.75, -0.45, -2.75),'PV' : (4, 6/3), 'p_low': -2}, 'PV' : {'mu':6, 'sigma': 6 / 3}}"""
+#p_low = 1   #absolute value in kW for uniform dist.                #               2.5  -0.11                         -0.2                        5  -0.42                            0.5
 #q_low = -0.035    #percent of p value; e.g. 0.1 means 10% of maximum value for uniform dist.
-print_loss_and_y_vs_pred = True
+print_loss_and_y_vs_pred = False
 plot_real_vs_estimate = False
 training_data_dist = 'uniform' #uniform, standard
 num_training_samples = 10000 + 1 #+1 in order for PowerFactory to yield the desired number of samples
@@ -90,7 +92,9 @@ plotting_variables = {'B1': 'Vrms ph-n AN Avg', 'F1': 'Vrms ph-n AN Avg',
                       'F2': 'Vrms ph-n L1N Avg'}  # see dictionary above
 if learning_config['data_source'] == 'real_world':
     variables_dict = {'phase1' : {'B1': [v.variables_B1, v.pca_variables_B1], 'F1': [v.variables_F1, v.pca_variables_F1],
-                     'F2': [v.variables_F2, v.pca_variables_F2]}, 'phase2': {'B2': [v.variables_B2, v.pca_variables_B2]}}
+                     'F2': [v.variables_F2, v.pca_variables_F2]}, 'phase2': {'B2': [v.variables_B2, v.pca_variables_B2_phase2], 'A1': [v.disaggregation_variables_A1, v.pca_variables_A1_phase2],
+                 'B1': [v.variables_B1, v.pca_variables_B1_phase2],
+                 'C1': [v.disaggregation_variables_C1, v.pca_variables_B2_phase2]}}
     disaggregation_variables_dict = {'phase1' : {'B1': v.disaggregation_variables_B1,
                                    'F1': v.disaggregation_variables_F1,
                                    'F2': v.disaggregation_variables_F2}, 'phase2': {'A1': v.disaggregation_variables_A1,
@@ -100,6 +104,14 @@ if learning_config['data_source'] == 'real_world':
                                     'inputs': v.disaggregation_input_variables}}
 
     pf_to_fluke_map = m.map
+
+    #for phase2
+    B2_B1_C1_vars = [[k[0] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]
+    B2_B1_C1_vars = B2_B1_C1_vars[0] + B2_B1_C1_vars[1]
+    A1_vars = [[k[1] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]
+    A1_vars = A1_vars[0] + A1_vars[1]
+
+    #for phase1
     B1_F1_vars = [[k[0] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]
     B1_F1_vars = B1_F1_vars[0] + B1_F1_vars[1]
     F2_vars = [[k[1] for k in pf_to_fluke_map[i].values()] for i in pf_to_fluke_map]
@@ -108,7 +120,10 @@ if learning_config['data_source'] == 'real_world':
     B2_vars = B2_vars[0] + B2_vars[1]
 
     sim_variables_dict = {'phase1' : {'B1': [v.variables_B1, B1_F1_vars], 'F1': [v.variables_F1, B1_F1_vars],
-                     'F2': [v.variables_F2, F2_vars]}, 'phase2': {'B2': [v.variables_B2, B2_vars]}}
+                     'F2': [v.variables_F2, F2_vars]}, 'phase2': {'B2': [v.variables_B2, B2_B1_C1_vars],
+                 'A1': [v.disaggregation_variables_A1, A1_vars],
+                 'B1': [v.variables_B1, B2_B1_C1_vars],
+                 'C1': [v.disaggregation_variables_C1, B2_B1_C1_vars]}}
 
     if use_case == 'DSM':
         variables = variables_dict['phase2']
@@ -131,7 +146,7 @@ else:
 sampling_step_size_in_seconds = None  # None or 0 to use all data, 1, 20 to sample once every n seconds ....
 
 if detection_application:
-    setups = {'phase1': {'A': ['correct', 'wrong', 'inversed'], 'B': ['correct', 'wrong', 'inversed']}, 'phase2': {'A': ['no_DSM', 'DSM'], 'B': ['no_DSM', 'DSM']}}
+    setups = {'phase1': {'A': ['correct', 'wrong', 'inversed'], 'B': ['correct', 'wrong', 'inversed']}, 'phase2': {'A': ['noDSM', 'DSM'], 'B': ['noDSM', 'DSM']}}
 elif extended:
     setups = {'Setup_A_F2_data1_3c': ['correct', 'wrong', 'inversed'],
               'Setup_A_F2_data2_2c': ['correct', 'wrong'],
@@ -142,7 +157,7 @@ elif extended:
 else:
     setups = {'Setup_A_F2_data': ['correct', 'wrong'], 'Setup_B_F2_data1_3c': ['correct', 'wrong', 'inversed'],
               'Setup_B_F2_data2_2c': ['correct', 'wrong'], 'Setup_B_F2_data3_2c': ['correct', 'inversed'],
-              'Setup_A_B2_DSM': ['no_DSM', 'DSM'], 'Setup_B_B2_DSM': ['no_DSM', 'DSM']}
+              'Setup_A_B2_DSM': ['noDSM', 'DSM'], 'Setup_B_B2_DSM': ['noDSM', 'DSM']}
 
 
 # additional settings : necessary here after?
