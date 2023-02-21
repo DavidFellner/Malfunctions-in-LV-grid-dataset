@@ -28,7 +28,7 @@ learning_config = {
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
-    'approach' : 'clustering',  # 'PCA+clf', 'clustering'
+    'approach' : 'PCA+clf',  # 'PCA+clf', 'clustering'
     'clf' : 'Assembly', # SVM, NuSVM, kNN, Assembly
     'kernels' : ['linear', 'poly', 'rbf', 'sigmoid'],   # ['linear', 'poly', 'rbf', 'sigmoid'] SVM kernels
     'gammas' : ['scale'],  # , 'auto']#[1/(i+1) for i in range(15)] #['scale', 'auto'] ; regularization for rbf kernels

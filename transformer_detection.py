@@ -39,7 +39,6 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import KFold, StratifiedKFold
 
-
 class Transformer_detection:
 
     def __init__(self, config, learning_config):

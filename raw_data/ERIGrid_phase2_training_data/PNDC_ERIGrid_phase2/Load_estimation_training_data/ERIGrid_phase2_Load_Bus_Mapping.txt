@@ -1,0 +1,8 @@
+Name	Grid	Type	Terminal	Terminal	Zone	Area	Out of Service	Technology	Consider Load Transformer	Rated Power	r0	x0	Load Classification
+		TypLod,TypLodind	Substation							MVA	p.u.	p.u.	
+
+LB 1	Grid	 	 	  LB 1 connection point	 	 	0	3PH-'D'	0	100.	0.01	0.1	
+LB 2	Grid	 	 	  LB 2 connection point	 	 	0	3PH-'D'	0	100.	0.01	0.1	
+LB 3	Grid	 	 	  LB 3 connection point	 	 	0	3PH-'D'	0	100.	0.01	0.1	
+PV A	Grid	 	 	    Test Bay B1	 	 	0	3PH-'D'	0	100.	0.01	0.1	
+PV B	Grid	 	 	    Test Bay A1	 	 	0	3PH-'D'	0	100.	0.01	0.1	

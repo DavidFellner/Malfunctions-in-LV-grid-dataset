@@ -125,12 +125,16 @@ class Detection_application:
              measurement.split(' ')[3] == setup and
              measurement.split(' ')[0] in incorrect_classes]}
 
+        if config.learning_config['real_vs'] == 'sim': data_wrong = self.simulation_trafo_data_wrong    #to be used for the negative samples building the classifier
+        else: data_wrong = self.simulation_trafo_data_wrong_estimated
 
-        self.complete_transformer_datasets = create_dataset(type='detection_application', data=[self.simulation_trafo_data_correct, self.simulation_trafo_data_wrong, self.simulation_trafo_data_wrong_estimated], phase_info=[phase, self.phases[phase]],
+        self.complete_transformer_datasets = create_dataset(type='detection_application', data=[self.simulation_trafo_data_correct, self.simulation_trafo_data_wrong, data_wrong], phase_info=[phase, self.phases[phase]],
                                           variables=config.sim_variables_dict[phase.split('_')[-1]],
                                           name=phase.split('_')[-1] + '_setup_' + setup,
                                           Setup=setup, labelling=incorrect_classes,
                                           classes=classes)
+
+        print(f'Dataset using {config.learning_config["real_vs"]} data for incorrect training samples compiled')
 
         return self.complete_transformer_datasets
 
@@ -157,7 +161,7 @@ class Detection_application:
             #print(f'Pred vs Test{(list(y_pred), list(y_test))}')
 
         scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores],
-                       'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores], 'Pred_vs_Test': [i[2] for i in scores]}
+                       'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores]}#, 'Pred_vs_Test': [i[2] for i in scores]}
 
         return scores_dict
 

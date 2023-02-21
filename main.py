@@ -63,8 +63,9 @@ from transformer_detection import Transformer_detection
 import plotting
 #from disaggregation_module import Disaggregation
 from detection import Detection_application
+#from line_profiler_pycharm import profile
 
-
+#@profile
 def generate_deeplearning_raw_data():
 
     for file in os.listdir(config.grid_data_folder):
@@ -80,6 +81,7 @@ def generate_deeplearning_raw_data():
 
     return
 
+#@profile
 def generate_detectionmethods_raw_data(data=None, phase=None, setup=None, extract_profiles=False, estimation=None, pv_input=None):
     '''
     USE PNDC GRID MODELS HERE
@@ -107,6 +109,7 @@ def load_profiles():
     grid_data = prepare_grid()
     return grid_data
 
+#@profile
 def generate_load_estimation_training_data(phase=None, setup=None):
     '''
     USE PNDC GRID MODELS HERE
@@ -125,6 +128,7 @@ def generate_load_estimation_training_data(phase=None, setup=None):
 
     return
 
+#@profile
 def compile_load_estimation_input_data(data, phase=None, setup=None):
     '''
     Used to merge sensor data with (PV) profiles which are assumed to be known
@@ -166,6 +170,7 @@ def compile_load_estimation_input_data(data, phase=None, setup=None):
                                                                      var_numbers)
 
     return results"""
+
 
 if __name__ == '__main__':  # see config file for settings
 

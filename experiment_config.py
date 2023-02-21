@@ -45,7 +45,8 @@ import sys
 #chosen_experiment = 'malfunctions_in_LV_grid_detection_Setup_B_DSM_vs_no_DSM_simulation'
 
 #Detection Application:
-chosen_experiment = 'malfunctions_in_LV_grid_detection_application_template'
+chosen_experiment = 'malfunctions_in_LV_grid_detection_application'
+#chosen_experiment = 'malfunctions_in_LV_grid_detection_application_template'
 
 
 

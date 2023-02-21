@@ -25,7 +25,7 @@ local_machine_tz = 'Europe/Berlin'  # timezone; it's important for Powerfactory
 # Deep learning settings
 learning_config = {
     'data_source': 'real_world', #real_world, simulation
-    'setup_chosen' : {"phase1": {}, "phase2": {"A", "B"}},  # either 'all' for phase 1 setup A+B and phase 2 setup A+B or enter setups to be ommited such as: if phase 1, setup A should be omitted enter {"phase1": {"A"}, "phase2": {}} to omit the entire phase 1 enter {"phase1": {"A", "B"}, "phase2": {}}, if only class 'inversed' should be omitted for setup A enter {"phase1": {"A": ["inversed"]}, "phase2": {}}
+    'setup_chosen' : {"phase1": {"A", "B"}, "phase2": {}},  # either 'all' for phase 1 setup A+B and phase 2 setup A+B or enter setups to be ommited such as: if phase 1, setup A should be omitted enter {"phase1": {"A"}, "phase2": {}} to omit the entire phase 1 enter {"phase1": {"A", "B"}, "phase2": {}}, if only class 'inversed' should be omitted for setup A enter {"phase1": {"A": ["inversed"]}, "phase2": {}}
     'mode' : 'classification',  # classification means wrong as wrong and inversed as inversed, detection means wrong and inversed as wrong
     'data_mode' : 'combined_data',  # 'measurement_wise', 'combined_data'
     'selection' : 'most important', # 'most important', 'least important' variables picked after assessment by PCA > only applicable when in measurement_wise data mode
@@ -39,6 +39,7 @@ learning_config = {
     'classifier_combos' : 'general', # detection, c_vs_w, c_vs_inv, A, c_vs_w_combined_dataset not all work for all!
     'components' : 0.99, #for combined dataset: percentage of variance that is to be retained by primary components
     'disaggregation algorithm' : '[NN, LR]',  #[NN, LR], [NN], [LR]
+    'real_vs': 'sim' #est, sim; form negative samples either using the original sim data or the estimated one
 }
 
 #########################################################################
@@ -46,7 +47,7 @@ learning_config = {
 #########################################################################
 
 # Dataset settings
-raw_data_available = False  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWERFACTORY is not available
+raw_data_available = True  # set to False to generate raw data using the simulation; leave True if DIGSILENT POWERFACTORY is not available
 add_data = True  # raw_data_available = False has to be set for this! set add_data = True to add more data to raw data or fill gaps i scenarios that are not done yet;
 #dataset_available = True  # set to False to recreate instances from raw data
 load_estimation_training_data_available = True #create input for training of NN for load estimation
