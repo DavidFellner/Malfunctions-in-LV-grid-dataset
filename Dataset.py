@@ -284,6 +284,14 @@ class Combined_Dataset:
                                                        data=data[measurement].data[variables].values,
                                                        columns=variables)
                     measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, reduced_measurement)
+        elif config.use_case == 'stmk':
+            measurements = {}
+            for measurement in data:
+                measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, data[measurement].data)
+
+            self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in
+                         [data[measurement] for measurement in measurements if measurements[measurement].values[0].shape[0] == len(measurements[list(measurements.keys())[0]].columns)]}  # get rid of daylight saving time change flawed data day
+
         else:
             self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in
                          [data[measurement] for measurement in data if
@@ -299,10 +307,18 @@ class Combined_Dataset:
                                                        columns=variables)
                     measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, reduced_measurement)
 
-        self.combined_data = pd.DataFrame(index=[self.data[measurement].name for measurement in self.data],
-                                          data=[measurements[measurement].values[0] for measurement in measurements],
-                                          columns=measurements[list(measurements.keys())[0]].columns).replace(np.nan,
-                                                                                                              0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
+        if config.use_case == 'stmk':
+            self.combined_data = pd.DataFrame(index=[self.data[measurement].name for measurement in self.data],
+                                              data=[measurements[measurement].values[0] for measurement in
+                                                    self.data],
+                                              columns=measurements[list(measurements.keys())[0]].columns).replace(
+                np.nan,
+                0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
+        else:
+            self.combined_data = pd.DataFrame(index=[self.data[measurement].name for measurement in self.data],
+                                              data=[measurements[measurement].values[0] for measurement in measurements],
+                                              columns=measurements[list(measurements.keys())[0]].columns).replace(np.nan,
+                                                                                                                  0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
 
     def create_dataset(self):
 
@@ -335,6 +351,25 @@ class Combined_Dataset:
                 elif self.data[measurement].name.split(' ')[0] == 'noDSM':
                     self.y = self.y + [1]
                     self.labels['noDSM'] = self.labels['noDSM'] + 1
+        elif config.use_case == 'stmk':
+            self.X_train_stmk = []
+            self.X_test_stmk = []
+            self.y_train_stmk = []
+            self.labels = {'correct' : 0, 'wrong' : 1, 'inversed' : 2, 'flat' : 3, 'as_is' : 4}
+            i = 0
+            for measurement in self.data:
+                control = self.data[measurement].name.split(' ')[0]
+                if control in self.classes:
+                    self.y = self.y + [self.labels[control]]
+                    self.y_train_stmk = self.y_train_stmk + [self.labels[control]]
+                    self.X_train_stmk = self.X_train_stmk + [self.X[i]]
+                else:
+                    self.y = self.y + [self.labels['as_is']]
+                    self.X_test_stmk = self.X_test_stmk + [self.X[i]]
+                i +=1
+            self.X_train_stmk = np.array(self.X_train_stmk)
+            self.X_test_stmk = np.array(self.X_test_stmk)
+            self.y_train_stmk = np.array(self.y_train_stmk)
         else:
             self.labels = {'correct': 0, 'wrong': 0, 'inversed': 0}
             for measurement in self.data:

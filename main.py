@@ -90,7 +90,10 @@ def generate_detectionmethods_raw_data(data=None, phase=None, setup=None, extrac
     if config.detection_application:
         file = config.pf_file_dict[phase.split('_')[-1]]
     else:
-        file = config.pf_file
+        if list(learning_config['setup_chosen'].keys())[0] == 'stmk':
+            file = learning_config['setup_chosen']['stmk'] + config.pf_file_dict['stmk']
+        else:
+            file = config.pf_file
 
     if extract_profiles:
         print('Load data for the grid %s' % file)
@@ -210,7 +213,8 @@ if __name__ == '__main__':  # see config file for settings
         #if detection.plot_data and config.use_case != 'DSM': detection.plotting_data()
         if detection.plot_data: detection.plotting_data()
         if detection.approach == 'clustering': detection.clustering()
-        if detection.approach == 'PCA+clf': detection.detection()
+        if detection.approach == 'PCA+clf':
+            detection.detection()
 
         """elif config.disaggregation:
             disaggregation = Disaggregation(config, learning_config)

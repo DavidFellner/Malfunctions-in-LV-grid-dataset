@@ -1,0 +1,35 @@
+########## % of predictions on Gleinz PV NAP data with classes ['correct', 'wrong', 'inversed', 'flat'] by classifier used ##########
+{'NuSVM_poly1': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly2': {'correct': 0.0, 'wrong': 2.127659574468085, 'inversed': 0.0, 'flat': 97.87234042553192}}
+{'NuSVM_poly3': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly4': {'correct': 0.0, 'wrong': 1.4184397163120568, 'inversed': 0.0, 'flat': 98.58156028368793}}
+{'NuSVM_poly5': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly6': {'correct': 0.0, 'wrong': 0.7092198581560284, 'inversed': 0.0, 'flat': 99.29078014184397}}
+{'SVM_poly1': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly2': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly3': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly4': {'correct': 0.0, 'wrong': 0.7092198581560284, 'inversed': 0.0, 'flat': 99.29078014184397}}
+{'SVM_poly5': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly6': {'correct': 0.0, 'wrong': 0.7092198581560284, 'inversed': 0.0, 'flat': 99.29078014184397}}
+{'NuSVM_rbf': {'correct': 0.0, 'wrong': 1.4184397163120568, 'inversed': 0.0, 'flat': 98.58156028368793}}
+{'NuSVM_sigmoid': {'correct': 0.0, 'wrong': 4.25531914893617, 'inversed': 4.964539007092199, 'flat': 90.78014184397163}}
+{'SVM_rbf': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.7092198581560284, 'flat': 99.29078014184397}}
+{'SVM_sigmoid': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'kNN_1NN_uniform_weights': {'correct': 0.0, 'wrong': 0.7092198581560284, 'inversed': 0.7092198581560284, 'flat': 98.58156028368793}}
+{'kNN_1NN_distance_weights': {'correct': 0.0, 'wrong': 0.7092198581560284, 'inversed': 0.7092198581560284, 'flat': 98.58156028368793}}
+{'kNN_2NN_uniform_weights': {'correct': 0.0, 'wrong': 94.32624113475178, 'inversed': 0.7092198581560284, 'flat': 4.964539007092199}}
+{'kNN_2NN_distance_weights': {'correct': 0.0, 'wrong': 0.7092198581560284, 'inversed': 0.7092198581560284, 'flat': 98.58156028368793}}
+{'kNN_3NN_uniform_weights': {'correct': 3.546099290780142, 'wrong': 86.52482269503547, 'inversed': 0.0, 'flat': 9.929078014184398}}
+{'kNN_3NN_distance_weights': {'correct': 0.0, 'wrong': 0.7092198581560284, 'inversed': 0.7092198581560284, 'flat': 98.58156028368793}}
+{'kNN_4NN_uniform_weights': {'correct': 87.94326241134752, 'wrong': 1.4184397163120568, 'inversed': 0.0, 'flat': 10.638297872340425}}
+{'kNN_4NN_distance_weights': {'correct': 0.0, 'wrong': 0.7092198581560284, 'inversed': 0.7092198581560284, 'flat': 98.58156028368793}}
+{'kNN_5NN_uniform_weights': {'correct': 0.7092198581560284, 'wrong': 2.127659574468085, 'inversed': 0.0, 'flat': 97.16312056737588}}
+{'kNN_5NN_distance_weights': {'correct': 0.0, 'wrong': 0.7092198581560284, 'inversed': 0.7092198581560284, 'flat': 98.58156028368793}}
+{'kNN_6NN_uniform_weights': {'correct': 0.7092198581560284, 'wrong': 37.5886524822695, 'inversed': 2.8368794326241136, 'flat': 58.86524822695035}}
+{'kNN_6NN_distance_weights': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.7092198581560284, 'flat': 99.29078014184397}}
+{'kNN_7NN_uniform_weights': {'correct': 3.546099290780142, 'wrong': 28.368794326241137, 'inversed': 0.0, 'flat': 68.08510638297872}}
+{'kNN_7NN_distance_weights': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.7092198581560284, 'flat': 99.29078014184397}}
+{'DT_gini': {'correct': 0.0, 'wrong': 4.964539007092199, 'inversed': 0.0, 'flat': 95.0354609929078}}
+{'DT_entropy': {'correct': 0.0, 'wrong': 2.8368794326241136, 'inversed': 0.0, 'flat': 97.16312056737588}}
+
+> here flat found; sometimes wrong/correct ky kNN (maybe because voltage doesnt fit Q since Q inveres at input); flat maybe bc wrong inversed (cosq max = 0.95) not modelled

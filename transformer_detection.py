@@ -3,6 +3,9 @@ from Measurement import Measurement
 from Clustering import Clustering
 from util import create_dataset
 from detection_method_settings import Variables
+from os import listdir
+from os.path import isfile, join
+
 
 v = Variables()
 from detection_method_settings import Classifier_Combos
@@ -219,6 +222,13 @@ class Transformer_detection:
             data_path = config.data_path_dict[phase_info[0].split('_')[-1]]
             sim_data_path = config.sim_data_path_dict[phase_info[0].split('_')[-1]]
             test_bays = config.test_bays_dict[phase_info[0].split('_')[-1]]
+        elif list(learning_config['setup_chosen'].keys())[0] == 'stmk':
+            test_bays = self.test_bays
+            data_path = self.data_path  #only sim data used here (which is absed on the real measurement data)
+            measurements = [f for f in listdir(join(data_path, test_bays[0])) if isfile(join(data_path, test_bays[0], f))]
+            classes = config.setups[learning_config['setup_chosen']['stmk']]
+            num_of_scenarios = len(measurements) / (len(classes)+1) #+1 bc as_is is not a class but is to be classified
+
         else:
             measurements = self.import_measurements()
             test_bays = self.test_bays
@@ -311,36 +321,57 @@ class Transformer_detection:
                                     test_bay)] = Measurement(
                                 data, name)
             if data_source == 'simulation':
-                for measurement in measurements:
-                    for scenario in list(range(len(measurements[measurement]))):
-                        for test_bay in test_bays:
-                            if config.detection_application:
-                                full_path = os.path.join(sim_data_path, f'PNDC_ERIGrid_{phase_info[0].split("_")[-1]}', 'Test_Bay_' + test_bay)
-                            else:
-                                full_path = os.path.join(sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
-                            if marker == 'estimated' or marker.split('_')[-1].split(' ')[-1] == 'estimate':
-                                data = pd.read_csv(os.path.join(full_path,
-                                                                f'scenario_{scenario + 1}_{measurement.split(" ")[1]}_control_Setup_{grid_setup}_{marker}.csv'),
-                                                   sep=',',
-                                                   decimal=',', low_memory=False)
-                            else:
-                                data = pd.read_csv(os.path.join(full_path,
-                                                                f'scenario_{scenario + 1}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
-                                                   sep=',',
-                                                   decimal=',', low_memory=False)
-                            data['new_index'] = range(len(data))
-                            data = data.set_index('new_index')
+                if list(learning_config['setup_chosen'].keys())[0] == 'stmk':
+                    for measurement in measurements:
+                        scenario = measurement.split('_')[1]
+                        control = measurement.split("_")[2]
+                        if control == 'as': control = 'as_is'
 
-                            if sampling:
-                                data = self.sample(data, sampling)
+                        data = pd.read_csv(os.path.join(data_path, test_bays[0],
+                                                        f'{measurement}'),
+                                           sep=',',
+                                           decimal=',', low_memory=False)
+                        data = data[data.columns[1:]]
+                        data['new_index'] = range(len(data))
+                        data = data.set_index('new_index')
 
-                            name = str(measurement)[13:] + ' Scenario ' + str(
-                                scenario + 1) + ': Test Bay ' + str(test_bay)
-                            relevant_measurements[
-                                str(measurement)[13:] + ' Scenario ' + str(
-                                    scenario + 1) + ': Test Bay ' + str(
-                                    test_bay)] = Measurement(
-                                data, name)
+                        if sampling:
+                            data = self.sample(data, sampling)
+
+                        name = control + ' Scenario ' + scenario + ': Test Bay ' + test_bays[0]
+                        relevant_measurements[name] = Measurement(
+                            data, name)
+                else:
+                    for measurement in measurements:
+                        for scenario in list(range(len(measurements[measurement]))):
+                            for test_bay in test_bays:
+                                if config.detection_application:
+                                    full_path = os.path.join(sim_data_path, f'PNDC_ERIGrid_{phase_info[0].split("_")[-1]}', 'Test_Bay_' + test_bay)
+                                else:
+                                    full_path = os.path.join(sim_data_path, self.pf_file, 'Test_Bay_' + test_bay)
+                                if marker == 'estimated' or marker.split('_')[-1].split(' ')[-1] == 'estimate':
+                                    data = pd.read_csv(os.path.join(full_path,
+                                                                    f'scenario_{scenario + 1}_{measurement.split(" ")[1]}_control_Setup_{grid_setup}_{marker}.csv'),
+                                                       sep=',',
+                                                       decimal=',', low_memory=False)
+                                else:
+                                    data = pd.read_csv(os.path.join(full_path,
+                                                                    f'scenario_{scenario + 1}_{measurement.split(" ")[1]}_control_Setup_{measurement.split(" ")[4]}.csv'),
+                                                       sep=',',
+                                                       decimal=',', low_memory=False)
+                                data['new_index'] = range(len(data))
+                                data = data.set_index('new_index')
+
+                                if sampling:
+                                    data = self.sample(data, sampling)
+
+                                name = str(measurement)[13:] + ' Scenario ' + str(
+                                    scenario + 1) + ': Test Bay ' + str(test_bay)
+                                relevant_measurements[
+                                    str(measurement)[13:] + ' Scenario ' + str(
+                                        scenario + 1) + ': Test Bay ' + str(
+                                        test_bay)] = Measurement(
+                                    data, name)
         return relevant_measurements
 
     def sample(self, data, sampling):
@@ -542,29 +573,54 @@ class Transformer_detection:
             '''
             data = self.load_data(sampling=self.sampling_step_size_in_seconds)
             if config.use_case == 'DSM': trafo_point = 'B2'
+            elif list(learning_config['setup_chosen'].keys())[0] == 'stmk':
+                trafo_point = 'NAP_PV_' + learning_config['setup_chosen']['stmk']
+                classes = config.setups[learning_config['setup_chosen']['stmk']]
+                classes = classes.remove('as_is')
+                variables = ['mean voltage p.u.', 'P', 'Q']
             else: trafo_point = 'F2'
-            data = create_dataset(type='combined', data=data, variables=self.variables[trafo_point][1], name=self.setup_chosen,
-                                  classes=self.setups[self.setup_chosen],
-                                  bay=self.setup_chosen.split('_')[2], Setup=self.setup_chosen.split('_')[1],
-                                  labelling=self.mode)
+
+            if list(learning_config['setup_chosen'].keys())[0] == 'stmk':
+                data = create_dataset(type='combined', data=data, variables=variables,
+                                      name=self.setup_chosen['stmk'],
+                                      classes=classes,
+                                      bay=trafo_point,
+                                      labelling='stmk')
+            else:
+                data = create_dataset(type='combined', data=data, variables=self.variables[trafo_point][1], name=self.setup_chosen,
+                                      classes=self.setups[self.setup_chosen],
+                                      bay=self.setup_chosen.split('_')[2], Setup=self.setup_chosen.split('_')[1],
+                                      labelling=self.mode)
             '''scaled_data = data.scale()
             pca_data = data.PCA()
             labelled_data = data.label()'''
 
+            if list(learning_config['setup_chosen'].keys())[0] == 'stmk':
+                #TRAIN WITH SIMULATED CASES > EVALUATE WITH AS_IS DATA > STATEMENT
+                print(
+                    f"\n########## % of predictions on {self.setup_chosen['stmk']} PV NAP data with classes {self.setups[self.setup_chosen['stmk']]} by classifier used ##########")
+
             for classifiers in self.classifier_combos:
+
                 scores = self.cross_val(data, clf=self.clf, classifiers_and_parameters=classifiers,
                                         setup=self.setup_chosen,
                                         mode=self.mode, sampling=self.sampling_step_size_in_seconds,
                                         data_mode=self.data_mode)
-                if self.mode == 'classification':
+
+                if list(learning_config['setup_chosen'].keys())[0] == 'stmk':
                     print(
-                        f"\n########## Metrics for {self.clf} classifier on {self.setup_chosen} using {[(i, classifiers[i]) for i in classifiers.keys()]} classifiers with classes {self.setups[self.setup_chosen]} ##########")
-                elif self.mode == 'detection':
-                    print(
-                        f"\n########## Metrics for {self.clf} classifier on {self.setup_chosen} using {[(i, classifiers[i]) for i in classifiers.keys()]} classifiers with classes normal and abnormal ##########")
-                for score in scores:
-                    print("%s: %0.2f (+/- %0.2f)" % (
-                        score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
+                        f"{scores}")
+
+                else:
+                    if self.mode == 'classification':
+                        print(
+                            f"\n########## Metrics for {self.clf} classifier on {self.setup_chosen} using {[(i, classifiers[i]) for i in classifiers.keys()]} classifiers with classes {self.setups[self.setup_chosen]} ##########")
+                    elif self.mode == 'detection':
+                        print(
+                            f"\n########## Metrics for {self.clf} classifier on {self.setup_chosen} using {[(i, classifiers[i]) for i in classifiers.keys()]} classifiers with classes normal and abnormal ##########")
+                    for score in scores:
+                        print("%s: %0.2f (+/- %0.2f)" % (
+                            score, np.array(scores[score]).mean(), np.array(scores[score]).std() * 2))
 
         ##########
 
@@ -799,34 +855,49 @@ class Transformer_detection:
                                  shuffle=True)  # ensures balanced classes in batches!! (as much as possible) > important
         scores = []
 
-        for train_index, test_index in kf.split(X, y):
-            # print('Split #%d' % (len(scores) + 1))
-            X_train, X_test = X[train_index], X[test_index]
-            y_train, y_test = np.array(y)[train_index], np.array(y)[test_index]
+        if 'stmk' in setup.keys():
 
-            if clf == 'SVM' or clf == 'NuSVM':
-                y_pred, y_test = self.svm_algorithm([X_train, X_test, y_train, y_test], SVM_type=clf, cross_val=True,
-                                                    kernel=kernel, degree=degree)
-                scores.append(self.scoring(y_test, y_pred))
-            elif clf == 'kNN':
-                y_pred, y_test = self.kNN_algorithm([X_train, X_test, y_train, y_test], cross_val=True,
-                                                    neighbours=neighbours,
-                                                    weights=weights)
-                scores.append(self.scoring(y_test, y_pred))
-            elif clf == 'Assembly':
-                if data_mode == 'measurement_wise':
-                    y_pred, y_test = self.assembly_learner_single_dataset([X_train, X_test, y_train, y_test],
-                                                                          classifiers_and_parameters, cross_val=True,
-                                                                          variables=variables)
-                elif data_mode == 'combined_data':
-                    y_pred, y_test = self.assembly_learner_combined_dataset([X_train, X_test, y_train, y_test],
-                                                                            classifiers_and_parameters, cross_val=True)
-                scores.append(self.scoring(y_test, y_pred))
-            else:
-                print('undefined classifier entered')
+            X_train = data.X_train_stmk
+            X_test = data.X_test_stmk
+            y_train = data.y_train_stmk
+            y_pred = []
+            scores_dict = {}
 
-        scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores],
-                       'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores]}
+            y_pred, key = self.stmk_combined_dataset([X_train, X_test, y_train],
+                                                                    classifiers_and_parameters, cross_val=True)
+            scores_dict[key] = y_pred
+
+
+        else:
+
+            for train_index, test_index in kf.split(X, y):
+                # print('Split #%d' % (len(scores) + 1))
+                X_train, X_test = X[train_index], X[test_index]
+                y_train, y_test = np.array(y)[train_index], np.array(y)[test_index]
+
+                if clf == 'SVM' or clf == 'NuSVM':
+                    y_pred, y_test = self.svm_algorithm([X_train, X_test, y_train, y_test], SVM_type=clf, cross_val=True,
+                                                        kernel=kernel, degree=degree)
+                    scores.append(self.scoring(y_test, y_pred))
+                elif clf == 'kNN':
+                    y_pred, y_test = self.kNN_algorithm([X_train, X_test, y_train, y_test], cross_val=True,
+                                                        neighbours=neighbours,
+                                                        weights=weights)
+                    scores.append(self.scoring(y_test, y_pred))
+                elif clf == 'Assembly':
+                    if data_mode == 'measurement_wise':
+                        y_pred, y_test = self.assembly_learner_single_dataset([X_train, X_test, y_train, y_test],
+                                                                              classifiers_and_parameters, cross_val=True,
+                                                                              variables=variables)
+                    elif data_mode == 'combined_data':
+                        y_pred, y_test = self.assembly_learner_combined_dataset([X_train, X_test, y_train, y_test],
+                                                                                classifiers_and_parameters, cross_val=True)
+                    scores.append(self.scoring(y_test, y_pred))
+                else:
+                    print('undefined classifier entered')
+
+            scores_dict = {'Accuracy': [i[0] for i in scores], 'Precision': [i[1][0] for i in scores],
+                           'Recall': [i[1][1] for i in scores], 'FScore': [i[1][2] for i in scores]}
 
         return scores_dict
 
@@ -993,3 +1064,90 @@ class Transformer_detection:
                                                                                      scores[1][3]))
 
         return y_pred, y_test
+
+    def stmk_combined_dataset(self, data, clf_types_and_paras, cross_val=False):
+        #train with sim data, eval with 'real' data > see what evaluation predicts
+
+        X_train = data[0]
+        X_test = data[1]
+        y_train = data[2]
+
+        clfs = {}
+        y_preds = {}
+        for clf_type in clf_types_and_paras.keys():
+
+            # Create a classifier & train the model using the training sets
+            if clf_type == 'SVM':
+                for kernel in clf_types_and_paras[clf_type]:
+                    if kernel == 'poly':
+                        clfs[clf_type + '_' + kernel] = svm.SVC(kernel=kernel,
+                                                                degree=clf_types_and_paras[clf_type][kernel][
+                                                                    0])  # default Linear Kernel
+                        degree = clf_types_and_paras[clf_type][kernel][
+                            0]
+                    else:
+                        clfs[clf_type + '_' + kernel] = svm.SVC(kernel=kernel)
+                        degree = ''
+                    clfs[clf_type + '_' + kernel].fit(X_train, y_train)
+                    y_preds[clf_type + '_' + kernel] = clfs[clf_type + '_' + kernel].predict(
+                        X_test)  # Predict the response for test dataset
+                    y_pred = y_preds[clf_type + '_' + kernel]
+                    key = clf_type + '_' + kernel + str(degree)
+            elif clf_type == 'NuSVM':
+                for kernel in clf_types_and_paras[clf_type]:
+                    if kernel == 'poly':
+                        clfs[clf_type + '_' + kernel] = svm.NuSVC(
+                            kernel=kernel, degree=clf_types_and_paras[clf_type][kernel][
+                                0])  # Nu-Support Vector Classification. Similar to SVC but uses a parameter to control the number of support vectors.
+                        degree = clf_types_and_paras[clf_type][kernel][
+                                0]
+                    else:
+                        clfs[clf_type + '_' + kernel] = svm.NuSVC(
+                            kernel=kernel)  # Nu-Support Vector Classification. Similar to SVC but uses a parameter to control the number of support vectors.
+                        degree = ''
+                    clfs[clf_type + '_' + kernel].fit(X_train, y_train)
+                    y_preds[clf_type + '_' + kernel] = clfs[clf_type + '_' + kernel].predict(
+                        X_test)  # Predict the response for test dataset
+                    y_pred = y_preds[clf_type + '_' + kernel]
+                    key = clf_type + '_' + kernel + str(degree)
+            elif clf_type == 'kNN':
+                for neighbours in clf_types_and_paras[clf_type]:
+                    clfs[clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                        0] + '_weights'] = neighbors.KNeighborsClassifier(n_neighbors=neighbours,
+                                                                          weights=
+                                                                          clf_types_and_paras[clf_type][neighbours][
+                                                                              0])
+                    clfs[clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                        0] + '_weights'].fit(X_train, y_train)
+                    y_preds[clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                        0] + '_weights'] = clfs[
+                        clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                            0] + '_weights'].predict(
+                        X_test)  # Predict the response for test dataset
+                    y_pred = y_preds[clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                        0] + '_weights']
+                    key = clf_type + '_' + str(neighbours) + 'NN' + '_' + clf_types_and_paras[clf_type][neighbours][
+                        0] + '_weights'
+            elif clf_type == 'DT':
+                for criterion in clf_types_and_paras[clf_type]:
+                    clfs[clf_type + '_' + str(criterion)] = tree.DecisionTreeClassifier(criterion=criterion)
+                    clfs[clf_type + '_' + str(criterion)].fit(X_train, y_train)
+                    y_preds[clf_type + '_' + str(criterion)] = clfs[clf_type + '_' + str(criterion)].predict(
+                        X_test)  # Predict the response for test dataset
+                    y_pred = y_preds[clf_type + '_' + str(criterion)]
+                    key = clf_type + '_' + str(criterion)
+
+            labels = {'correct': 0, 'wrong': 1, 'inversed': 2, 'flat': 3}
+            res_dict = {}
+            for label in labels:
+                try:
+                    res = (len([ele for ele in y_pred if ele == labels[label]]) / len(y_pred)) * 100
+                        # show how many percent of preds say which label
+                except ZeroDivisionError:
+                    res = 0.0
+
+                res_dict[label] = res
+
+        y_pred = res_dict
+
+        return y_pred, key

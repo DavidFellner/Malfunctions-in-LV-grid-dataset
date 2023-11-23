@@ -6,6 +6,7 @@ import importlib
 from openpyxl import load_workbook
 import datetime
 from experiment_config import experiment_path, chosen_experiment
+import math
 
 spec = importlib.util.spec_from_file_location(chosen_experiment, experiment_path)
 config = importlib.util.module_from_spec(spec)
@@ -306,6 +307,8 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
         folder = 'ERIGrid_Profiles_phase2'
         #profiles_path = os.path.join(config.grid_data_folder, folder)
         import raw_data_generation.input.ERIGrid_Profiles_phase2.load_script as load_script
+    elif sim_setting in ['stmk']:
+        folder = 'ENS_' + learning_config['setup_chosen']['stmk']
     else:
         print('Undefined simulation setting!')
 
@@ -315,6 +318,18 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
     elif type(data) is pd.DataFrame:
         loads = [load.split('_')[0] for load in list(data.columns[0::2])]
         profiles = data
+    elif sim_setting in ['stmk']:
+        voltage_folder = folder + '\\UW_20kV_Abgang'
+        voltage_data = pd.read_excel(os.path.join(config.grid_data_folder, voltage_folder, 'UW_20kV_Abgang_U.xlsx'))
+
+        if learning_config['setup_chosen']['stmk'] == 'Gleinz': Un = 20.5
+        elif learning_config['setup_chosen']['stmk'] == 'Neudau': Un = 20.6
+        else: Un = 20
+        voltage_data.insert(loc=2, column='mean voltage p.u.', value=(voltage_data.iloc[:, 2:]).mean(axis=1)*math.sqrt(3)/Un)
+
+        pv_folder = folder + '\\NAP'
+        pv_data = pd.read_excel(os.path.join(config.grid_data_folder, pv_folder, 'NAP_PV_Gleinz_P.xlsx'))
+        q_data = pd.read_excel(os.path.join(config.grid_data_folder, pv_folder, 'NAP_PV_Gleinz_Q.xlsx'))
     else:
         loads = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'Load.csv'), sep=';', index_col='id')
         profiles = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'LoadProfile.csv'), sep=';', index_col='time')
@@ -332,10 +347,12 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                 pf.activate_variations('Test Setup B')"""
         elif type(data) is pd.DataFrame or extract_profiles:
             variation = setup
+        elif sim_setting in ['stmk']:
+            variation = 'add_chars'
         else:
             variation = learning_config['setup_chosen'].split('_')[1]
 
-        if variation is not None and data is str and type(data) is not list:
+        if variation is not None and data is str and type(data) is not list and sim_setting not in ['stmk']:
             pf.activate_variations('Test Setup ' + variation)
             if variation == 'A':
                 variation = 'B'
@@ -372,7 +389,8 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                     else:
                         high = mu+3*sigma
                         low = high * config.load_estimation_training_data_distributions_dict[sim_setting][element.loc_name][3]
-                        samples_p = np.random.uniform(low=config.load_estimation_training_data_distributions_dict[sim_setting]['p_low'], high=high, size=(1, num_data_points))
+                        p_low = config.load_estimation_training_data_distributions_dict[sim_setting][element.loc_name][4]
+                        samples_p = np.random.uniform(low=p_low, high=high, size=(1, num_data_points))
                         samples_q = np.random.uniform(low=low/q_factor, high=high/q_factor, size=(1, num_data_points))
                     p_profile = samples_p[0]
                     q_profile = samples_q[0]
@@ -683,8 +701,110 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
 
                             chars_dict[element][f'q_{sample_no+1}'] = q_char
 
-        else:
+        elif sim_setting in ['stmk']:
+            v_profiles_dict = {}
+            pv_profiles_dict = {}
+            q_profiles_dict = {}
+            steps_per_day = 1440
 
+            if learning_config['setup_chosen']['stmk'] == 'Gleinz':
+                voltage_data = voltage_data.loc[11 * steps_per_day:, :].reset_index(drop=True) #cut away first 11 days as PV doesnt do anything here
+                pv_data = pv_data.loc[11 * steps_per_day:, :].reset_index(drop=True)
+                q_data = q_data.loc[11 * steps_per_day:, :].reset_index(drop=True)
+
+            else:
+                a=1
+
+            #slice 1440 stepes for one day
+            for i in range((int(len(voltage_data) / steps_per_day))):  # This ensures all rows are captured
+                v_profiles_dict[str(i)] = voltage_data.loc[i * steps_per_day:(i + 1) * steps_per_day, :][:-1]   #1440-1 since 0 indexed
+                pv_profiles_dict[str(i)] = pv_data.loc[i * steps_per_day:(i + 1) * steps_per_day, :][:-1]       #1440-1 since 0 indexed
+                q_profiles_dict[str(i)] = q_data.loc[i * steps_per_day:(i + 1) * steps_per_day, :][:-1]
+
+            for day in v_profiles_dict:
+                if config.dev_mode and day == '2': break
+                begin = v_profiles_dict[day].loc[v_profiles_dict[day].index[0], 'Utc']
+                end = v_profiles_dict[day].loc[(steps_per_day) * (int(day) + 1) - 1, 'Utc']
+
+                t_start = pd.Timestamp(begin, tz='utc')
+                t_start_unix = convert_to_unix_timestamp(t_start)
+                t_end = pd.Timestamp(end, tz='utc')
+                t_end_unix = convert_to_unix_timestamp(t_end)
+
+                # Objects which control the time scale
+                utc = datetime.timezone.utc
+                times = pd.date_range(start=t_start, end=t_end, freq=config.resolution,
+                                      tz='utc')
+
+                # scale for netze steiermark profiles (1 minute resolution):
+                o_TriTime = pf.create_time_scale(
+                    time_scale=f'times_{day}',
+                    time_points=times,
+                    unit="Y",
+                    parent=None,
+                    destination_timezone=utc
+                )
+
+                if element_type == 'PV' or element_type == 'Genstat':
+                    data = pv_profiles_dict[day]
+
+                    p_char = pf.create_vector_characteristic(
+                        characteristic=f'p_{element.loc_name}_{day}',
+                        # adds first letter of column name to characteristics name > most commonly P, Q or V
+                        # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                        # i].values / factor, index = config.times_household),
+                        vector_nodes=data[data.columns[2]].values,
+                        scale=o_TriTime,
+                        usage=2,  # 0,1,2 ... 2 means absolute
+                        approximation="constant",
+                        parent=None
+                    )
+
+                    chars_dict[element][f'p_{day}'] = p_char
+                    chars_dict[element][f'{day}_t_start'] = t_start
+                    chars_dict[element][f'{day}_t_end'] = t_end
+
+                    if element_type == 'Genstat':
+                        data = q_profiles_dict[day]
+
+                        q_char = pf.create_vector_characteristic(
+                            characteristic=f'q_{element.loc_name}_{day}',
+                            # adds first letter of column name to characteristics name > most commonly P, Q or V
+                            # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                            # i].values / factor, index = config.times_household),
+                            vector_nodes=data[data.columns[2]].values*(1),
+                            scale=o_TriTime,
+                            usage=2,  # 0,1,2 ... 2 means absolute
+                            approximation="constant",
+                            parent=None
+                        )
+
+                        chars_dict[element][f'q_{day}'] = q_char
+                        chars_dict[element][f'{day}_t_start'] = t_start
+                        chars_dict[element][f'{day}_t_end'] = t_end
+
+                elif element_type == 'Xnet':
+                    data = v_profiles_dict[day]
+
+                    v_char = pf.create_vector_characteristic(
+                        characteristic=f'p_{element.loc_name}_{day}',
+                        # adds first letter of column name to characteristics name > most commonly P, Q or V
+                        # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
+                        # i].values / factor, index = config.times_household),
+                        vector_nodes=v_profiles_dict[day]['mean voltage p.u.'].values,
+                        scale=o_TriTime,
+                        usage=2,  # 0,1,2 ... 2 means absolute
+                        approximation="constant",
+                        parent=None
+                    )
+
+                    chars_dict[element][f'v_{day}'] = v_char
+                    chars_dict[element][f'{day}_t_start'] = t_start
+                    chars_dict[element][f'{day}_t_end'] = t_end
+
+
+        else:
+            
             if config.sim_setting == 'ERIGrid_phase_2' or sim_setting in ['ERIGrid_phase_2', 'phase2']:
                 if element_type == 'load':
                     profiles_dict = load_script.finalize_profiles()
@@ -1003,6 +1123,12 @@ def prepare_grid(app, file, o_ElmNet, data=None, setup=None, phase=None, extract
     if config.detection_methods:
         for o_PV in app.GetCalcRelevantObjects('.ElmPvsys'):
             curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, element_type='PV')
+        for o_PV in app.GetCalcRelevantObjects('.ElmGenstat'):
+            curves = create_characteristics(o_PV, curves, sim_setting=config.sim_setting, element_type='Genstat')
+        if config.sim_setting in ['stmk']:
+            for o_Xnet in app.GetCalcRelevantObjects('.ElmXnet'):
+                curves = create_characteristics(o_Xnet, curves, sim_setting=config.sim_setting, element_type='Xnet')
+
 
     if config.detection_application:
         if type(data) == str and data == 'sampled':
