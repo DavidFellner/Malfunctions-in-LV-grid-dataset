@@ -328,8 +328,12 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
         voltage_data.insert(loc=2, column='mean voltage p.u.', value=(voltage_data.iloc[:, 2:]).mean(axis=1)*math.sqrt(3)/Un)
 
         pv_folder = folder + '\\NAP'
-        pv_data = pd.read_excel(os.path.join(config.grid_data_folder, pv_folder, 'NAP_PV_Gleinz_P.xlsx'))
-        q_data = pd.read_excel(os.path.join(config.grid_data_folder, pv_folder, 'NAP_PV_Gleinz_Q.xlsx'))
+        if learning_config['setup_chosen']['stmk'] == 'Gleinz':
+            pv_data = pd.read_excel(os.path.join(config.grid_data_folder, pv_folder, 'NAP_PV_Gleinz_P.xlsx'))
+            q_data = pd.read_excel(os.path.join(config.grid_data_folder, pv_folder, 'NAP_PV_Gleinz_Q.xlsx'))
+        else:
+            pv_data = pd.read_excel(os.path.join(config.grid_data_folder, pv_folder, 'NAP_PV_Neudau_P.xlsx'))
+            q_data = pd.read_excel(os.path.join(config.grid_data_folder, pv_folder, 'NAP_PV_Neudau_Q.xlsx'))
     else:
         loads = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'Load.csv'), sep=';', index_col='id')
         profiles = pd.read_csv(os.path.join(config.grid_data_folder, folder, 'LoadProfile.csv'), sep=';', index_col='time')
@@ -713,7 +717,10 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                 q_data = q_data.loc[11 * steps_per_day:, :].reset_index(drop=True)
 
             else:
-                a=1
+                voltage_data = voltage_data.loc[0 * steps_per_day:, :].reset_index(
+                    drop=True)  # cut away first 0 days as PV doesnt do anything here
+                pv_data = pv_data.loc[0 * steps_per_day:, :].reset_index(drop=True)
+                q_data = q_data.loc[0 * steps_per_day:, :].reset_index(drop=True)
 
             #slice 1440 stepes for one day
             for i in range((int(len(voltage_data) / steps_per_day))):  # This ensures all rows are captured
@@ -724,7 +731,11 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
             for day in v_profiles_dict:
                 if config.dev_mode and day == '2': break
                 begin = v_profiles_dict[day].loc[v_profiles_dict[day].index[0], 'Utc']
-                end = v_profiles_dict[day].loc[(steps_per_day) * (int(day) + 1) - 1, 'Utc']
+                try:
+                    end = v_profiles_dict[day].loc[(steps_per_day) * (int(day) + 1) - 1, 'Utc']
+                except KeyError:
+                    continue
+
 
                 t_start = pd.Timestamp(begin, tz='utc')
                 t_start_unix = convert_to_unix_timestamp(t_start)
@@ -753,7 +764,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                         # adds first letter of column name to characteristics name > most commonly P, Q or V
                         # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
                         # i].values / factor, index = config.times_household),
-                        vector_nodes=data[data.columns[2]].values,
+                        vector_nodes=data[data.columns[2]].values*1000,
                         scale=o_TriTime,
                         usage=2,  # 0,1,2 ... 2 means absolute
                         approximation="constant",
@@ -764,7 +775,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                     chars_dict[element][f'{day}_t_start'] = t_start
                     chars_dict[element][f'{day}_t_end'] = t_end
 
-                    if element_type == 'Genstat':
+                    if element_type == 'Genstat' or element.loc_name == 'PV_System_as_is':
                         data = q_profiles_dict[day]
 
                         q_char = pf.create_vector_characteristic(
@@ -772,7 +783,7 @@ def create_characteristics(element, chars_dict, sim_setting=config.sim_setting, 
                             # adds first letter of column name to characteristics name > most commonly P, Q or V
                             # vector_nodes= pd.Series(pd.read_csv('output/' + profile, sep=';', decimal='.', index_col=0, header=0).iloc[:,
                             # i].values / factor, index = config.times_household),
-                            vector_nodes=data[data.columns[2]].values*(1),
+                            vector_nodes=data[data.columns[2]].values*(1)*1000,
                             scale=o_TriTime,
                             usage=2,  # 0,1,2 ... 2 means absolute
                             approximation="constant",

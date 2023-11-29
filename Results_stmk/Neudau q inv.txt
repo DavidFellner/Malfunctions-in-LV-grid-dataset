@@ -1,0 +1,239 @@
+########## Configuration ##########
+data_source  :  simulation
+setup_chosen  :  {'stmk': 'Neudau'}
+mode  :  classification
+data_mode  :  combined_data
+selection  :  most important
+approach  :  PCA+clf
+clf  :  Assembly
+kernels  :  ['linear', 'poly', 'rbf', 'sigmoid']
+gammas  :  ['scale']
+degrees  :  [1, 2, 3, 4, 5, 6]
+neighbours  :  [1, 2, 3, 4, 5]
+weights  :  ['uniform', 'distance']
+classifier_combos  :  general
+components  :  0.99
+disaggregation algorithm  :  [NN, LR]
+real_vs  :  sim
+crop_data_to_pv_daytime  :  False
+vars_used  :  all
+Data loaded with sampling of None
+Dataset containing 1505 samples, 0 of which correct, 1 of which wrong, and 2 of which inversed created (if only 2 classes inversed is called wrong)
+
+########## % of predictions on Neudau PV NAP data with classes ['correct', 'wrong', 'inversed', 'flat', 'as_is'] by classifier used ##########
+{'NuSVM_poly1': {'correct': 6.64451827242525, 'wrong': 10.96345514950166, 'inversed': 0.33222591362126247, 'flat': 82.05980066445183}}
+{'NuSVM_poly2': {'correct': 3.322259136212625, 'wrong': 12.956810631229235, 'inversed': 5.3156146179401995, 'flat': 78.40531561461795}}
+{'NuSVM_poly3': {'correct': 1.6611295681063125, 'wrong': 15.614617940199334, 'inversed': 3.9867109634551494, 'flat': 78.7375415282392}}
+{'NuSVM_poly4': {'correct': 1.9933554817275747, 'wrong': 15.614617940199334, 'inversed': 6.976744186046512, 'flat': 75.41528239202658}}
+{'NuSVM_poly5': {'correct': 1.9933554817275747, 'wrong': 19.601328903654487, 'inversed': 5.980066445182724, 'flat': 72.42524916943522}}
+{'NuSVM_poly6': {'correct': 3.9867109634551494, 'wrong': 18.272425249169437, 'inversed': 7.641196013289036, 'flat': 70.09966777408638}}
+{'SVM_poly1': {'correct': 1.3289036544850499, 'wrong': 18.6046511627907, 'inversed': 0.0, 'flat': 80.06644518272425}}
+{'SVM_poly2': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly3': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly4': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly5': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly6': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_rbf': {'correct': 5.980066445182724, 'wrong': 13.2890365448505, 'inversed': 1.3289036544850499, 'flat': 79.40199335548172}}
+{'NuSVM_sigmoid': {'correct': 46.51162790697674, 'wrong': 2.6578073089700998, 'inversed': 22.259136212624583, 'flat': 28.57142857142857}}
+{'SVM_rbf': {'correct': 3.6544850498338874, 'wrong': 2.990033222591362, 'inversed': 0.0, 'flat': 93.35548172757476}}
+{'SVM_sigmoid': {'correct': 0.9966777408637874, 'wrong': 18.93687707641196, 'inversed': 0.0, 'flat': 80.06644518272425}}
+{'kNN_1NN_uniform_weights': {'correct': 0.9966777408637874, 'wrong': 1.9933554817275747, 'inversed': 1.3289036544850499, 'flat': 95.68106312292359}}
+{'kNN_1NN_distance_weights': {'correct': 0.9966777408637874, 'wrong': 1.9933554817275747, 'inversed': 1.3289036544850499, 'flat': 95.68106312292359}}
+{'kNN_2NN_uniform_weights': {'correct': 50.498338870431894, 'wrong': 47.840531561461795, 'inversed': 1.6611295681063125, 'flat': 0.0}}
+{'kNN_2NN_distance_weights': {'correct': 0.9966777408637874, 'wrong': 1.9933554817275747, 'inversed': 1.3289036544850499, 'flat': 95.68106312292359}}
+{'kNN_3NN_uniform_weights': {'correct': 98.67109634551495, 'wrong': 1.3289036544850499, 'inversed': 0.0, 'flat': 0.0}}
+{'kNN_3NN_distance_weights': {'correct': 0.9966777408637874, 'wrong': 1.9933554817275747, 'inversed': 1.3289036544850499, 'flat': 95.68106312292359}}
+{'kNN_4NN_uniform_weights': {'correct': 95.34883720930233, 'wrong': 0.0, 'inversed': 0.0, 'flat': 4.651162790697675}}
+{'kNN_4NN_distance_weights': {'correct': 0.9966777408637874, 'wrong': 1.9933554817275747, 'inversed': 1.3289036544850499, 'flat': 95.68106312292359}}
+{'kNN_5NN_uniform_weights': {'correct': 38.205980066445186, 'wrong': 32.55813953488372, 'inversed': 0.9966777408637874, 'flat': 28.23920265780731}}
+{'kNN_5NN_distance_weights': {'correct': 0.9966777408637874, 'wrong': 1.9933554817275747, 'inversed': 1.3289036544850499, 'flat': 95.68106312292359}}
+{'kNN_6NN_uniform_weights': {'correct': 77.0764119601329, 'wrong': 17.275747508305646, 'inversed': 1.9933554817275747, 'flat': 3.6544850498338874}}
+{'kNN_6NN_distance_weights': {'correct': 0.9966777408637874, 'wrong': 1.9933554817275747, 'inversed': 1.3289036544850499, 'flat': 95.68106312292359}}
+{'kNN_7NN_uniform_weights': {'correct': 89.03654485049833, 'wrong': 5.647840531561462, 'inversed': 0.0, 'flat': 5.3156146179401995}}
+{'kNN_7NN_distance_weights': {'correct': 0.9966777408637874, 'wrong': 1.9933554817275747, 'inversed': 1.3289036544850499, 'flat': 95.68106312292359}}
+{'DT_gini': {'correct': 3.6544850498338874, 'wrong': 2.6578073089700998, 'inversed': 1.3289036544850499, 'flat': 92.35880398671097}}
+{'DT_entropy': {'correct': 3.6544850498338874, 'wrong': 3.322259136212625, 'inversed': 1.3289036544850499, 'flat': 91.69435215946844}}
+
+Process finished with exit code 0
+
+
+CROPPED:
+
+########## Configuration ##########
+data_source  :  simulation
+setup_chosen  :  {'stmk': 'Neudau'}
+mode  :  classification
+data_mode  :  combined_data
+selection  :  most important
+approach  :  PCA+clf
+clf  :  Assembly
+kernels  :  ['linear', 'poly', 'rbf', 'sigmoid']
+gammas  :  ['scale']
+degrees  :  [1, 2, 3, 4, 5, 6]
+neighbours  :  [1, 2, 3, 4, 5]
+weights  :  ['uniform', 'distance']
+classifier_combos  :  general
+components  :  0.99
+disaggregation algorithm  :  [NN, LR]
+real_vs  :  sim
+crop_data_to_pv_daytime  :  True
+vars_used  :  all
+Data loaded with sampling of None
+Dataset containing 1515 samples, 0 of which correct, 1 of which wrong, and 2 of which inversed created (if only 2 classes inversed is called wrong)
+
+########## % of predictions on Neudau PV NAP data with classes ['correct', 'wrong', 'inversed', 'flat', 'as_is'] by classifier used ##########
+{'NuSVM_poly1': {'correct': 5.9405940594059405, 'wrong': 3.6303630363036308, 'inversed': 0.0, 'flat': 90.42904290429043}}
+{'NuSVM_poly2': {'correct': 8.25082508250825, 'wrong': 7.590759075907591, 'inversed': 0.0, 'flat': 84.15841584158416}}
+{'NuSVM_poly3': {'correct': 2.31023102310231, 'wrong': 13.861386138613863, 'inversed': 0.0, 'flat': 83.82838283828383}}
+{'NuSVM_poly4': {'correct': 11.55115511551155, 'wrong': 0.9900990099009901, 'inversed': 0.9900990099009901, 'flat': 86.46864686468648}}
+{'NuSVM_poly5': {'correct': 3.6303630363036308, 'wrong': 9.570957095709572, 'inversed': 0.0, 'flat': 86.79867986798679}}
+{'NuSVM_poly6': {'correct': 2.31023102310231, 'wrong': 6.6006600660066, 'inversed': 0.0, 'flat': 91.0891089108911}}
+{'SVM_poly1': {'correct': 0.0, 'wrong': 19.471947194719473, 'inversed': 0.0, 'flat': 80.52805280528052}}
+{'SVM_poly2': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly3': {'correct': 0.0, 'wrong': 7.2607260726072615, 'inversed': 0.0, 'flat': 92.73927392739274}}
+{'SVM_poly4': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly5': {'correct': 0.0, 'wrong': 1.9801980198019802, 'inversed': 0.0, 'flat': 98.01980198019803}}
+{'SVM_poly6': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_rbf': {'correct': 15.841584158415841, 'wrong': 4.29042904290429, 'inversed': 0.0, 'flat': 79.86798679867987}}
+{'NuSVM_sigmoid': {'correct': 3.9603960396039604, 'wrong': 38.28382838283829, 'inversed': 17.16171617161716, 'flat': 40.5940594059406}}
+{'SVM_rbf': {'correct': 10.231023102310232, 'wrong': 1.3201320132013201, 'inversed': 0.0, 'flat': 88.44884488448845}}
+{'SVM_sigmoid': {'correct': 0.33003300330033003, 'wrong': 19.471947194719473, 'inversed': 0.0, 'flat': 80.19801980198021}}
+{'kNN_1NN_uniform_weights': {'correct': 5.9405940594059405, 'wrong': 5.9405940594059405, 'inversed': 4.62046204620462, 'flat': 83.4983498349835}}
+{'kNN_1NN_distance_weights': {'correct': 5.9405940594059405, 'wrong': 5.9405940594059405, 'inversed': 4.62046204620462, 'flat': 83.4983498349835}}
+{'kNN_2NN_uniform_weights': {'correct': 49.834983498349835, 'wrong': 46.864686468646866, 'inversed': 1.9801980198019802, 'flat': 1.3201320132013201}}
+{'kNN_2NN_distance_weights': {'correct': 5.9405940594059405, 'wrong': 5.9405940594059405, 'inversed': 4.62046204620462, 'flat': 83.4983498349835}}
+{'kNN_3NN_uniform_weights': {'correct': 93.72937293729373, 'wrong': 4.9504950495049505, 'inversed': 0.0, 'flat': 1.3201320132013201}}
+{'kNN_3NN_distance_weights': {'correct': 5.9405940594059405, 'wrong': 5.9405940594059405, 'inversed': 4.62046204620462, 'flat': 83.4983498349835}}
+{'kNN_4NN_uniform_weights': {'correct': 76.23762376237624, 'wrong': 0.9900990099009901, 'inversed': 0.0, 'flat': 22.772277227722775}}
+{'kNN_4NN_distance_weights': {'correct': 5.9405940594059405, 'wrong': 5.9405940594059405, 'inversed': 4.62046204620462, 'flat': 83.4983498349835}}
+{'kNN_5NN_uniform_weights': {'correct': 25.412541254125415, 'wrong': 27.39273927392739, 'inversed': 8.25082508250825, 'flat': 38.943894389438945}}
+{'kNN_5NN_distance_weights': {'correct': 5.9405940594059405, 'wrong': 5.9405940594059405, 'inversed': 4.62046204620462, 'flat': 83.4983498349835}}
+{'kNN_6NN_uniform_weights': {'correct': 62.37623762376238, 'wrong': 20.462046204620464, 'inversed': 6.270627062706271, 'flat': 10.891089108910892}}
+{'kNN_6NN_distance_weights': {'correct': 5.9405940594059405, 'wrong': 5.9405940594059405, 'inversed': 4.62046204620462, 'flat': 83.4983498349835}}
+{'kNN_7NN_uniform_weights': {'correct': 70.62706270627062, 'wrong': 7.920792079207921, 'inversed': 0.0, 'flat': 21.45214521452145}}
+{'kNN_7NN_distance_weights': {'correct': 5.9405940594059405, 'wrong': 5.9405940594059405, 'inversed': 4.62046204620462, 'flat': 83.4983498349835}}
+{'DT_gini': {'correct': 7.590759075907591, 'wrong': 4.9504950495049505, 'inversed': 6.270627062706271, 'flat': 81.1881188118812}}
+{'DT_entropy': {'correct': 6.6006600660066, 'wrong': 5.9405940594059405, 'inversed': 4.29042904290429, 'flat': 83.16831683168317}}
+
+Process finished with exit code 0
+
+
+
+------------------------------------------------------------------------------------------------------
+
+
+JUST Q:
+
+########## Configuration ##########
+data_source  :  simulation
+setup_chosen  :  {'stmk': 'Neudau'}
+mode  :  classification
+data_mode  :  combined_data
+selection  :  most important
+approach  :  PCA+clf
+clf  :  Assembly
+kernels  :  ['linear', 'poly', 'rbf', 'sigmoid']
+gammas  :  ['scale']
+degrees  :  [1, 2, 3, 4, 5, 6]
+neighbours  :  [1, 2, 3, 4, 5]
+weights  :  ['uniform', 'distance']
+classifier_combos  :  general
+components  :  0.99
+disaggregation algorithm  :  [NN, LR]
+real_vs  :  sim
+crop_data_to_pv_daytime  :  False
+vars_used  :  ['Q']
+Data loaded with sampling of None
+Dataset containing 1505 samples, 0 of which correct, 1 of which wrong, and 2 of which inversed created (if only 2 classes inversed is called wrong)
+
+########## % of predictions on Neudau PV NAP data with classes ['correct', 'wrong', 'inversed', 'flat', 'as_is'] by classifier used ##########
+{'NuSVM_poly1': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly2': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly3': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly4': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly5': {'correct': 0.9966777408637874, 'wrong': 0.0, 'inversed': 0.0, 'flat': 99.00332225913621}}
+{'NuSVM_poly6': {'correct': 0.0, 'wrong': 0.33222591362126247, 'inversed': 0.0, 'flat': 99.66777408637874}}
+{'SVM_poly1': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly2': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly3': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly4': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly5': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly6': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_rbf': {'correct': 0.0, 'wrong': 0.33222591362126247, 'inversed': 0.0, 'flat': 99.66777408637874}}
+{'NuSVM_sigmoid': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_rbf': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_sigmoid': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'kNN_1NN_uniform_weights': {'correct': 0.0, 'wrong': 0.9966777408637874, 'inversed': 0.6644518272425249, 'flat': 98.33887043189368}}
+{'kNN_1NN_distance_weights': {'correct': 0.0, 'wrong': 0.9966777408637874, 'inversed': 0.6644518272425249, 'flat': 98.33887043189368}}
+{'kNN_2NN_uniform_weights': {'correct': 4.318936877076411, 'wrong': 2.990033222591362, 'inversed': 0.33222591362126247, 'flat': 92.35880398671097}}
+{'kNN_2NN_distance_weights': {'correct': 0.0, 'wrong': 0.9966777408637874, 'inversed': 0.6644518272425249, 'flat': 98.33887043189368}}
+{'kNN_3NN_uniform_weights': {'correct': 5.980066445182724, 'wrong': 1.6611295681063125, 'inversed': 0.0, 'flat': 92.35880398671097}}
+{'kNN_3NN_distance_weights': {'correct': 0.0, 'wrong': 0.9966777408637874, 'inversed': 0.6644518272425249, 'flat': 98.33887043189368}}
+{'kNN_4NN_uniform_weights': {'correct': 4.651162790697675, 'wrong': 0.0, 'inversed': 0.0, 'flat': 95.34883720930233}}
+{'kNN_4NN_distance_weights': {'correct': 0.0, 'wrong': 0.9966777408637874, 'inversed': 0.6644518272425249, 'flat': 98.33887043189368}}
+{'kNN_5NN_uniform_weights': {'correct': 1.6611295681063125, 'wrong': 0.0, 'inversed': 0.0, 'flat': 98.33887043189368}}
+{'kNN_5NN_distance_weights': {'correct': 0.0, 'wrong': 0.9966777408637874, 'inversed': 0.6644518272425249, 'flat': 98.33887043189368}}
+{'kNN_6NN_uniform_weights': {'correct': 1.6611295681063125, 'wrong': 0.0, 'inversed': 0.0, 'flat': 98.33887043189368}}
+{'kNN_6NN_distance_weights': {'correct': 0.0, 'wrong': 0.9966777408637874, 'inversed': 0.6644518272425249, 'flat': 98.33887043189368}}
+{'kNN_7NN_uniform_weights': {'correct': 0.9966777408637874, 'wrong': 0.0, 'inversed': 0.0, 'flat': 99.00332225913621}}
+{'kNN_7NN_distance_weights': {'correct': 0.0, 'wrong': 0.9966777408637874, 'inversed': 0.6644518272425249, 'flat': 98.33887043189368}}
+{'DT_gini': {'correct': 0.9966777408637874, 'wrong': 1.3289036544850499, 'inversed': 0.33222591362126247, 'flat': 97.34219269102991}}
+{'DT_entropy': {'correct': 0.0, 'wrong': 0.6644518272425249, 'inversed': 1.3289036544850499, 'flat': 98.00664451827242}}
+
+CROPPED:
+
+########## Configuration ##########
+data_source  :  simulation
+setup_chosen  :  {'stmk': 'Neudau'}
+mode  :  classification
+data_mode  :  combined_data
+selection  :  most important
+approach  :  PCA+clf
+clf  :  Assembly
+kernels  :  ['linear', 'poly', 'rbf', 'sigmoid']
+gammas  :  ['scale']
+degrees  :  [1, 2, 3, 4, 5, 6]
+neighbours  :  [1, 2, 3, 4, 5]
+weights  :  ['uniform', 'distance']
+classifier_combos  :  general
+components  :  0.99
+disaggregation algorithm  :  [NN, LR]
+real_vs  :  sim
+crop_data_to_pv_daytime  :  True
+vars_used  :  ['Q']
+Data loaded with sampling of None
+Dataset containing 1515 samples, 0 of which correct, 1 of which wrong, and 2 of which inversed created (if only 2 classes inversed is called wrong)
+
+########## % of predictions on Neudau PV NAP data with classes ['correct', 'wrong', 'inversed', 'flat', 'as_is'] by classifier used ##########
+{'NuSVM_poly1': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly2': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly3': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly4': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly5': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_poly6': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly1': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly2': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly3': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly4': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly5': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_poly6': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_rbf': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'NuSVM_sigmoid': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_rbf': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'SVM_sigmoid': {'correct': 0.0, 'wrong': 0.0, 'inversed': 0.0, 'flat': 100.0}}
+{'kNN_1NN_uniform_weights': {'correct': 6.270627062706271, 'wrong': 5.6105610561056105, 'inversed': 7.920792079207921, 'flat': 80.19801980198021}}
+{'kNN_1NN_distance_weights': {'correct': 6.270627062706271, 'wrong': 5.6105610561056105, 'inversed': 7.920792079207921, 'flat': 80.19801980198021}}
+{'kNN_2NN_uniform_weights': {'correct': 18.81188118811881, 'wrong': 14.521452145214523, 'inversed': 12.541254125412541, 'flat': 54.12541254125413}}
+{'kNN_2NN_distance_weights': {'correct': 6.270627062706271, 'wrong': 5.6105610561056105, 'inversed': 7.920792079207921, 'flat': 80.19801980198021}}
+{'kNN_3NN_uniform_weights': {'correct': 20.792079207920793, 'wrong': 12.541254125412541, 'inversed': 0.33003300330033003, 'flat': 66.33663366336634}}
+{'kNN_3NN_distance_weights': {'correct': 5.9405940594059405, 'wrong': 5.2805280528052805, 'inversed': 7.590759075907591, 'flat': 81.1881188118812}}
+{'kNN_4NN_uniform_weights': {'correct': 25.742574257425744, 'wrong': 1.3201320132013201, 'inversed': 1.65016501650165, 'flat': 71.28712871287128}}
+{'kNN_4NN_distance_weights': {'correct': 6.270627062706271, 'wrong': 5.2805280528052805, 'inversed': 6.9306930693069315, 'flat': 81.51815181518151}}
+{'kNN_5NN_uniform_weights': {'correct': 7.920792079207921, 'wrong': 5.9405940594059405, 'inversed': 1.3201320132013201, 'flat': 84.81848184818482}}
+{'kNN_5NN_distance_weights': {'correct': 6.270627062706271, 'wrong': 4.9504950495049505, 'inversed': 3.6303630363036308, 'flat': 85.14851485148515}}
+{'kNN_6NN_uniform_weights': {'correct': 8.25082508250825, 'wrong': 7.2607260726072615, 'inversed': 2.31023102310231, 'flat': 82.17821782178217}}
+{'kNN_6NN_distance_weights': {'correct': 4.62046204620462, 'wrong': 4.29042904290429, 'inversed': 3.6303630363036308, 'flat': 87.45874587458746}}
+{'kNN_7NN_uniform_weights': {'correct': 7.590759075907591, 'wrong': 4.9504950495049505, 'inversed': 0.33003300330033003, 'flat': 87.12871287128714}}
+{'kNN_7NN_distance_weights': {'correct': 3.6303630363036308, 'wrong': 4.62046204620462, 'inversed': 2.9702970297029703, 'flat': 88.77887788778878}}
+{'DT_gini': {'correct': 8.25082508250825, 'wrong': 8.91089108910891, 'inversed': 7.590759075907591, 'flat': 75.24752475247524}}
+{'DT_entropy': {'correct': 11.55115511551155, 'wrong': 7.920792079207921, 'inversed': 7.2607260726072615, 'flat': 73.26732673267327}}

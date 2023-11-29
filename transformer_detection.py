@@ -331,7 +331,12 @@ class Transformer_detection:
                                                         f'{measurement}'),
                                            sep=',',
                                            decimal=',', low_memory=False)
-                        data = data[data.columns[1:]]
+
+                        if learning_config['vars_used'] == 'all':
+                            data = data[data.columns[1:]]
+                        else:
+                            data = data[learning_config['vars_used']]
+
                         data['new_index'] = range(len(data))
                         data = data.set_index('new_index')
 

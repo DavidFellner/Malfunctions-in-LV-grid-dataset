@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 import h5py
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.decomposition import PCA, KernelPCA
 
 import importlib
@@ -266,6 +266,8 @@ class Combined_Dataset:
             self.classes = classes
         elif config.use_case == 'DSM':
             self.classes = ['DSM', 'noDSM']
+        elif config.use_case == 'stmk':
+            self.classes = ['correct', 'wrong', 'inversed', 'flat']
         else:
             self.classes = ['correct', 'wrong']
 
@@ -287,10 +289,10 @@ class Combined_Dataset:
         elif config.use_case == 'stmk':
             measurements = {}
             for measurement in data:
-                measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, data[measurement].data)
+                measurements[measurement] = Combined_Dataset.flatten_df_into_row(self, data[measurement].data, measurement)
 
             self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in
-                         [data[measurement] for measurement in measurements if measurements[measurement].values[0].shape[0] == len(measurements[list(measurements.keys())[0]].columns)]}  # get rid of daylight saving time change flawed data day
+                         [data[measurement] for measurement in measurements if measurements[measurement][0].values.shape[1] == len(measurements[list(measurements.keys())[0]][0].columns)]}  # get rid of daylight saving time change flawed data day
 
         else:
             self.data = {applicable_measurements.name: data[applicable_measurements.name] for applicable_measurements in
@@ -309,9 +311,9 @@ class Combined_Dataset:
 
         if config.use_case == 'stmk':
             self.combined_data = pd.DataFrame(index=[self.data[measurement].name for measurement in self.data],
-                                              data=[measurements[measurement].values[0] for measurement in
+                                              data=[measurements[measurement][0].values[0] for measurement in
                                                     self.data],
-                                              columns=measurements[list(measurements.keys())[0]].columns).replace(
+                                              columns=measurements[list(measurements.keys())[0]][0].columns).replace(
                 np.nan,
                 0)  # NaN values filled up with 0; NaN can occur when a measurement is shorter than others
         else:
@@ -404,18 +406,25 @@ class Combined_Dataset:
 
     def scale(self):
 
-        combined_data_scaled = StandardScaler().fit_transform(self.combined_data)
+        #combined_data_scaled = StandardScaler().fit_transform(self.combined_data)
+        combined_data_scaled = MinMaxScaler().fit_transform(self.combined_data)
         self.combined_data_scaled = pd.DataFrame(index=self.combined_data.index, data=combined_data_scaled,
                                                  columns=self.combined_data.columns)
 
         return self.combined_data_scaled
 
-    def flatten_df_into_row(self, df):
+    def flatten_df_into_row(self, df, count='no info'):
 
+        #len_df_old = len(df)
+        #df_new = df.dropna()
+        #if len(df_new) != len(df):
+            #print(count)
+        if config.learning_config['crop_data_to_pv_daytime']:
+            df = df.loc[510:1000]
         v = df.unstack().to_frame().sort_index(level=1).T
         v.columns = v.columns.map(str)
 
-        return v
+        return v, count
 
 
 class Reduced_Combined_Dataset:

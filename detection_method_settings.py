@@ -1620,8 +1620,13 @@ class Mapping_Fluke_to_PowerFactory:
         self.NAPmap = {
             'ElmTerm': {
                 'm:u' : ['mean voltage p.u.'],
-                'm:Pflow' : ['P'],
-                'm:Qflow' : ['Q']
+                #'m:Pflow' : ['P'],
+                #'m:Qflow' : ['Q']
+
+            },
+            'ElmLne': {
+                'm:P:bus2': ['P'],
+                'm:Q:bus2': ['Q'],
 
             }}
 

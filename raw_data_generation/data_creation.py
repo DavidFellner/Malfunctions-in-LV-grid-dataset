@@ -72,11 +72,11 @@ def set_QDS_settings(app, study_case_obj, t_start, t_end, step_unit=1, balanced=
                 'm:Pflow',
                 'm:Qflow'
             ],
-            'ElmPvsys': [
-                'm:P:bus1',
-                'm:Q:bus1'
-            ]
-        }
+            'ElmLne': {
+                'm:P:bus2',
+                'm:Q:bus2',
+        }}
+
     elif marker == 'load_estimation_training_data':
         result_variables = {
             'ElmTerm': [
@@ -346,10 +346,11 @@ def pick_results(results, training_data=False, phase=None):
                    'A1_elements': {'lines': ['LV-033', 'LV-032'], 'term': 'Test Bay A1'},
                    'C1_elements': {'lines': ['LV-038'], 'term': 'Test Bay C1'}}
         elif config.sim_setting in ['stmk']:
+            #names in both models the same!!
             if learning_config['setup_chosen']['stmk'] == 'Gleinz':
-                map = {'NAP_elements': {'term': 'NAP_Gleinz_PV'}}
+                map = {'NAP_elements': {'lines': ['Neudau/PV_UEBERGABE'], 'term': 'NAP_Gleinz_PV'}}
             else:
-                map = {'NAP_elements': {'term': 'NAP_Neudau_PV'}}
+                map = {'NAP_elements': {'lines': ['Neudau/PV_UEBERGABE'], 'term': 'NAP_Gleinz_PV'}}
         else:
             print('undefined sim setup chosen!')
 
@@ -700,7 +701,7 @@ def create_detectionmethods_data(app, o_ElmNet, grid_data, study_case_obj, file,
         PV = app.GetCalcRelevantObjects('*.ElmPvsys')[0]
 
         days = [i.split('_')[1] for i in chars_dict[PV].keys()][0::3]
-        #days = days[:] #if not all scens to be simulated (pick up at some point)
+        #days = days[254:] #if not all scens to be simulated (pick up at some point); [5:] means satrt at scen5
         for day in days:
             for element in chars_dict.keys():
 
